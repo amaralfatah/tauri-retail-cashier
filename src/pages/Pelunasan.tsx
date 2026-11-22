@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { errText, Row } from "../api";
 import { pelunasanApi } from "../api/retur";
 import { useApp } from "../appContext";
@@ -72,10 +72,13 @@ export function Pelunasan({ jenis }: { jenis: PelunasanJenis }) {
     void muat(k);
   };
 
+  const simpanBusy = useRef(false);
   const simpan = useCallback(async () => {
+    if (simpanBusy.current) return;
     // Urutan pemeriksaan sama dengan simpanData / simpanData2 aslinya: jumlah dulu.
     if ((perTrans ? dicek : nominal) <= 0) return msg.alert("Jumlah pelunasan masih kosong");
     if (!kontak) return msg.alert(`Silakan pilih ${piutang ? "pelanggan" : "pemasok"} dulu.`);
+    simpanBusy.current = true;
     try {
       await pelunasanApi.simpan({
         jenis, kode: kontak.kode, tgl, kodekaryawan: kasir.kode,
@@ -85,6 +88,8 @@ export function Pelunasan({ jenis }: { jenis: PelunasanJenis }) {
       await muat(kontak); // cariPiutang: daftar dimuat ulang dan isian jumlah kembali 0
     } catch (e) {
       msg.alert(errText(e));
+    } finally {
+      simpanBusy.current = false;
     }
   }, [kontak, perTrans, dicek, nominal, cek, kasir, jenis, tgl, piutang, msg, muat]);
 

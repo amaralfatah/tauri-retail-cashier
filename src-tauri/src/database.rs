@@ -23,6 +23,12 @@ pub fn hanya_manager(user: &User) -> Res<()> {
     Ok(())
 }
 
+/// Backup, cek, dan perbaikan juga ada di Alat Bantu (FrmZAlat), yang punya menu sendiri.
+/// Cukup salah satu dari menu Database atau Alat Bantu yang boleh dibuka.
+pub(crate) fn izin_database_atau_alat(conn: &Connection, user: &User) -> Res<()> {
+    crate::auth::require_menu(conn, user, "mnPengaturanDatabase").or_else(|err| crate::auth::require_menu(conn, user, "mnPengaturanAlat").map_err(|_| err))
+}
+
 pub fn lokasi_db(conn: &Connection) -> Res<PathBuf> {
     conn.path().filter(|p| !p.is_empty()).map(PathBuf::from).ok_or_else(|| "Lokasi database tidak diketahui.".to_string())
 }
@@ -186,7 +192,7 @@ pub fn daftar_backup(folder: &Path) -> Vec<Value> {
 pub fn db_info(db: State<Db>, session: State<Session>) -> Res<Value> {
     let user = session.user()?;
     hanya_pengelola(&user)?;
-    crate::auth::require_menu(&*db.lock()?, &user, "mnPengaturanDatabase")?;
+    izin_database_atau_alat(&*db.lock()?, &user)?;
     let conn = db.lock()?;
     let path = lokasi_db(&conn)?;
     let ukuran = std::fs::metadata(&path).map(|m| m.len()).unwrap_or(0);
@@ -197,7 +203,7 @@ pub fn db_info(db: State<Db>, session: State<Session>) -> Res<Value> {
 pub fn db_daftar_backup(db: State<Db>, session: State<Session>, folder: Option<String>) -> Res<Vec<Value>> {
     let user = session.user()?;
     hanya_pengelola(&user)?;
-    crate::auth::require_menu(&*db.lock()?, &user, "mnPengaturanDatabase")?;
+    izin_database_atau_alat(&*db.lock()?, &user)?;
     let conn = db.lock()?;
     Ok(daftar_backup(&folder_pilihan(&conn, folder.as_deref())?))
 }
@@ -206,7 +212,7 @@ pub fn db_daftar_backup(db: State<Db>, session: State<Session>, folder: Option<S
 pub fn db_backup(db: State<Db>, session: State<Session>, folder: Option<String>) -> Res<Value> {
     let user = session.user()?;
     hanya_pengelola(&user)?;
-    crate::auth::require_menu(&*db.lock()?, &user, "mnPengaturanDatabase")?;
+    izin_database_atau_alat(&*db.lock()?, &user)?;
     let conn = db.lock()?;
     let file = backup_ke(&conn, &folder_pilihan(&conn, folder.as_deref())?, "tokopro")?;
     let ukuran = std::fs::metadata(&file).map(|m| m.len()).unwrap_or(0);
@@ -218,7 +224,7 @@ pub fn db_backup(db: State<Db>, session: State<Session>, folder: Option<String>)
 pub fn db_cek(db: State<Db>, session: State<Session>, penuh: bool) -> Res<Value> {
     let user = session.user()?;
     hanya_pengelola(&user)?;
-    crate::auth::require_menu(&*db.lock()?, &user, "mnPengaturanDatabase")?;
+    izin_database_atau_alat(&*db.lock()?, &user)?;
     let masalah = periksa(&*db.lock()?, penuh)?;
     Ok(json!({ "ok": masalah.is_empty(), "masalah": masalah }))
 }
@@ -227,7 +233,7 @@ pub fn db_cek(db: State<Db>, session: State<Session>, penuh: bool) -> Res<Value>
 pub fn db_perbaiki(db: State<Db>, session: State<Session>, folder: Option<String>) -> Res<Value> {
     let user = session.user()?;
     hanya_pengelola(&user)?;
-    crate::auth::require_menu(&*db.lock()?, &user, "mnPengaturanDatabase")?;
+    izin_database_atau_alat(&*db.lock()?, &user)?;
     let conn = db.lock()?;
     let aman = perbaiki(&conn, &folder_pilihan(&conn, folder.as_deref())?)?;
     Ok(json!({ "cadangan": aman.display().to_string() }))

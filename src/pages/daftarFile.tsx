@@ -39,7 +39,7 @@ export function useDaftarFile<T>(judul: string, cols: GridCol<T>[], rows: T[], m
   const ekspor = async () => {
     if (!rows.length) return msg.alert("Belum ada data yang bisa diekspor.");
     try {
-      const nama = await berkasApi.eksporNama(judul);
+      const nama = await berkasApi.eksporNama(judul, excel ? "xlsx" : "csv");
       if (!excel) return setDlg(nama);
       // Aslinya daftar dikirim ke lembar Excel; di sini disimpan sebagai file .xlsx di folder Documents.
       const baris = rows.map((r, i) => cols.map((c) => teks(c.render(r, i)).trim()));

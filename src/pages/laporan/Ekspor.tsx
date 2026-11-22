@@ -45,7 +45,8 @@ export function buatRtf(kop: string[], grid: string[][]): string {
 
 /** Simpan hasil ekspor sebagai file baru di folder Documents. Mengembalikan alamat file. */
 export async function simpanEkspor(format: Exclude<FormatEkspor, "pdf">, judul: string, kop: string[], grid: string[][], path?: string, o?: OpsiText): Promise<string> {
-  const dasar = path ?? (await berkasApi.eksporNama(judul));
+  const extBaru = format === "text" ? "txt" : format === "excel" ? "xlsx" : format;
+  const dasar = path ?? (await berkasApi.eksporNama(judul, extBaru));
   const ganti = (ext: string) => dasar.replace(/\.[^./\\]+$/, `.${ext}`);
   if (format === "text") return berkasApi.simpanFile(ganti("txt"), buatText(kop, grid, o ?? { pemisahKolom: ";", pemisahHalaman: "", lewatiKosong: true, unicode: true }));
   if (format === "excel") {

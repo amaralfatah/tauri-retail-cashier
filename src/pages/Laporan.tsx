@@ -101,7 +101,7 @@ export function Laporan(props: { initial?: Tab }) {
         await cetakLaporan();
         return;
       }
-      if (format === "text") { setDlgText(await berkasApi.eksporNama(def.title)); return; }
+      if (format === "text") { setDlgText(await berkasApi.eksporNama(def.title, "txt")); return; }
       const f = await simpanEkspor(format, def.title, kopTeks(setting, def.title, periode), gridLaporan(built));
       msg.alert(`File tersimpan di ${f}.`);
     } catch (e) { msg.alert(errText(e)); }

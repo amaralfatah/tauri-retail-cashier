@@ -210,7 +210,9 @@ fn petakan(j: &Jenis, judul: &[String]) -> Vec<(&'static str, Tipe, usize)> {
     }
     // Update Stok Barang: jumlah stok fisik boleh berjudul stok, stokakhir, atau jumlah.
     if j.kunci == "stokbarang" {
-        if let Some(i) = judul.iter().position(|h| ["stok", "stokakhir", "jumlah", "jml", "qty"].contains(&norm(h).as_str())) {
+        // Judul "stokfisik" yang sudah ada didahulukan; sinonim hanya dipakai kalau judul itu tidak ada.
+        let sudah = out.iter().any(|(n, _, _)| *n == "stokfisik");
+        if let (false, Some(i)) = (sudah, judul.iter().position(|h| ["stok", "stokakhir", "jumlah", "jml", "qty"].contains(&norm(h).as_str()))) {
             out.push(("stokfisik", A, i));
         }
     }
@@ -478,4 +480,19 @@ pub fn impor_proses(db: State<Db>, session: State<Session>, jenis: String, path:
         None => folder_bawaan(&conn)?,
     };
     impor_dengan(&mut conn, Some(&user), &jenis, &path, hapus_lama, &f)
+}
+
+#[cfg(test)]
+mod tests_peta {
+    #[test]
+    fn stokfisik_tidak_dipetakan_dua_kali() {
+        let j = super::jenis("stokbarang").unwrap();
+        let judul: Vec<String> = ["Kode Barang", "Stok", "Stok Fisik"].iter().map(|x| x.to_string()).collect();
+        let peta = super::petakan(j, &judul);
+        let fisik: Vec<_> = peta.iter().filter(|(n, _, _)| *n == "stokfisik").collect();
+        assert_eq!(fisik.len(), 1);
+        assert_eq!(fisik[0].2, 2, "judul stokfisik menang atas sinonim stok");
+        let judul: Vec<String> = ["kodebarang", "Jumlah"].iter().map(|x| x.to_string()).collect();
+        assert_eq!(super::petakan(j, &judul).iter().filter(|(n, _, _)| *n == "stokfisik").count(), 1);
+    }
 }

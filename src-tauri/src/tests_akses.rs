@@ -97,3 +97,22 @@ fn hanya_pengelola_mengatur_akses() {
     assert!(simpan_akses(&mut c, &user("Dewi", "Supervisor"), "tidakada", &[]).is_err());
     let _ = std::fs::remove_dir_all(d);
 }
+
+#[test]
+fn backup_dan_cek_boleh_lewat_menu_database_atau_alat_bantu() {
+    let (mut c, _d) = setup();
+    let mgr = user("admin", "Manager");
+    let dewi = user("Dewi", "Supervisor");
+    daftar_akses(&c, &mgr, "Dewi").unwrap();
+    // Hanya Alat Bantu: boleh. Hanya Database: boleh. Keduanya mati: ditolak.
+    let b = ids(&c, &["mnPengaturanAlat"]);
+    simpan_akses(&mut c, &mgr, "Dewi", &b).unwrap();
+    assert!(crate::database::izin_database_atau_alat(&c, &dewi).is_ok());
+    let b = ids(&c, &["mnPengaturanDatabase"]);
+    simpan_akses(&mut c, &mgr, "Dewi", &b).unwrap();
+    assert!(crate::database::izin_database_atau_alat(&c, &dewi).is_ok());
+    let b = ids(&c, &["mnMDDataBarang"]);
+    simpan_akses(&mut c, &mgr, "Dewi", &b).unwrap();
+    let err = crate::database::izin_database_atau_alat(&c, &dewi).unwrap_err();
+    assert!(err.contains("hak akses"), "{err}");
+}

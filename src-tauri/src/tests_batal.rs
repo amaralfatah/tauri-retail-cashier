@@ -181,8 +181,9 @@ fn hapus_pelunasan_piutang_membuka_kartu_lagi() {
         c.query_row("SELECT kekurangan, jmlterbayar, status FROM trkartupiutang", [], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?))).unwrap();
     assert_eq!((kurang, bayar, status), (20000.0, 10000.0, 0.0));
     assert_eq!(angka(&c, "SELECT COUNT(*) FROM trkartupiutangdetil"), 1.0);
-    // Kas pelunasan di aplikasi lama tidak bernomor referensi, jadi tidak ikut terhapus.
-    assert_eq!(angka(&c, "SELECT COUNT(*) FROM keuangan"), kas_awal);
+    // Kas pelunasan itu (tanpa nomor referensi) ikut terhapus; kas pelunasan yang lain tetap.
+    assert_eq!(angka(&c, "SELECT COUNT(*) FROM keuangan"), kas_awal - 1.0);
+    assert_eq!(angka(&c, "SELECT COALESCE(SUM(masuk),0) FROM keuangan WHERE kategori='Penjualan barang dagang'"), 10000.0);
     saldo_konsisten(&c);
 
     // Pelunasan yang sama bisa dibayar ulang, dan kunci yang sudah hilang ditolak.
@@ -208,6 +209,28 @@ fn hapus_pelunasan_hutang_membuka_kartu_lagi() {
     hapus(&mut c, &d, daftar[0]["kunci"].as_str().unwrap()).unwrap();
     assert_eq!(angka(&c, "SELECT kekurangan FROM trkartupiutang"), 50000.0);
     assert_eq!(angka(&c, "SELECT COUNT(*) FROM trkartupiutangdetil"), 0.0);
+    assert_eq!(angka(&c, "SELECT COUNT(*) FROM keuangan WHERE keterangan LIKE 'Pelunasan Hutang%'"), 0.0, "kas keluar pelunasan ikut terhapus");
+    saldo_konsisten(&c);
+}
+
+#[test]
+fn hapus_pelunasan_yang_mencakup_dua_kartu_mengurangi_kasnya() {
+    let (mut c, d) = setup();
+    kredit(&mut c, 1.0);
+    kredit(&mut c, 2.0);
+    c.execute("UPDATE tseting SET aktiftranskas = 1", []).unwrap();
+    bayar_piutang(&mut c, 9000.0); // kartu 1 lunas (6.000) + 3.000 di kartu 2, satu baris kas 9.000
+    assert_eq!(angka(&c, "SELECT COUNT(*) FROM keuangan"), 1.0);
+    let daftar = alat::daftar_transaksi(&c, "Pelunasan Piutang Customer", "", "", "").unwrap();
+    assert_eq!(daftar.len(), 2);
+    // Hapus pembayaran 3.000: kas tinggal 6.000. Lalu hapus yang 6.000: baris kas hilang.
+    let kecil = daftar.iter().find(|r| r["totaltrans"] == 3000.0).unwrap()["kunci"].as_str().unwrap().to_string();
+    let besar = daftar.iter().find(|r| r["totaltrans"] == 6000.0).unwrap()["kunci"].as_str().unwrap().to_string();
+    hapus(&mut c, &d, &kecil).unwrap();
+    assert_eq!(angka(&c, "SELECT masuk FROM keuangan"), 6000.0);
+    saldo_konsisten(&c);
+    hapus(&mut c, &d, &besar).unwrap();
+    assert_eq!(angka(&c, "SELECT COUNT(*) FROM keuangan"), 0.0);
     saldo_konsisten(&c);
 }
 

@@ -15,14 +15,14 @@ fn folder_tujuan(app: &tauri::AppHandle) -> Vec<PathBuf> {
     [p.document_dir(), p.download_dir()].into_iter().flatten().collect()
 }
 
-/// Nama file baru di `dir`: `<nama>_<tgl>.csv`, ditambah -2, -3, ... kalau sudah ada.
-pub fn nama_baru(dir: &Path, nama: &str, tgl: &str) -> PathBuf {
+/// Nama file baru di `dir`: `<nama>_<tgl>.<ext>`, ditambah -2, -3, ... kalau sudah ada (dicek per ekstensi).
+pub fn nama_baru_ext(dir: &Path, nama: &str, tgl: &str, ext: &str) -> PathBuf {
     let bersih: String = nama.chars().map(|c| if c.is_alphanumeric() || c == '-' || c == '_' { c } else { '_' }).collect();
     let dasar = format!("{bersih}_{tgl}");
-    let mut p = dir.join(format!("{dasar}.csv"));
+    let mut p = dir.join(format!("{dasar}.{ext}"));
     let mut i = 2;
     while p.exists() {
-        p = dir.join(format!("{dasar}-{i}.csv"));
+        p = dir.join(format!("{dasar}-{i}.{ext}"));
         i += 1;
     }
     p
@@ -68,9 +68,10 @@ fn tulis_baru_byte(path: &str, isi: &[u8], roots: &[PathBuf], boleh_ext: &[&str]
 
 /// Alamat bawaan untuk file ekspor, di folder Documents (atau Downloads kalau Documents tidak ada).
 #[tauri::command]
-pub fn ekspor_nama(app: tauri::AppHandle, nama: String) -> Res<String> {
+pub fn ekspor_nama(app: tauri::AppHandle, nama: String, ext: Option<String>) -> Res<String> {
+    let ext = ext.map(|x| x.trim().trim_start_matches('.').to_lowercase()).filter(|x| !x.is_empty() && x.chars().all(|c| c.is_ascii_alphanumeric())).unwrap_or_else(|| "csv".into());
     let dir = folder_tujuan(&app).into_iter().find(|d| d.is_dir()).ok_or("Folder Documents tidak ditemukan di komputer ini.")?;
-    Ok(nama_baru(&dir, &nama, &chrono::Local::now().format("%Y%m%d").to_string()).display().to_string())
+    Ok(nama_baru_ext(&dir, &nama, &chrono::Local::now().format("%Y%m%d").to_string(), &ext).display().to_string())
 }
 
 /// Simpan isi ekspor sebagai file baru; mengembalikan alamat file yang dibuat.
@@ -148,10 +149,22 @@ pub fn foto_salin(dir: &Path, kode: &str, sumber: &str) -> Res<String> {
         return Err("Gambar terlalu besar. Pilih gambar di bawah 10 MB.".into());
     }
     std::fs::create_dir_all(dir).map_err(e)?;
-    if let Some(lama) = foto_ada(dir, kode)? {
+    // Salin ke nama sementara dulu: kalau gagal, foto lama tidak ikut hilang.
+    // Ini juga aman kalau `sumber` ternyata foto lama itu sendiri.
+    let sementara = dir.join(format!(".{dasar}.baru"));
+    if let Err(err) = std::fs::copy(src, &sementara) {
+        let _ = std::fs::remove_file(&sementara);
+        return Err(e(err));
+    }
+    let tujuan = dir.join(format!("{dasar}.{ext}"));
+    let lama = foto_ada(dir, kode)?;
+    if let Err(err) = std::fs::rename(&sementara, &tujuan) {
+        let _ = std::fs::remove_file(&sementara);
+        return Err(e(err));
+    }
+    if let Some(lama) = lama.filter(|l| *l != tujuan) {
         std::fs::remove_file(lama).map_err(e)?;
     }
-    std::fs::copy(src, dir.join(format!("{dasar}.{ext}"))).map_err(e)?;
     Ok(ext)
 }
 
@@ -302,10 +315,18 @@ mod tests {
     #[test]
     fn nama_ekspor_bertanggal_dan_tidak_menimpa() {
         let d = dir("nama");
-        let a = nama_baru(&d, "Data Barang", "20261122");
+        let a = nama_baru_ext(&d, "Data Barang", "20261122", "csv");
         assert_eq!(a.file_name().unwrap(), "Data_Barang_20261122.csv");
         std::fs::write(&a, "x").unwrap();
-        assert_eq!(nama_baru(&d, "Data Barang", "20261122").file_name().unwrap(), "Data_Barang_20261122-2.csv");
+        assert_eq!(nama_baru_ext(&d, "Data Barang", "20261122", "csv").file_name().unwrap(), "Data_Barang_20261122-2.csv");
+        // Bentrok dicek per ekstensi: xlsx kedua di hari yang sama dapat -2, csv tetap tidak terpengaruh.
+        let x = nama_baru_ext(&d, "Data Barang", "20261122", "xlsx");
+        assert_eq!(x.file_name().unwrap(), "Data_Barang_20261122.xlsx");
+        std::fs::write(&x, "x").unwrap();
+        assert_eq!(nama_baru_ext(&d, "Data Barang", "20261122", "xlsx").file_name().unwrap(), "Data_Barang_20261122-2.xlsx");
+        std::fs::write(d.join("Data_Barang_20261122-2.html"), "x").unwrap();
+        assert_eq!(nama_baru_ext(&d, "Data Barang", "20261122", "html").file_name().unwrap(), "Data_Barang_20261122.html");
+        assert_eq!(nama_baru_ext(&d, "Data Barang", "20261122", "csv").file_name().unwrap(), "Data_Barang_20261122-2.csv");
         let _ = std::fs::remove_dir_all(d);
     }
 
@@ -323,6 +344,16 @@ mod tests {
         std::fs::write(&jpg, [9u8]).unwrap();
         foto_salin(&tujuan, "A/1", jpg.to_str().unwrap()).unwrap();
         assert!(!tujuan.join("A_1.png").exists() && tujuan.join("A_1.jpg").is_file());
+        // Sumber adalah foto yang sudah tersimpan: tetap ada setelah diganti dengan dirinya sendiri.
+        foto_salin(&tujuan, "A/1", tujuan.join("A_1.jpg").to_str().unwrap()).unwrap();
+        assert_eq!(std::fs::read(tujuan.join("A_1.jpg")).unwrap(), [9u8]);
+        // Salinan gagal: foto lama tetap, tidak ada file sementara tertinggal.
+        let rusak = d.join("rusak.png");
+        std::fs::create_dir(&rusak).unwrap();
+        assert!(foto_salin(&tujuan, "A/1", rusak.to_str().unwrap()).is_err());
+        assert_eq!(std::fs::read(tujuan.join("A_1.jpg")).unwrap(), [9u8]);
+        assert!(!tujuan.join(".A_1.baru").exists());
+        std::fs::remove_dir(&rusak).unwrap();
         assert!(foto_buang(&tujuan, "A/1").unwrap());
         assert_eq!(foto_data(&tujuan, "A/1").unwrap(), None);
         assert!(!foto_buang(&tujuan, "A/1").unwrap());

@@ -100,7 +100,10 @@ export function Retur({ mode }: { mode: ReturMode }) {
     msg.confirm(bagian.join(" "), () => { api.getTransaksi(h.notrans).then(setBukti).catch((e) => msg.alert(errText(e))); });
   }, [mode, msg]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const kirimBusy = useRef(false);
   const kirim = useCallback(async (potong: boolean) => {
+    if (kirimBusy.current) return;
+    kirimBusy.current = true;
     try {
       let h;
       if (brg) {
@@ -119,6 +122,8 @@ export function Retur({ mode }: { mode: ReturMode }) {
       selesai(h);
     } catch (e) {
       msg.alert(errText(e));
+    } finally {
+      kirimBusy.current = false;
     }
   }, [brg, mode, pemasok, barisan, sumber, jmlRetur, tgl, catatan, kasir, msg, selesai]);
 

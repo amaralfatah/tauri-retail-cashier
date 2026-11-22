@@ -278,7 +278,9 @@ fn hapus_retur(tx: &Connection, notrans: &str, kode: &str) -> Res<()> {
 }
 
 /// Hapus satu pembayaran piutang/hutang (kunci "XID123"): kartu kembali terbuka.
-/// Kas pelunasan versi sekarang tidak bernomor referensi (seperti aplikasi lama), jadi hanya kas buatan versi lama yang ikut terhapus di sini.
+/// Kas pelunasan ditulis `pelunasan.rs` tanpa nomor referensi (seperti aplikasi lama), satu baris untuk seluruh pelunasan.
+/// Isi prosedur hapus aslinya tidak terbaca, jadi kas dicari lewat tanda yang benar-benar ditulis:
+/// kategori, tanggal, kontak, awal keterangan, dan jumlah. Kalau barisnya mencakup beberapa kartu, jumlahnya dikurangi.
 fn hapus_pelunasan(tx: &Connection, xid: i64) -> Res<()> {
     let (no, tgl, jml, catatan, jenis): (String, String, f64, String, String) = tx
         .query_row(
@@ -295,12 +297,33 @@ fn hapus_pelunasan(tx: &Connection, xid: i64) -> Res<()> {
         return Err(format!("Pelunasan {no} berasal dari retur {catatan}, jadi tidak bisa dihapus sendiri. Hapus returnya untuk membatalkan potongan ini."));
     }
     batalkan_bayar(tx, xid)?;
-    let kategori = if jenis == "Hutang" { "Pelunasan hutang" } else { "Pelunasan piutang" };
-    tx.execute(
-        "DELETE FROM keuangan WHERE idkas = (SELECT idkas FROM keuangan WHERE noreftrans = ?1 AND kategori = ?2 AND tglkas = ?3
-             AND ABS(COALESCE(masuk,0) + COALESCE(keluar,0) - ?4) < 0.005 ORDER BY idkas DESC LIMIT 1)",
-        params![no, kategori, tgl, jml],
-    ).map_err(e)?;
+    let hutang = jenis == "Hutang";
+    let (kolom, kategori, label) = if hutang { ("keluar", "Harga pokok penjualan", "Pelunasan Hutang") } else { ("masuk", "Penjualan barang dagang", "Pelunasan Piutang") };
+    let kode_kontak: String = tx
+        .query_row("SELECT COALESCE(CASE WHEN jenis = 'Hutang' THEN kodepemasok ELSE kodepelanggan END,'') FROM trkartupiutang WHERE nopiutang = ?1", params![no], |r| r.get(0))
+        .map_err(e)?;
+    let awal = format!("{label} {kode_kontak}-");
+    // Kas versi lama memakai nomor kartu sebagai referensi dan kategori "Pelunasan ...".
+    let kas: Option<(i64, f64)> = tx
+        .query_row(
+            &format!(
+                "SELECT idkas, COALESCE({kolom},0) FROM keuangan
+                 WHERE tglkas = ?3 AND COALESCE({kolom},0) > ?4 - 0.005 AND (
+                     (noreftrans = '' AND kategori = ?1 AND kodekontak = ?5 AND instr(keterangan, ?2) = 1)
+                  OR (noreftrans = ?6 AND kategori = ?7 AND ABS(COALESCE(masuk,0) + COALESCE(keluar,0) - ?4) < 0.005))
+                 ORDER BY idkas DESC LIMIT 1"
+            ),
+            params![kategori, awal, tgl, jml, kode_kontak, no, if hutang { "Pelunasan hutang" } else { "Pelunasan piutang" }],
+            |r| Ok((r.get(0)?, r.get(1)?)),
+        )
+        .ok();
+    if let Some((idkas, ada)) = kas {
+        if ada - jml < 0.005 {
+            tx.execute("DELETE FROM keuangan WHERE idkas = ?1", params![idkas]).map_err(e)?;
+        } else {
+            tx.execute(&format!("UPDATE keuangan SET {kolom} = ROUND({kolom} - ?1, 2) WHERE idkas = ?2"), params![jml, idkas]).map_err(e)?;
+        }
+    }
     Ok(())
 }
 

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { errText, Row } from "../api";
 import { perluVerifikasi } from "../api/kasir";
 import { kasApi, KasDaftar } from "../api/keuangan";
@@ -126,7 +126,10 @@ function KasAdd(props: { onClose: () => void; onSaved: () => void }) {
 
   const masuk = v.jenis !== "Keluar";
   const batal = () => { setV({ ...awal(), kategori: kategori[0] ?? "" }); setPelanggan(null); setPemasok(null); };
+  const simpanBusy = useRef(false);
   const simpan = async () => {
+    if (simpanBusy.current) return;
+    simpanBusy.current = true;
     try {
       await kasApi.simpan({
         tgl: v.tgl, noref: v.noref, jenis: v.jenis as "Saldo Awal" | "Masuk" | "Keluar", kategori: v.kategori, kodekaryawan: s(petugas.kodekaryawan),
@@ -135,7 +138,7 @@ function KasAdd(props: { onClose: () => void; onSaved: () => void }) {
       props.onSaved();
       batal();
       msg.alert("Data kas sudah tersimpan.");
-    } catch (e) { msg.alert(errText(e)); }
+    } catch (e) { msg.alert(errText(e)); } finally { simpanBusy.current = false; }
   };
 
   const bind: Record<string, Bind> = {
