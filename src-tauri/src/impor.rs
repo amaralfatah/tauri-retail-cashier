@@ -286,6 +286,7 @@ pub fn pratinjau(kunci: &str, path: &str) -> Res<Value> {
 
 /* ---------------- Proses impor ---------------- */
 
+#[cfg(test)]
 pub fn impor(conn: &mut Connection, kunci: &str, path: &str, hapus_lama: bool, folder: &Path) -> Res<Value> {
     impor_dengan(conn, None, kunci, path, hapus_lama, folder)
 }

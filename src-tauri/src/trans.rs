@@ -481,6 +481,7 @@ pub fn save_pembelian(db: State<Db>, session: State<Session>, input: TransInput)
 }
 
 /// Pembelian dengan harga jual selalu ikut diperbarui dari margin (sama dengan pengaturan `updateharga` bit 2 aktif).
+#[cfg(test)]
 pub fn pembelian_margin(conn: &mut Connection, user: &User, input: &TransInput) -> Res<Value> {
     let tx = conn.transaction().map_err(e)?;
     let r = pembelian_isi(&tx, user, input, true)?;
@@ -566,12 +567,13 @@ fn pembelian_isi(tx: &Transaction, user: &User, input: &TransInput, jual_paksa: 
     let notrans = next_number(&tx, "transaksi", "notrans", "TB", &input.tgl)?;
     tx.execute(
         "INSERT INTO transaksi (tid,notrans,tgltrans,kode,jenis,kodekaryawan,kodepemasok,catatan,noref,jmltrans,diskonpersen,diskonnilai,biaya,totaltrans,
-           jmlbayar,sisa,carabayar,status,tahun,bulan,tgljthtempo,tglupload,jamupload)
-         VALUES (?1,?2,?3,'TB','Purchase',?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,0,?16,?17,?18,date('now','localtime'),time('now','localtime'))",
+           jmlbayar,sisa,carabayar,status,tahun,bulan,tgljthtempo,tglupload,jamupload,kodesales)
+         VALUES (?1,?2,?3,'TB','Purchase',?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,0,?16,?17,?18,date('now','localtime'),time('now','localtime'),?19)",
         params![
             next_id(&tx, "transaksi", "tid")?, notrans, input.tgl, kasir, pemasok, input.catatan, input.norefkartu,
             t.jmltrans, input.diskonpersen, t.diskon, input.biaya, t.total, jmlbayar, round2(jmlbayar - t.total),
-            if kredit { "Kredit" } else { "Tunai" }, &input.tgl[0..4], &input.tgl[5..7], if kredit { Some(input.jthtempo.clone()) } else { None }
+            if kredit { "Kredit" } else { "Tunai" }, &input.tgl[0..4], &input.tgl[5..7], if kredit { Some(input.jthtempo.clone()) } else { None },
+            input.kodesales
         ],
     ).map_err(e)?;
     let nilai = insert_detail(&tx, &notrans, "TB", &input.items, true)?;

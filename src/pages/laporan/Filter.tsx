@@ -91,6 +91,7 @@ export function LapFilterDialog(props: { form: string; value: LapFilterVal; onAp
     },
     tKode: txt("kode"), tBarcode: txt("barcode"), tNama: txt("nama"),
     cKeloimpokNama: pair("kelompok", kel, "kodekelompok", "namakelompok", false),
+    cKelompokNama: pair("kelompok", kel, "kodekelompok", "namakelompok", false),
     cKelompokKode: pair("kelompok", kel, "kodekelompok", "namakelompok", true),
     cKategoriNama: pair("kategori", kat, "kodekategori", "namakategori", false, ["kelompok", "kodekelompok"]),
     cKategoriKode: pair("kategori", kat, "kodekategori", "namakategori", true, ["kelompok", "kodekelompok"]),

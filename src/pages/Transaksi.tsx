@@ -1005,7 +1005,7 @@ export function TransaksiForm({ mode, order = false }: { mode: Mode; order?: boo
   const poinAktif = Number(setting.aktifpoin) === 1 && Number(setting.aktiftranspoin) === 1;
   // Layar order: baris "DP / Uang Muka" (Picture2) digambar sendiri di bawah tabel, lihat .tj-dp.
   const hide = order
-    ? ["Picture2", "tTotal", "tKasirKode", "tSalesKode", "tPelangganKode", "tPemasokKode", "Picture1", "lblID", "LblID", ...(jual ? [] : ["cStokMin"])]
+    ? ["Picture2", "tTotal", "tKasirKode", "tSalesKode", "tPelangganKode", "tPemasokKode", "Picture1", "lblID", "LblID"]
     : jual
     ? [...picScanHide, "dtDetil2", "tTotal", "tTotalBeli", "tPelangganKode", "tSalesKode", "tKasirKode", "tPelangganLevel", "tDP", "tPoin", "tNoOrder", "dtTglOrder", "Picture1", ...(poinAktif ? [] : ["cCekPoin"])]
     : ["dtDetil2", "tTotal", "tTotalBeli", "tPemasokKode", "tSalesKode", "tKasirKode", "tNoOrder", "Picture1"];
@@ -1278,8 +1278,10 @@ function BayarDialog(props: { mode: Mode; tgl: string; kontak: string; sales: st
 
   const field = (name: string) => boxRef.current?.querySelector<HTMLElement>(`[data-f="${name}"], [data-vb="${name}"] input, [data-vb="${name}"] select`);
 
-  const simpan = async (o: { piutang?: boolean; lanjutkredit?: boolean } = {}) => {
-    if (busy || hasil || tanyaCetak || tanya) return;
+  // `dariTanya`: dipanggil dari tombol Ya pada pertanyaan; closure `tanya` masih berisi nilai lama saat itu.
+  const simpanBusy = useRef(false);
+  const simpan = async (o: { piutang?: boolean; lanjutkredit?: boolean; dariTanya?: boolean } = {}) => {
+    if (simpanBusy.current || busy || hasil || tanyaCetak || (tanya && !o.dariTanya)) return;
     setErr("");
     if (jual && bayarNt > 0 && !jenis) return setErr("Pilih dulu jenis pembayaran non tunai.");
     let caraKirim: TransInput["carabayar"] = "Tunai";
@@ -1302,6 +1304,7 @@ function BayarDialog(props: { mode: Mode; tgl: string; kontak: string; sales: st
       props.onTanpaPemasok("Transaksi hutang tidak bisa dilakukan ke Pemasok 'Tunai'.\nPilih nama Pemasok yang terdaftar untuk melanjutkan proses transaksi piutang");
       return;
     }
+    simpanBusy.current = true;
     setBusy(true);
     const input: TransInput = {
       tgl: props.tgl,
@@ -1346,6 +1349,7 @@ function BayarDialog(props: { mode: Mode; tgl: string; kontak: string; sales: st
       if (pertanyaan) setTanya({ pesan: pertanyaan, piutang: !!o.piutang, kredit: true });
       else setErr(errText(e));
     } finally {
+      simpanBusy.current = false;
       setBusy(false);
     }
   };
@@ -1487,7 +1491,7 @@ function BayarDialog(props: { mode: Mode; tgl: string; kontak: string; sales: st
       <Modal title={formCaption(formName)} onClose={() => setTanya(null)}
         footer={<>
           <button className="btn" onClick={() => setTanya(null)}>Tidak</button>
-          <button className="btn primary" autoFocus onClick={() => { const t = tanya; setTanya(null); void simpan({ piutang: t.piutang, lanjutkredit: t.kredit }); }}>Ya</button>
+          <button className="btn primary" autoFocus onClick={() => { const t = tanya; setTanya(null); void simpan({ piutang: t.piutang, lanjutkredit: t.kredit, dariTanya: true }); }}>Ya</button>
         </>}>
         <p style={{ whiteSpace: "pre-line" }}>{tanya.pesan}</p>
       </Modal>

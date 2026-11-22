@@ -17,10 +17,10 @@ export interface PromoRowIn {
 }
 
 export const inventoriApi = {
-  saveStokAwal: (tgl: string, catatan: string, items: { kodebarang: string; stokawal: number }[]) =>
-    invoke<{ notrans: string; jumlah: number }>("save_stok_awal", { tgl, catatan, items }),
-  saveOpname: (tgl: string, catatan: string, items: { kodebarang: string; stokbuku: number; stokfisik: number }[]) =>
-    invoke<{ notrans: string; jumlah: number }>("save_opname_stok", { tgl, catatan, items }),
+  saveStokAwal: (tgl: string, catatan: string, items: { kodebarang: string; stokawal: number }[], kodekasir?: string) =>
+    invoke<{ notrans: string; jumlah: number }>("save_stok_awal", { tgl, catatan, items, kodekasir }),
+  saveOpname: (tgl: string, catatan: string, items: { kodebarang: string; stokbuku: number; stokfisik: number }[], kodekasir?: string) =>
+    invoke<{ notrans: string; jumlah: number }>("save_opname_stok", { tgl, catatan, items, kodekasir }),
   labelFind: (code: string) => invoke<Row | null>("label_barang_find", { code }),
   barangLabel: (kodes: string[], tgl: string) => invoke<Row[]>("barang_label", { kodes, tgl }),
   katalog: (search = "") => invoke<Row[]>("katalog_barang", { search }),

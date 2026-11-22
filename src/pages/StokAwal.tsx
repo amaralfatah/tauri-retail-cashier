@@ -5,7 +5,8 @@ import { useApp } from "../appContext";
 import { CariBarang } from "../components/CariBarang";
 import { qty, today } from "../format";
 import { Geom, VbForm } from "../vb/VbForm";
-import { BELUM_ADA, useMsgBox } from "../vb/VbGrid";
+import { useMsgBox } from "../vb/VbGrid";
+import { CariMaster } from "./keuanganLib";
 import { NumInput } from "./Transaksi";
 import { FilterBarang } from "./inventoriLib";
 import "./transaksi.css";
@@ -36,6 +37,8 @@ export function StokAwal() {
   const [items, setItems] = useState<Item[]>([]);
   const [selected, setSelected] = useState<number | null>(null);
   const [cari, setCari] = useState(false);
+  const [kasir, setKasir] = useState({ kode: user.kodekaryawan, nama: user.namakaryawan });
+  const [cariKasir, setCariKasir] = useState(false);
   const [filter, setFilter] = useState(false);
   const [scan, setScan] = useState("");
   const scanRef = useRef<HTMLInputElement>(null);
@@ -67,37 +70,37 @@ export function StokAwal() {
     await tambahKode(kode);
   };
 
-  const kosongkan = useCallback(() => { setItems([]); setSelected(null); setCatatan(""); }, []);
+  const kosongkan = useCallback(() => { setItems([]); setSelected(null); setCatatan(""); setKasir({ kode: user.kodekaryawan, nama: user.namakaryawan }); }, [user]);
 
   const simpan = useCallback(async () => {
     if (items.length === 0) return msg.alert("Belum ada barang yang diisi. Silakan tambahkan barang dulu.");
     try {
-      await inventoriApi.saveStokAwal(tgl, catatan, items.map((i) => ({ kodebarang: i.b.kodebarang, stokawal: i.awal })));
+      await inventoriApi.saveStokAwal(tgl, catatan, items.map((i) => ({ kodebarang: i.b.kodebarang, stokawal: i.awal })), kasir.kode);
       kosongkan();
       msg.alert("Data sudah disimpan.", "Informasi");
     } catch (e) {
       msg.alert(errText(e));
     }
-  }, [items, tgl, catatan, msg, kosongkan]);
+  }, [items, tgl, catatan, kasir, msg, kosongkan]);
 
   /** Batal: langsung mengosongkan form, tanpa bertanya (clearForm di aslinya). */
   const batal = kosongkan;
 
-  const cariKasir = () => msg.alert(BELUM_ADA);
+  const bukaKasir = () => setCariKasir(true);
 
   const ada = !!msg.node;
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (cari || filter || ada) return;
+      if (cari || cariKasir || filter || ada) return;
       if (e.key === "F4") { e.preventDefault(); void simpan(); }
       else if (e.key === "F1") { e.preventDefault(); batal(); }
       else if (e.key === "Escape") go("home");
-      else if (e.altKey && e.code === "Digit2") { e.preventDefault(); cariKasir(); }
+      else if (e.altKey && e.code === "Digit2") { e.preventDefault(); bukaKasir(); }
       else if (e.altKey && e.code === "KeyT") { e.preventDefault(); gridRef.current?.focus(); }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [cari, filter, ada, simpan, batal, go]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [cari, cariKasir, filter, ada, simpan, batal, go]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const grid = (g: Geom) => {
     const total = Math.max(items.length + 1, Math.floor((g.height - 2 - HEAD_H) / ROW_H));
@@ -176,8 +179,8 @@ export function StokAwal() {
   const bind = useMemo(() => ({
     tNoTrans: { value: notrans },
     dtTglTrans: { value: tgl, onChange: (v: string) => v && setTgl(v) },
-    tKasirNama: { value: user.namakaryawan },
-    cCariKasir: { onClick: cariKasir },
+    tKasirNama: { value: kasir.nama },
+    cCariKasir: { onClick: bukaKasir },
     tCatatan: { value: catatan, onChange: setCatatan },
     lblJmlItem: { text: `Jml. Jenis : ${items.length}` },
     lblTotal: { text: "" },
@@ -192,6 +195,10 @@ export function StokAwal() {
     <div className="tj-page">
       <VbForm form="FrmTransStokAwal" bind={bind} hide={HIDE} fill anchor={ANCHOR} />
       {msg.node}
+      {cariKasir && (
+        <CariMaster table="mdkaryawan" onClose={() => setCariKasir(false)}
+          onPick={(r) => { setKasir({ kode: String(r.kodekaryawan), nama: String(r.namakaryawan) }); setCariKasir(false); }} />
+      )}
       {cari && (
         <CariBarang initial={scan} showBeli onClose={() => { setCari(false); scanRef.current?.focus(); }}
           onPick={(b) => { setCari(false); setScan(""); void tambahKode(b.kodebarang).then(() => setTimeout(() => scanRef.current?.focus(), 0)); }} />

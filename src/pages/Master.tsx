@@ -160,7 +160,7 @@ function MdList({ table }: { table: MasterTable }) {
       {importFoto && <ImportFoto barang={current} onClose={() => setImportFoto(false)} />}
       {showFilter && (
         <FilterWindow table={table} rows={all} value={filter} onClose={() => setShowFilter(false)}
-          onApply={(f) => { setFilter(f); setShowFilter(false); }} />
+          onApply={(f) => { setFilter(f); setShowFilter(false); load(); }} />
       )}
       {edit && table === "mdbarang" && (
         <BarangEdit row={edit.row} isNew={edit.isNew} onClose={() => setEdit(null)} onChanged={(k) => { setSel(k); load(); }} />

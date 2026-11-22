@@ -16,7 +16,7 @@ const BAGIAN: Bagian[] = [
     isi: [
       { p: "Ketik nama user dan kata sandi Anda di layar User Login. Tekan Enter atau klik Login." },
       { p: "Kalau akun Anda masih memakai kata sandi sementara, program meminta Anda membuat kata sandi baru dulu. Tanyakan kata sandi sementaranya ke pemilik toko." },
-      { p: "Untuk mengganti kata sandi kapan saja, buka Pengaturan, Pangaturan Program, lalu klik Profil Pengguna." },
+      { p: "Untuk mengganti kata sandi kapan saja, buka Pengaturan, Pengaturan Program, lalu klik Profil Pengguna." },
       { p: "Klik Log Off di bilah atas kalau ingin ganti pengguna tanpa menutup program. Klik Keluar kalau sudah selesai bekerja." },
       { p: "Level pengguna menentukan menu yang bisa Anda buka." },
       {
@@ -186,7 +186,7 @@ const BAGIAN: Bagian[] = [
   {
     id: "atur", judul: "Pengaturan program",
     isi: [
-      { p: "Buka Pengaturan, lalu Pangaturan Program. Ada tiga tab." },
+      { p: "Buka Pengaturan, lalu Pengaturan Program. Ada tiga tab." },
       { ul: [
         "Info Usaha: nama usaha, alamat, kontak, logo, dan background. Isinya muncul di struk dan laporan.",
         "Transaksi: aturan penjualan dan pembelian, seperti izin stok minus, izin ubah harga dan diskon, poin, promo, jatuh tempo piutang, mode scan, Pilihan Home Screen, dan Aktifkan User Login. Tombol Jenis Non Tunai mengatur jenis pembayaran non tunai.",

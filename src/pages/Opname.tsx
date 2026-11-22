@@ -6,7 +6,8 @@ import { useApp } from "../appContext";
 import { CariBarang } from "../components/CariBarang";
 import { qty, tglID, today } from "../format";
 import { Geom, VbForm } from "../vb/VbForm";
-import { BELUM_ADA, useMsgBox } from "../vb/VbGrid";
+import { useMsgBox } from "../vb/VbGrid";
+import { CariMaster } from "./keuanganLib";
 import { FilterBarang } from "./inventoriLib";
 import { NumInput } from "./Transaksi";
 import "./transaksi.css";
@@ -41,6 +42,8 @@ export function Opname() {
   const [selected, setSelected] = useState<number | null>(null);
   const [bukti, setBukti] = useState<Bukti | null>(null);
   const [cari, setCari] = useState(false);
+  const [kasir, setKasir] = useState({ kode: user.kodekaryawan, nama: user.namakaryawan });
+  const [cariKasir, setCariKasir] = useState(false);
   const [filter, setFilter] = useState(false);
   const [scan, setScan] = useState("");
   const scanRef = useRef<HTMLInputElement>(null);
@@ -72,7 +75,7 @@ export function Opname() {
     await tambahKode(kode);
   };
 
-  const kosongkan = useCallback(() => { setItems([]); setSelected(null); setCatatan(""); }, []);
+  const kosongkan = useCallback(() => { setItems([]); setSelected(null); setCatatan(""); setKasir({ kode: user.kodekaryawan, nama: user.namakaryawan }); }, [user]);
 
   const cetakBukti = useCallback(async (data: Bukti) => {
     setBukti(data);
@@ -90,9 +93,9 @@ export function Opname() {
   const simpan = useCallback(async () => {
     if (items.length === 0) return msg.alert("Belum ada barang yang dihitung. Silakan tambahkan barang dulu.");
     try {
-      const r = await inventoriApi.saveOpname(tgl, catatan, items.map((i) => ({ kodebarang: i.b.kodebarang, stokbuku: Number(i.b.stokakhir) || 0, stokfisik: i.fisik })));
+      const r = await inventoriApi.saveOpname(tgl, catatan, items.map((i) => ({ kodebarang: i.b.kodebarang, stokbuku: Number(i.b.stokakhir) || 0, stokfisik: i.fisik })), kasir.kode);
       const data: Bukti = {
-        notrans: r.notrans, tgl, catatan, kasir: user.namakaryawan,
+        notrans: r.notrans, tgl, catatan, kasir: kasir.nama,
         baris: items.filter((i) => Math.abs(i.fisik - (Number(i.b.stokakhir) || 0)) >= 0.005).map((i) => ({ b: i.b, fisik: i.fisik })),
       };
       kosongkan();
@@ -100,26 +103,26 @@ export function Opname() {
     } catch (e) {
       msg.alert(errText(e));
     }
-  }, [items, tgl, catatan, user, msg, kosongkan, cetakBukti]);
+  }, [items, tgl, catatan, kasir, msg, kosongkan, cetakBukti]);
 
   /** Batal: langsung mengosongkan form, tanpa bertanya (clearForm di aslinya). */
   const batal = kosongkan;
 
-  const cariKasir = () => msg.alert(BELUM_ADA);
+  const bukaKasir = () => setCariKasir(true);
 
   const ada = !!msg.node;
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (cari || filter || ada) return;
+      if (cari || cariKasir || filter || ada) return;
       if (e.key === "F4") { e.preventDefault(); void simpan(); }
       else if (e.key === "F1") { e.preventDefault(); batal(); }
       else if (e.key === "Escape") go("home");
-      else if (e.altKey && e.code === "Digit2") { e.preventDefault(); cariKasir(); }
+      else if (e.altKey && e.code === "Digit2") { e.preventDefault(); bukaKasir(); }
       else if (e.altKey && e.code === "KeyT") { e.preventDefault(); gridRef.current?.focus(); }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [cari, filter, ada, simpan, batal, go]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [cari, cariKasir, filter, ada, simpan, batal, go]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const grid = (g: Geom) => {
     const total = Math.max(items.length + 1, Math.floor((g.height - 2 - HEAD_H) / ROW_H));
@@ -197,8 +200,8 @@ export function Opname() {
   const bind = useMemo(() => ({
     tNoTrans: { value: notrans },
     dtTglTrans: { value: tgl, onChange: (v: string) => v && setTgl(v) },
-    tKasirNama: { value: user.namakaryawan },
-    cCariKasir: { onClick: cariKasir },
+    tKasirNama: { value: kasir.nama },
+    cCariKasir: { onClick: bukaKasir },
     tCatatan: { value: catatan, onChange: setCatatan },
     lblJmlItem: { text: `Jml. Jenis : ${items.length}` },
     lblTotal: { text: "" },
@@ -213,6 +216,10 @@ export function Opname() {
     <div className="tj-page">
       <VbForm form="FrmTransStokOpname" bind={bind} hide={HIDE} fill anchor={ANCHOR} />
       {msg.node}
+      {cariKasir && (
+        <CariMaster table="mdkaryawan" onClose={() => setCariKasir(false)}
+          onPick={(r) => { setKasir({ kode: String(r.kodekaryawan), nama: String(r.namakaryawan) }); setCariKasir(false); }} />
+      )}
       {cari && (
         <CariBarang initial={scan} showBeli onClose={() => { setCari(false); scanRef.current?.focus(); }}
           onPick={(b) => { setCari(false); setScan(""); void tambahKode(b.kodebarang).then(() => setTimeout(() => scanRef.current?.focus(), 0)); }} />

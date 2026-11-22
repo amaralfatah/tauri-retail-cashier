@@ -57,12 +57,19 @@ pub fn stok_awal(conn: &mut Connection, user: &User, tgl: &str, catatan: &str, i
     Ok(json!({ "notrans": notrans, "jumlah": n }))
 }
 
+/// Kasir yang dipilih lewat tombol Cari Kasir menjadi pencatat di header (kodekaryawan); kosong berarti user yang masuk.
+fn dengan_kasir(user: &User, kodekasir: Option<String>) -> User {
+    let mut u = user.clone();
+    if let Some(k) = kodekasir.map(|k| k.trim().to_string()).filter(|k| !k.is_empty()) { u.kodekaryawan = k; }
+    u
+}
+
 #[tauri::command]
-pub fn save_stok_awal(db: State<Db>, session: State<Session>, tgl: String, catatan: String, items: Vec<StokAwalItem>) -> Res<Value> {
+pub fn save_stok_awal(db: State<Db>, session: State<Session>, tgl: String, catatan: String, items: Vec<StokAwalItem>, kodekasir: Option<String>) -> Res<Value> {
     let user = session.user()?;
     let mut conn = db.lock()?;
     crate::auth::require_menu(&conn, &user, "mnInvStokAwal")?;
-    stok_awal(&mut conn, &user, &tgl, &catatan, &items)
+    stok_awal(&mut conn, &dengan_kasir(&user, kodekasir), &tgl, &catatan, &items)
 }
 
 #[derive(Deserialize)]
@@ -115,11 +122,11 @@ pub fn opname(conn: &mut Connection, user: &User, tgl: &str, catatan: &str, item
 }
 
 #[tauri::command]
-pub fn save_opname_stok(db: State<Db>, session: State<Session>, tgl: String, catatan: String, items: Vec<OpnameBaris>) -> Res<Value> {
+pub fn save_opname_stok(db: State<Db>, session: State<Session>, tgl: String, catatan: String, items: Vec<OpnameBaris>, kodekasir: Option<String>) -> Res<Value> {
     let user = session.user()?;
     let mut conn = db.lock()?;
     crate::auth::require_menu(&conn, &user, "mnInvStokOpname")?;
-    opname(&mut conn, &user, &tgl, &catatan, &items)
+    opname(&mut conn, &dengan_kasir(&user, kodekasir), &tgl, &catatan, &items)
 }
 
 /// Cari satu barang untuk tabel cetak label: kode atau barcode persis, tanpa syarat aktif dan tanpa barcode2 (seperti query aslinya).

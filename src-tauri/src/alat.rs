@@ -120,11 +120,6 @@ fn hapus_terkait(tx: &Connection, notrans: &str) -> Res<()> {
 
 /* ---------------- Hapus transaksi ---------------- */
 
-/// Daftar jenis di tampilan Hapus Transaksi, sama dengan aplikasi lama.
-pub const JENIS_TRANSAKSI: &[&str] = &[
-    "Penjualan", "Retur Penjualan", "Pelunasan Piutang Customer", "Pembelian", "Retur Pembelian", "Pelunasan Hutang Supplier",
-];
-
 fn kode_jenis(jenis: &str) -> Res<&'static str> {
     match jenis {
         "Penjualan" => Ok("TJ"),

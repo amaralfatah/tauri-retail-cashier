@@ -109,6 +109,17 @@ fn pembelian_menambah_stok_dan_memperbarui_harga_beli() {
 }
 
 #[test]
+fn pembelian_menyimpan_kodesales() {
+    let (mut c, _d) = setup();
+    let mut inp = input(vec![item("A1", "PCS", 1.0, 2.0, 5000.0)], "Tunai", 0.0);
+    inp.kodesales = "S1".into();
+    let r = trans::pembelian(&mut c, &user("Manager"), &inp).unwrap();
+    let notrans = r["notrans"].as_str().unwrap().to_string();
+    let sales: String = c.query_row("SELECT kodesales FROM transaksi WHERE notrans=?1", [&notrans], |r| r.get(0)).unwrap();
+    assert_eq!(sales, "S1");
+}
+
+#[test]
 fn opname_menyimpan_selisih() {
     let (mut c, _d) = setup();
     let r = trans::opname(&mut c, &user("Manager"), "2026-11-22", "", &[OpnameItem { kodebarang: "A1".into(), stokfisik: 97.0 }]).unwrap();

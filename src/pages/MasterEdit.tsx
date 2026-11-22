@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { api, errText, MasterTable, Row } from "../api";
 import { useApp } from "../appContext";
 import { rp } from "../format";
@@ -522,6 +522,8 @@ function PemasokQuick(props: { onClose: () => void }) {
   const [rows, setRows] = useState<Row[]>([]);
   const [row, setRow] = useState<Row | null>(null);
   const ok = useRef(true);
-  useEffect(() => { loadAll("mdpemasok", { sort: "kodepemasok" }).then((r) => ok.current && setRows(r)).catch(() => undefined); return () => { ok.current = false; }; }, []);
-  return <PartyEdit table="mdpemasok" row={row ?? { aktif: 1 }} isNew rows={rows} onClose={props.onClose} onChanged={(k) => { if (k) setRow(null); }} />;
+  // Daftar dimuat ulang setiap kali ada yang tersimpan, supaya Auto Kode berikutnya tidak memakai kode yang sama.
+  const muat = useCallback(() => { loadAll("mdpemasok", { sort: "kodepemasok" }).then((r) => ok.current && setRows(r)).catch(() => undefined); }, []);
+  useEffect(() => { muat(); return () => { ok.current = false; }; }, [muat]);
+  return <PartyEdit table="mdpemasok" row={row ?? { aktif: 1 }} isNew rows={rows} onClose={props.onClose} onChanged={(k) => { muat(); if (k) setRow(null); }} />;
 }

@@ -262,7 +262,7 @@ export default function App() {
         <main className="mdi-workspace">
           <section className="mdi-child">
             <div className="mdi-child-body">
-              {page === "home" && <Home />}
+              {page === "home" && <Home key={child.seq} />}
               {page === "panduan" && <Panduan />}
               {page === "jual" && <TransaksiForm key="jual" mode="jual" />}
               {page === "beli" && <TransaksiForm key="beli" mode="beli" />}

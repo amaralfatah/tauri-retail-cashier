@@ -177,7 +177,11 @@ export function Promo({ jenis }: { jenis: PromoJenis }) {
       onBlur={() => { const iso = tglId2Iso(r[key]); if (iso) patch(r.uid, { [key]: tglIso2Id(iso) } as Partial<R>); }} />
   );
   const kode = (r: R, field: Kode) => (
-    <input value={r[field]} autoComplete="off" onChange={(e) => patch(r.uid, { [field]: e.target.value } as Partial<R>)}
+    <input value={r[field]} autoComplete="off" onChange={(e) => {
+      // Kode berubah: nama dan harga lama dibuang supaya barang baru dicari lagi saat Enter atau pindah kolom.
+      const v = e.target.value;
+      patch(r.uid, (field === "kodebarang" ? { kodebarang: v, namabarang: "", hrgnormal: 0 } : { kodebonus: v, namabonus: "" }) as Partial<R>);
+    }}
       onKeyDown={(e) => {
         if (e.key === "F10") { e.preventDefault(); setCari({ uid: r.uid, field }); }
         else if (e.key === "Enter" && r[field].trim() && !(field === "kodebarang" ? r.namabarang : r.namabonus)) { e.preventDefault(); void cariKode(r.uid, field, r[field]); }

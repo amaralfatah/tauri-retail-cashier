@@ -18,7 +18,7 @@ Jendela utama meniru FrmMain: toolbar 11 tombol, menu popup dari tabel `MDMENU`,
 | Keuangan | Transaksi kas masuk/keluar dengan saldo berjalan. |
 | Pengaturan | Pengaturan program, database, alat bantu (backup, restore, cek, perbaikan, hapus data), impor Excel/CSV, jenis non tunai, pengguna dengan hak akses per menu, Verifikasi Admin, panduan, dashboard, notifikasi jatuh tempo. |
 
-Belum ada: registrasi/aktivasi (sengaja tidak ditiru), laci uang (cash drawer), tukar poin sebagai pembayaran (tidak ditemukan di aplikasi lama), dan dialog pilih file bawaan sistem (lokasi file diketik).
+Belum ada: registrasi/aktivasi (sengaja tidak ditiru), laci uang (cash drawer), tukar poin sebagai pembayaran (tidak ditemukan di aplikasi lama). Dialog pilih file bawaan sistem sudah dipakai untuk impor Excel, foto barang, folder foto, dan ekspor laporan; lokasi folder backup masih diketik.
 
 ## Aturan yang ditiru dari aplikasi lama
 
