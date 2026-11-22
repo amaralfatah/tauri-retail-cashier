@@ -1,0 +1,16 @@
+.daftar-cetak { display: none; }
+@media print {
+  body[data-print="laporan"]:has(.daftar-cetak) #root { display: none; }
+  body[data-print="laporan"] .daftar-cetak { display: block; background: #fff; color: #000; font: 10px/1.3 Arial, Helvetica, sans-serif; }
+  .daftar-cetak .dc-nama { font-size: 16px; font-weight: 700; }
+  .daftar-cetak .dc-alamat { white-space: pre-line; }
+  .daftar-cetak .dc-judul { font-size: 13px; font-weight: 700; margin-top: 8px; }
+  .daftar-cetak .dc-tgl { padding-bottom: 4px; border-bottom: 1px solid #000; }
+  .daftar-cetak table { width: 100%; border-collapse: collapse; table-layout: fixed; margin-top: 6px; }
+  .daftar-cetak thead { display: table-header-group; }
+  .daftar-cetak th { text-align: left; font-weight: 700; border-top: 1px solid #000; border-bottom: 1px solid #000; padding: 1px 3px; }
+  .daftar-cetak td { padding: 1px 3px; vertical-align: top; overflow-wrap: anywhere; }
+  .daftar-cetak .r { text-align: right; }
+  .daftar-cetak tr { break-inside: avoid; }
+  .daftar-cetak .dc-jumlah { margin-top: 6px; font-weight: 700; }
+}

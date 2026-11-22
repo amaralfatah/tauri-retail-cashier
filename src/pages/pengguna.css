@@ -1,0 +1,9 @@
+.hk-pohon { width: 100%; height: 100%; overflow: auto; background: #fff; border: 1px solid #7a7a7a; box-sizing: border-box; font: 12px Tahoma, "Segoe UI", sans-serif; }
+.hk-pohon ul { list-style: none; margin: 0; padding: 0 0 0 16px; }
+.hk-pohon > ul { padding-left: 2px; }
+.hk-baris { display: flex; align-items: center; height: 19px; }
+.hk-baris label { display: flex; align-items: center; gap: 4px; cursor: default; }
+.hk-baris input { margin: 0; }
+.hk-panah { width: 14px; padding: 0; border: 0; background: none; font-size: 10px; line-height: 1; cursor: default; }
+.hk-filter { display: flex; flex-direction: column; gap: 10px; min-width: 280px; }
+.hk-filter label { display: flex; flex-direction: column; gap: 3px; }

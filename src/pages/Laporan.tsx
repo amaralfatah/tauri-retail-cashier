@@ -1,0 +1,152 @@
+import { useEffect, useMemo, useState } from "react";
+import { api, errText, Row } from "../api";
+import { useApp } from "../appContext";
+import { Alert, Modal } from "../components/Modal";
+import { berkasApi } from "../api/berkas";
+import { useMsgBox } from "../vb/VbGrid";
+import { cetakLaporan } from "../components/Struk";
+import { today, tglID } from "../format";
+import { FilterWindow, matchFilter } from "./MasterFilter";
+import { loadAll } from "./masterLib";
+import { KASIR_BOLEH, LAPORAN, TAB_LAMA, lewatBatas, selisihBatas } from "./laporan/defs";
+import { FormatEkspor, MENU_EKSPOR, OpsiText, OpsiTextDialog, simpanEkspor } from "./laporan/Ekspor";
+import { LapFilterDialog, LapFilterVal } from "./laporan/Filter";
+import { build, gridLaporan, Kertas, kopTeks, StokCtx } from "./laporan/Preview";
+import "./laporan/laporan.css";
+
+/** Nilai `initial` adalah namamenu asli (mis. mnLapPenjualanHarian); tab lama dipetakan ke menu yang setara. */
+export type Tab = string;
+
+const adaLaporan = (k: string) => k.startsWith("stok");
+
+export function Laporan(props: { initial?: Tab }) {
+  const { user, setting, go } = useApp();
+  const menu = props.initial && LAPORAN[props.initial] ? props.initial : TAB_LAMA[props.initial ?? ""] ?? props.initial ?? "";
+  const def = LAPORAN[menu];
+  const bolehKasir = !def || user.level !== "Kasir" || KASIR_BOLEH.has(def.kind);
+  const stok = !!def && adaLaporan(def.kind);
+  const tanpaFilter = def?.kind === "lr_komparatif"; // Laba Rugi Komparatif langsung tampil, tanpa filter
+  const msg = useMsgBox();
+  const [menuEkspor, setMenuEkspor] = useState(false);
+  const [dlgText, setDlgText] = useState<string | null>(null);
+
+  const [filter, setFilter] = useState<LapFilterVal>({ dari: today(), sampai: today() });
+  const [tampil, setTampil] = useState(false);
+  const [rows, setRows] = useState<Row[] | null>(null);
+  const [err, setErr] = useState("");
+  const [barang, setBarang] = useState<Row[]>([]);
+  const [ctx, setCtx] = useState<StokCtx>({ kelompok: new Map(), kategori: new Map() });
+
+  // Daftar barang dipakai oleh dialog Filter Barang dan laporan stok.
+  useEffect(() => {
+    if (!stok) return;
+    (async () => {
+      setBarang(await loadAll("mdbarang", {}));
+      const [kel, kat] = await Promise.all([loadAll("mdkelompok", {}), loadAll("mdkategori", {})]);
+      setCtx({
+        kelompok: new Map(kel.map((r) => [String(r.kodekelompok), String(r.namakelompok)])),
+        kategori: new Map(kat.map((r) => [String(r.kodekategori), String(r.namakategori)])),
+      });
+    })().catch((e) => setErr(errText(e)));
+  }, [stok]);
+
+  const terapkan = async (f: LapFilterVal) => {
+    if (!def) return;
+    setErr("");
+    setFilter(f);
+    setRows(null);
+    setTampil(true);
+    try {
+      if (stok) {
+        const semua = await loadAll("mdbarang", {}); // Refresh membaca data terbaru
+        let r = semua.filter((x) => matchFilter("mdbarang", f, x));
+        // Stok maksimum dan minimum: syarat dan urutan asli (selisih stok terhadap batas), tanpa saringan lain.
+        r = r.filter((x) => lewatBatas(def.kind, x));
+        const urut = (a: Row, b: Row) => String(a.namabarang).localeCompare(String(b.namabarang));
+        if (def.kind === "stok_max") r.sort((a, b) => selisihBatas(def.kind, b) - selisihBatas(def.kind, a));
+        else if (def.kind === "stok_min") r.sort((a, b) => selisihBatas(def.kind, a) - selisihBatas(def.kind, b));
+        else r.sort((a, b) => String(a.kodekelompok ?? "").localeCompare(String(b.kodekelompok ?? "")) || String(a.kodekategori ?? "").localeCompare(String(b.kodekategori ?? "")) || urut(a, b));
+        setRows(r);
+      } else {
+        setRows(await api.laporanData(def.jenis!, f));
+      }
+    } catch (e) {
+      setErr(errText(e));
+      setRows([]);
+    }
+  };
+
+  useEffect(() => { if (tanpaFilter && bolehKasir) void terapkan(filter); /* sekali saat dibuka */ }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  if (!def || !bolehKasir) {
+    return (
+      <Modal title="Informasi" onClose={() => go("home")} footer={<button className="btn primary" onClick={() => go("home")}>OK</button>}>
+        <p>{def ? "Laporan ini hanya bisa dibuka oleh pengguna selain kasir." : "Laporan ini belum tersedia di versi ini."}</p>
+      </Modal>
+    );
+  }
+
+  const labelTgl = def.form === "FrmFilterKas" ? "Tgl. Transaksi" : ["piutang", "hutang", "pelunasan_piutang", "pelunasan_hutang"].includes(def.kind) ? "Tgl. Jatuh Tempo" : "Tanggal";
+  const periode = stok || tanpaFilter ? `Per tanggal : ${tglID(today())}` : `${labelTgl} : ${tglID(filter.dari)} s.d ${tglID(filter.sampai)}`;
+  const built = useMemo(() => (rows ? build(def.kind, rows, ctx) : null), [def.kind, rows, ctx]);
+
+  /** Ekspor ke Text, Excel, RTF, PDF, atau HTML (menu Ekspor di jendela laporan). */
+  const ekspor = async (format: FormatEkspor) => {
+    setMenuEkspor(false);
+    if (!built || !rows) return;
+    try {
+      if (format === "pdf") {
+        // Belum ada pembuat PDF di aplikasi; dialog cetak sistem punya pilihan simpan sebagai PDF.
+        msg.alert("Di dialog cetak, pilih \"Simpan sebagai PDF\" untuk menyimpan laporan ini sebagai file PDF.");
+        await cetakLaporan();
+        return;
+      }
+      if (format === "text") { setDlgText(await berkasApi.eksporNama(def.title)); return; }
+      const f = await simpanEkspor(format, def.title, kopTeks(setting, def.title, periode), gridLaporan(built));
+      msg.alert(`File tersimpan di ${f}.`);
+    } catch (e) { msg.alert(errText(e)); }
+  };
+  const simpanText = async (path: string, o: OpsiText) => {
+    if (!built) return;
+    try {
+      const f = await simpanEkspor("text", def.title, kopTeks(setting, def.title, periode), gridLaporan(built), path, o);
+      setDlgText(null);
+      msg.alert(`File tersimpan di ${f}.`);
+    } catch (e) { msg.alert(errText(e)); }
+  };
+
+  return (
+    <>
+      {msg.node}
+      {dlgText !== null && <OpsiTextDialog nama={dlgText} onClose={() => setDlgText(null)} onSimpan={simpanText} />}
+      {tampil && (
+        <div className="lap-wrap">
+          <div className="lap-toolbar no-print">
+            <button type="button" onClick={() => { setMenuEkspor(false); cetakLaporan().catch((e) => setErr(errText(e))); }} disabled={rows === null}>Cetak</button>
+            <button type="button" onClick={() => { setMenuEkspor(false); void terapkan(filter); }} disabled={rows === null}>Refresh</button>
+            <span className="lap-ekspor">
+              <button type="button" onClick={() => setMenuEkspor((x) => !x)} disabled={rows === null}>Ekspor</button>
+              {menuEkspor && (
+                <ul className="lap-menu">
+                  {MENU_EKSPOR.map(([k, t]) => <li key={k}><button type="button" onClick={() => void ekspor(k)}>{t}</button></li>)}
+                </ul>
+              )}
+            </span>
+            <button type="button" onClick={() => go("home")}>Tutup</button>
+            <span className="lap-info">{rows === null ? "Memuat laporan..." : ""}</span>
+          </div>
+          <div className="lap-scroll" onMouseDown={() => setMenuEkspor(false)}>
+            {err && <Alert>{err}</Alert>}
+            {rows !== null && built && <Kertas kind={def.kind} title={def.title} periode={periode} setting={setting} built={built} kosong={rows.length === 0} />}
+          </div>
+        </div>
+      )}
+      {!tampil && stok && (
+        <FilterWindow table="mdbarang" rows={barang} value={filter} onApply={terapkan} onClose={() => go("home")} />
+      )}
+      {!tampil && !stok && !tanpaFilter && (
+        <LapFilterDialog form={def.form} value={filter} onApply={terapkan} onClose={() => go("home")} />
+      )}
+    </>
+  );
+}

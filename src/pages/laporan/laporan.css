@@ -1,0 +1,43 @@
+.lap-wrap { display: flex; flex-direction: column; height: 100%; background: #808080; }
+.lap-toolbar { display: flex; gap: 2px; padding: 3px; background: #f0f0f0; border-bottom: 1px solid #a0a0a0; }
+.lap-toolbar button { min-width: 64px; height: 24px; font: 12px Tahoma, "Segoe UI", sans-serif; border: 1px solid #707070; background: #e1e1e1; }
+.lap-toolbar button:hover { background: #e5f1fb; border-color: #0078d7; }
+.lap-toolbar .lap-info { margin-left: auto; align-self: center; font: 12px Tahoma, "Segoe UI", sans-serif; padding-right: 6px; }
+.lap-ekspor { position: relative; }
+.lap-menu { position: absolute; top: 26px; left: 0; z-index: 5; margin: 0; padding: 2px; list-style: none; background: #fff; border: 1px solid #707070; min-width: 150px; }
+.lap-menu button { width: 100%; text-align: left; border: 0; background: #fff; }
+.lap-menu button:hover { background: #f8f7f3; }
+.lap-scroll { flex: 1; overflow: auto; padding: 10px; }
+/* Tiap halaman: ukuran isi = ukuran kertas dikurangi margin (diisi lewat --lap-w, --lap-h, --lap-m). */
+.lap-kertas { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+.lap-page { position: relative; background: #fff; color: #000; box-sizing: content-box; width: var(--lap-w); height: var(--lap-h); padding: var(--lap-m);
+  box-shadow: 1px 1px 4px rgba(0,0,0,.5); font: 11px/1.35 Arial, Helvetica, sans-serif; overflow: hidden; flex: none; }
+.lap-ukur { position: absolute; left: -10000px; top: 0; visibility: hidden; height: auto; box-shadow: none; pointer-events: none; }
+.lap-hal { position: absolute; right: var(--lap-m); bottom: var(--lap-m); }
+.lap-kop { display: flow-root; }
+.lap-cetak { float: right; }
+.lap-nama { font-size: 18px; font-weight: 700; }
+.lap-alamat { white-space: pre-line; }
+.lap-judul { font-size: 14px; font-weight: 700; margin-top: 10px; }
+.lap-periode { margin-bottom: 4px; padding-bottom: 4px; border-bottom: 1px solid #000; }
+.lap-t { width: 100%; border-collapse: collapse; table-layout: fixed; margin-top: 6px; }
+.lap-t td { padding: 1px 4px; vertical-align: top; overflow-wrap: anywhere; }
+.lap-t .r { text-align: right; } .lap-t .c { text-align: center; }
+.lap-t tr.head td { font-weight: 700; border-top: 1px solid #000; border-bottom: 1px solid #000; }
+.lap-t tr.grp td { font-weight: 700; padding-top: 10px; }
+.lap-t tr.info td { padding-top: 0; }
+.lap-t tr.sub td { font-weight: 700; border-top: 1px solid #000; }
+.lap-t tr.sub2 td { font-weight: 700; }
+.lap-t tr.tot td { font-weight: 700; border-top: 2px solid #000; padding-top: 4px; }
+.lap-t tr.spasi td { height: 8px; padding: 0; }
+.lap-kosong { padding: 24px 0; text-align: center; }
+@media print {
+  body[data-print="laporan"] .lap-wrap { background: #fff; height: auto; display: block; }
+  body[data-print="laporan"] .lap-scroll { overflow: visible; padding: 0; }
+  body[data-print="laporan"] .lap-kertas { display: block; }
+  body[data-print="laporan"] .lap-page { box-shadow: none; padding: 0; height: calc(var(--lap-h) - 3px); break-after: page; page-break-after: always; }
+  body[data-print="laporan"] .lap-page:last-child { break-after: auto; page-break-after: auto; }
+  body[data-print="laporan"] .lap-ukur { display: none; }
+  body[data-print="laporan"] .lap-hal { right: 0; bottom: 0; }
+  body[data-print="laporan"] .lap-t tr { break-inside: avoid; }
+}

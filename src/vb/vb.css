@@ -1,0 +1,46 @@
+/* Tampilan gaya Windows klasik untuk form VB */
+.vb-form { position: relative; overflow: hidden; font: 11px Tahoma, "Segoe UI", sans-serif; color: #000; background: #f0f0f0; }
+.vb-c { position: absolute; overflow: hidden; line-height: 1.2; }
+.vb-line { position: absolute; }
+.vb-label { width: 100%; height: 100%; white-space: pre-wrap; }
+.vb-btn { width: 100%; height: 100%; padding: 0 2px; font: inherit; color: #000; background: #f0f0f0; border: 1px solid #707070; border-radius: 0; box-shadow: inset 1px 1px #fff, inset -1px -1px #a0a0a0; cursor: default; }
+.vb-btn:active:not(:disabled) { box-shadow: inset 1px 1px #a0a0a0; }
+.vb-btn:disabled { color: #808080; }
+.vb-txt, .vb-cbo { width: 100%; height: 100%; padding: 0 2px; margin: 0; font: inherit; color: #000; background: #fff; border: 1px solid #7a7a7a; border-radius: 0; box-shadow: inset 1px 1px #a0a0a0; }
+.vb-txt:focus, .vb-cbo:focus { outline: 1px dotted #000; outline-offset: -3px; }
+textarea.vb-txt { resize: none; padding: 1px 2px; }
+.vb-txt:disabled { background: #f0f0f0; }
+.vb-fill { width: 100%; height: 100%; overflow: auto; }
+.vb-chk { display: flex; align-items: center; gap: 3px; width: 100%; height: 100%; font: inherit; }
+.vb-chk input { margin: 0; width: 13px; height: 13px; }
+.vb-frame { position: relative; width: 100%; height: 100%; margin: 0; padding: 0; border: 1px solid #a0a0a0; }
+.vb-frame legend { padding: 0 2px; margin-left: 6px; }
+.vb-pic { position: relative; width: 100%; height: 100%; }
+.vb-img { width: 100%; height: 100%; object-fit: contain; }
+.vb-shape { width: 100%; height: 100%; border: 1px solid #555; }
+.vb-toolbar { display: flex; width: 100%; height: 100%; background: #f0f0f0; border-bottom: 1px solid #a0a0a0; }
+.vb-tbtn { padding: 0 8px; font: inherit; background: none; border: 1px solid transparent; }
+.vb-tbtn:hover { border-color: #a0a0a0 #fff #fff #a0a0a0; }
+.vb-status { display: flex; width: 100%; height: 100%; background: #f0f0f0; border-top: 1px solid #a0a0a0; }
+.vb-panel { padding: 2px 6px; border-right: 1px solid #a0a0a0; }
+.vb-tabs { position: relative; width: 100%; height: 100%; border: 1px solid #999; background: #fff; }
+.vb-tabs-head { display: flex; }
+.vb-tabs-head span { padding: 2px 8px; border: 1px solid #999; border-bottom: 0; background: #e8e8e8; }
+.vb-tabs-head span.on { background: #fff; }
+.vb-progress { width: 100%; height: 100%; background: #e6e6e6; border: 1px solid #7a7a7a; }
+.vb-ocx { position: relative; width: 100%; height: 100%; background: #fff; border: 1px solid #7a7a7a; overflow: auto; }
+.vb-tag { position: absolute; top: 2px; left: 4px; font-size: 10px; color: #888; }
+.vb-missing { padding: 8px; }
+
+/* Jendela anak MDI */
+.vb-window { display: flex; flex-direction: column; min-height: 0; height: 100%; background: #f0f0f0; border: 1px solid #fff; border-right-color: #404040; border-bottom-color: #404040; box-shadow: 1px 1px 0 #a0a0a0; }
+.vb-window-title { display: flex; align-items: center; height: 20px; padding: 0 2px 0 6px; flex: none; color: #fff; background: linear-gradient(90deg, #0a246a, #a6caf0); font: bold 11px Tahoma, "Segoe UI", sans-serif; user-select: none; }
+.vb-window-caption { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.vb-window-x { width: 16px; height: 14px; padding: 0; line-height: 10px; font: bold 12px Tahoma, sans-serif; color: #000; background: #f0f0f0; border: 1px solid #707070; box-shadow: inset 1px 1px #fff, inset -1px -1px #a0a0a0; }
+.vb-window-body { flex: 1; min-height: 0; overflow: auto; background: #f0f0f0; }
+
+/* DTPicker: kotak putih dengan tombol panah di kanan */
+.vb-date { position: relative; padding-right: 18px; -webkit-appearance: none; appearance: none;
+  background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='17' height='17'%3E%3Crect x='1' y='1' width='15' height='15' fill='%23e3e3e3' stroke='%23a0a0a0'/%3E%3Cpath d='M5 7h7l-3.5 4z' fill='%23333'/%3E%3C/svg%3E") no-repeat right 1px center; }
+.vb-date::-webkit-calendar-picker-indicator { position: absolute; right: 0; top: 0; width: 18px; height: 100%; margin: 0; padding: 0; opacity: 0; cursor: default; }
+.vb-date::-webkit-datetime-edit { padding: 0; }

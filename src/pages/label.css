@@ -1,0 +1,28 @@
+/* Label barcode dan price tag. Di layar dipakai untuk pratinjau; saat dicetak hanya .lbl-print yang tampil. */
+.lbl-sheet { display: grid; gap: 0; background: #fff; color: #000; font-family: Arial, Helvetica, sans-serif; }
+.lbl-sheet.barcode { grid-template-columns: repeat(3, 33.6mm); width: 101mm; }
+.lbl-sheet.pricetag { grid-template-columns: repeat(2, 95mm); width: 190mm; gap: 2mm 0; }
+
+.lbl { box-sizing: border-box; overflow: hidden; page-break-inside: avoid; break-inside: avoid; }
+.lbl-sheet.barcode .lbl { width: 33.6mm; height: 18mm; padding: 0.6mm 1.2mm; display: flex; flex-direction: column; align-items: center; justify-content: space-between; text-align: center; }
+.lbl .nm { width: 100%; font-size: 6.5pt; line-height: 1.1; max-height: 2.3em; overflow: hidden; }
+.lbl .bc { width: 100%; height: 7mm; display: block; }
+.lbl .kd { font-size: 5.5pt; line-height: 1; letter-spacing: .3pt; }
+.lbl .hg { font-size: 8pt; font-weight: 700; line-height: 1; }
+
+.lbl-sheet.pricetag .lbl { width: 95mm; height: 48mm; padding: 2.5mm 4mm; border: 0.4mm solid #000; display: flex; flex-direction: column; justify-content: space-between; }
+.lbl-sheet.pricetag .nm { font-size: 13pt; font-weight: 700; max-height: 2.4em; }
+.lbl-sheet.pricetag .kd { font-size: 8pt; letter-spacing: 0; }
+.lbl-sheet.pricetag .hg { font-size: 26pt; text-align: right; }
+.lbl-sheet.pricetag .coret { font-size: 11pt; text-align: right; text-decoration: line-through; line-height: 1; }
+.lbl-sheet.pricetag .promo { white-space: pre-line; border-top: 0.3mm solid #000; padding-top: 0.8mm; font-size: 8pt; text-align: right; min-height: 1.2em; }
+
+.lbl-preview { max-height: 60vh; overflow: auto; padding: 8px; background: #d8d8d8; }
+.lbl-preview .lbl-sheet { margin: 0 auto; box-shadow: 0 0 0 1px #999; }
+
+.lbl-print { display: none; }
+@media print {
+  body[data-print="label"] #root { display: none; }
+  body[data-print="label"] .lbl-print { display: block; }
+  body[data-print="label"] .lbl-sheet { box-shadow: none; }
+}

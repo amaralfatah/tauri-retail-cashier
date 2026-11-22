@@ -1,0 +1,7 @@
+.notif { position: fixed; right: 12px; bottom: 28px; z-index: 900; display: flex; gap: 8px; width: 300px; padding: 8px; box-sizing: border-box;
+  background: #f0f0f0; border: 1px solid #404040; box-shadow: 2px 2px 0 rgba(0,0,0,.35); font: 11px Tahoma, "Segoe UI", sans-serif; cursor: pointer;
+  transform: translateY(calc(100% + 40px)); transition: transform .45s ease-out; }
+.notif.naik { transform: translateY(0); }
+.notif img { flex: none; }
+.notif-judul { font-weight: 700; }
+.notif-isi { color: #0000ff; margin-top: 2px; }

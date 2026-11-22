@@ -1,0 +1,427 @@
+[
+ {
+  "id": "M001",
+  "nama": "mnMasterData",
+  "caption": "Master Data",
+  "children": [
+   {
+    "id": "M002",
+    "nama": "mnMDDataBarang",
+    "caption": "Data Barang",
+    "children": []
+   },
+   {
+    "id": "M003",
+    "nama": "mnMDDataKelompok",
+    "caption": "Data Kelompok",
+    "children": []
+   },
+   {
+    "id": "M004",
+    "nama": "mnMDDataKategori",
+    "caption": "Data Kategori",
+    "children": []
+   },
+   {
+    "id": "M005",
+    "nama": "mnMDDataSatuan",
+    "caption": "Data Satuan",
+    "children": []
+   },
+   {
+    "id": "M006",
+    "nama": "mnMDDataSupplier",
+    "caption": "Data Supplier",
+    "children": []
+   },
+   {
+    "id": "M007",
+    "nama": "mnMDDataPelanggan",
+    "caption": "Data Pelanggan",
+    "children": []
+   },
+   {
+    "id": "M008",
+    "nama": "mnMDDataKaryawan",
+    "caption": "Data Karyawan",
+    "children": []
+   }
+  ]
+ },
+ {
+  "id": "M009",
+  "nama": "mnTRPenjualan",
+  "caption": "Penjualan (Point of Sales)",
+  "children": [
+   {
+    "id": "M010",
+    "nama": "mnTROrderJual",
+    "caption": "Order Penjualan",
+    "children": []
+   },
+   {
+    "id": "M011",
+    "nama": "mnTRTrPenjualan",
+    "caption": "Transaksi Penjualan",
+    "children": []
+   },
+   {
+    "id": "M012",
+    "nama": "mnTRReturJual",
+    "caption": "Retur Penjualan",
+    "children": []
+   },
+   {
+    "id": "M013",
+    "nama": "mnTRPelunasanPiutang",
+    "caption": "Pelunasan Piutang",
+    "children": []
+   }
+  ]
+ },
+ {
+  "id": "M014",
+  "nama": "mnTRPembelian",
+  "caption": "Pembelian",
+  "children": [
+   {
+    "id": "M015",
+    "nama": "mnTROrderPembelian",
+    "caption": "Order Pembelian",
+    "children": []
+   },
+   {
+    "id": "M016",
+    "nama": "mnTRTransPembelian",
+    "caption": "Transaksi Pembelian",
+    "children": []
+   },
+   {
+    "id": "M017",
+    "nama": "mnTRReturBeliPerTrans",
+    "caption": "Retur Pembelian per Transaksi",
+    "children": []
+   },
+   {
+    "id": "M018",
+    "nama": "mnTRReturBeliperBarang",
+    "caption": "Retur Pembelian per Barang",
+    "children": []
+   },
+   {
+    "id": "M019",
+    "nama": "mnTRPelunasanHutang",
+    "caption": "Pelunasan Hutang",
+    "children": []
+   }
+  ]
+ },
+ {
+  "id": "M020",
+  "nama": "mnInventori",
+  "caption": "Inventori",
+  "children": [
+   {
+    "id": "M021",
+    "nama": "mnInvStokAwal",
+    "caption": "Stok Awal",
+    "children": []
+   },
+   {
+    "id": "M022",
+    "nama": "mnInvStokOpname",
+    "caption": "Stok Opname",
+    "children": []
+   },
+   {
+    "id": "M023",
+    "nama": "mnInvCetakBarcode",
+    "caption": "Cetak Barcode",
+    "children": []
+   },
+   {
+    "id": "M024",
+    "nama": "mnInvCetakPriceTag",
+    "caption": "Cetak Price Tag",
+    "children": []
+   },
+   {
+    "id": "M025",
+    "nama": "mnInvKatalogBrg",
+    "caption": "Katalog Barang",
+    "children": []
+   },
+   {
+    "id": "M026",
+    "nama": "mnInvPromoJual",
+    "caption": "Promo Penjualan",
+    "children": []
+   },
+   {
+    "id": "M027",
+    "nama": "mnInvPromoBonus",
+    "caption": "Promo Bonus Produk",
+    "children": []
+   }
+  ]
+ },
+ {
+  "id": "M029",
+  "nama": "mnLaporan",
+  "caption": "Laporan",
+  "children": [
+   {
+    "id": "M030",
+    "nama": "mnLapPenjualan",
+    "caption": "Data Penjualan",
+    "children": [
+     {
+      "id": "M031",
+      "nama": "mnLapPenjualanOrder",
+      "caption": "Order Penjualan",
+      "children": []
+     },
+     {
+      "id": "M032",
+      "nama": "mnLapPenjualanDetil",
+      "caption": "Penjualan Detil",
+      "children": []
+     },
+     {
+      "id": "M033",
+      "nama": "mnLapPenjualanHarian",
+      "caption": "Penjualan Harian",
+      "children": []
+     },
+     {
+      "id": "M034",
+      "nama": "mnLapPenjualanBulanan",
+      "caption": "Penjualan Bulanan",
+      "children": []
+     },
+     {
+      "id": "M035",
+      "nama": "mnLapPenjualanSales",
+      "caption": "Penjualan Sales",
+      "children": []
+     },
+     {
+      "id": "M036",
+      "nama": "mnLapPenjualanBarang",
+      "caption": "Penjualan per Barang",
+      "children": []
+     },
+     {
+      "id": "M037",
+      "nama": "mnLapPenjualanRetur",
+      "caption": "Retur Penjualan",
+      "children": []
+     },
+     {
+      "id": "M038",
+      "nama": "mnLapPenjualanPiutang",
+      "caption": "Daftar Piutang",
+      "children": []
+     },
+     {
+      "id": "M039",
+      "nama": "mnLapPenjualanPelunasan",
+      "caption": "Daftar Pelunasan Piutang",
+      "children": []
+     }
+    ]
+   },
+   {
+    "id": "M040",
+    "nama": "mnLapPembelian",
+    "caption": "Data Pembelian",
+    "children": [
+     {
+      "id": "M041",
+      "nama": "mnLapPembelianOrder",
+      "caption": "Order Pembelian",
+      "children": []
+     },
+     {
+      "id": "M042",
+      "nama": "mnLapPembelianDetil",
+      "caption": "Pembelian Detil",
+      "children": []
+     },
+     {
+      "id": "M043",
+      "nama": "mnLapPembelianHarian",
+      "caption": "Pembelian Harian",
+      "children": []
+     },
+     {
+      "id": "M044",
+      "nama": "mnLapPembelianBualanan",
+      "caption": "Pembelian Bulanan",
+      "children": []
+     },
+     {
+      "id": "M045",
+      "nama": "mnLapPembelianSupplier",
+      "caption": "Pembelian per Supplier",
+      "children": []
+     },
+     {
+      "id": "M046",
+      "nama": "mnLapPembelianRetur",
+      "caption": "Retur Pembelian",
+      "children": []
+     },
+     {
+      "id": "M047",
+      "nama": "mnLapPembelianHutang",
+      "caption": "Daftar Hutang",
+      "children": []
+     },
+     {
+      "id": "M048",
+      "nama": "mnLapPembelianPelunasan",
+      "caption": "Daftar Pelunasan Hutang",
+      "children": []
+     }
+    ]
+   },
+   {
+    "id": "M049",
+    "nama": "mnLapInventori",
+    "caption": "Data Inventori",
+    "children": [
+     {
+      "id": "M050",
+      "nama": "mnLapInvStok",
+      "caption": "Daftar Stok",
+      "children": []
+     },
+     {
+      "id": "M051",
+      "nama": "mnLapInvBrgDetil",
+      "caption": "Daftar Barang Detil",
+      "children": []
+     },
+     {
+      "id": "M052",
+      "nama": "mnLapInvTerlaris",
+      "caption": "Barang Terlaris",
+      "children": []
+     },
+     {
+      "id": "M053",
+      "nama": "mnLapInvOmset",
+      "caption": "Omset Tertinggi",
+      "children": []
+     },
+     {
+      "id": "M054",
+      "nama": "mnLapInvMax",
+      "caption": "Stok Maksimum",
+      "children": []
+     },
+     {
+      "id": "M055",
+      "nama": "mnLapInvMin",
+      "caption": "Stok Minimum",
+      "children": []
+     },
+     {
+      "id": "M056",
+      "nama": "mnLapInvStokOpname",
+      "caption": "Stok Opname",
+      "children": []
+     }
+    ]
+   },
+   {
+    "id": "M057",
+    "nama": "mnLapLabaRugi",
+    "caption": "Laba Rugi",
+    "children": [
+     {
+      "id": "M058",
+      "nama": "mnLapLRPerTrans",
+      "caption": "Laba Rugi per Transaksi",
+      "children": []
+     },
+     {
+      "id": "M059",
+      "nama": "mnLapLRHarian",
+      "caption": "Laba Rugi Harian",
+      "children": []
+     },
+     {
+      "id": "M060",
+      "nama": "mnLapLRBulanan",
+      "caption": "Laba Rugi Bulanan",
+      "children": []
+     },
+     {
+      "id": "M061",
+      "nama": "mnLapLRKas",
+      "caption": "Laba Rugi Kas",
+      "children": []
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "id": "M062",
+  "nama": "mnKeuangan",
+  "caption": "Keuangan",
+  "children": []
+ },
+ {
+  "id": "M063",
+  "nama": "mnPengaturan",
+  "caption": "Pengaturan",
+  "children": [
+   {
+    "id": "M064",
+    "nama": "mnPengaturanProgram",
+    "caption": "Pangaturan Program",
+    "children": []
+   },
+   {
+    "id": "M065",
+    "nama": "mnPengaturanDatabase",
+    "caption": "Pengaturan Database",
+    "children": []
+   },
+   {
+    "id": "M066",
+    "nama": "mnPengaturanAlat",
+    "caption": "Alat Bantu Program",
+    "children": []
+   },
+   {
+    "id": "M067",
+    "nama": "mnPengaturanPengguna",
+    "caption": "Pengaturan Pengguna",
+    "children": []
+   }
+  ]
+ },
+ {
+  "id": "M068",
+  "nama": "mnBantuan",
+  "caption": "Bantuan",
+  "children": [
+   {
+    "id": "M069",
+    "nama": "mnBantuanRegistrasi",
+    "caption": "Registrasi Aplikasi",
+    "children": []
+   },
+   {
+    "id": "M070",
+    "nama": "mnBantuanPanduan",
+    "caption": "Panduan Penggunaan",
+    "children": []
+   }
+  ]
+ }
+]
