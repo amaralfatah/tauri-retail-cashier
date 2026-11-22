@@ -38,6 +38,8 @@ mod tests_barang;
 mod tests_sistem;
 #[cfg(test)]
 mod tests_laporan;
+#[cfg(test)]
+mod tests_e2e;
 
 use std::sync::Mutex;
 use tauri::Manager;
