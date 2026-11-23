@@ -295,7 +295,11 @@ fn pesan_versi_dan_alamat_pembaruan_ke_versi_pusat() {
 fn cadangan_database_lama_saat_dijadikan_kasir() {
     let data = data_pusat();
     let hasil = cadangan_sebelum_kasir(&data.db).unwrap().expect("ada data, jadi ada cadangan");
-    assert!(hasil.starts_with(data.folder.join("backup").canonicalize().unwrap()), "{hasil:?} vs {:?}", data.folder);
+    assert!(
+        hasil.canonicalize().unwrap().starts_with(data.folder.join("backup").canonicalize().unwrap()),
+        "{hasil:?} vs {:?}",
+        data.folder
+    );
     assert!( hasil.file_name().unwrap().to_string_lossy().starts_with("sebelum-jadi-kasir-"));
     cek_file_backup(&hasil).unwrap();
     let c = rusqlite::Connection::open(&hasil).unwrap();
