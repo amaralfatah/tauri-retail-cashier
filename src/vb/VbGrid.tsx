@@ -1,21 +1,39 @@
-import { ReactNode, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
-import { XIcon } from "lucide-react";
+import { isValidElement, ReactNode, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { ArrowDownIcon, ArrowUpIcon, XIcon } from "lucide-react";
+import { toast } from "sonner";
 import { cn } from "cn";
 import { Button } from "@/components/ui/button";
 import { Kbd } from "@/components/ui/kbd";
 import { formSize, useTinggiJudul, useVbForm, VbWindow, Bind } from "./VbForm";
 
-/** Teks isi sel untuk tooltip (kalau tetap terpotong, arahkan mouse untuk melihat isi lengkapnya). */
+/** Ekstrak teks polos dari isi sel (termasuk elemen React sederhana seperti badge stok menipis). */
 function isiTeks(n: ReactNode): string | undefined {
-  return typeof n === "string" || typeof n === "number" ? String(n) : undefined;
+  if (typeof n === "string" || typeof n === "number") return String(n);
+  if (Array.isArray(n)) {
+    const joined = n.map((x) => isiTeks(x) ?? "").join("").trim();
+    return joined || undefined;
+  }
+  if (isValidElement<{ children?: ReactNode }>(n)) {
+    return isiTeks(n.props.children);
+  }
+  return undefined;
 }
 
-/* ---- Tabel gaya ListView (report view): garis kisi, pilih satu baris penuh ---- */
+/** Ubah angka format Indonesia ("5.875", "-12", "2,5") menjadi number untuk pengurutan numerik. */
+function parseIdNumber(s: string): number | null {
+  const t = s.trim();
+  if (!t || !/^-?\d{1,3}(\.\d{3})*(,\d+)?$|^-?\d+(,\d+)?$/.test(t)) return null;
+  const num = Number(t.replace(/\./g, "").replace(",", "."));
+  return Number.isFinite(num) ? num : null;
+}
+
+/* ---- Tabel gaya Excel / ListView: garis kisi tegas, sortir kolom, ubah lebar kolom, navigasi sel ---- */
 export interface GridCol<T> {
   title: string;
   width: number;
   align?: "right" | "center";
   render: (row: T, index: number) => ReactNode;
+  sortValue?: (row: T) => string | number;
 }
 
 export function VbGrid<T>(props: {
@@ -25,16 +43,48 @@ export function VbGrid<T>(props: {
   selected: string | null;
   onSelect: (key: string | null) => void;
   onOpen?: (row: T) => void;
+  onDelete?: (row: T) => void;
+  sortable?: boolean;
 }) {
-  const { cols, rows, rowKey, selected, onSelect, onOpen } = props;
+  const { cols, rows, rowKey, selected, onSelect, onOpen, onDelete, sortable = true } = props;
   const ref = useRef<HTMLDivElement>(null);
   const [top, setTop] = useState(0);
   const [vh, setVh] = useState(300);
   const [vw, setVw] = useState(0);
   const [focused, setFocused] = useState(false);
+  const [selCol, setSelCol] = useState<number | null>(null);
+  const [sort, setSort] = useState<{ col: number; dir: "asc" | "desc" } | null>(null);
+  const [customW, setCustomW] = useState<Record<number, number>>({});
 
   const rowH = 28;
   const headH = 30;
+  const colsKey = cols.map((c) => c.title).join("|");
+  const hasRowNo = cols.length > 0 && cols[0].title === "No.";
+
+  useEffect(() => {
+    setSort(null);
+    setCustomW({});
+    setSelCol(null);
+  }, [colsKey]);
+
+  const displayRows = useMemo(() => {
+    if (!sort || sort.col < 0 || sort.col >= cols.length) return rows;
+    const c = cols[sort.col];
+    const dir = sort.dir === "asc" ? 1 : -1;
+    const decorated = rows.map((r, i) => {
+      const raw = c.sortValue ? c.sortValue(r) : (isiTeks(c.render(r, i)) ?? "");
+      const num = typeof raw === "number" ? raw : parseIdNumber(String(raw));
+      return { r, i, str: String(raw), num };
+    });
+    decorated.sort((a, b) => {
+      if (a.num !== null && b.num !== null) {
+        return a.num !== b.num ? (a.num - b.num) * dir : a.i - b.i;
+      }
+      const cmp = a.str.localeCompare(b.str, "id", { numeric: true, sensitivity: "base" });
+      return cmp !== 0 ? cmp * dir : a.i - b.i;
+    });
+    return decorated.map((d) => d.r);
+  }, [rows, cols, sort]);
 
   useLayoutEffect(() => {
     const el = ref.current;
@@ -51,11 +101,9 @@ export function VbGrid<T>(props: {
 
   /*
    * Lebar kolom menyesuaikan isinya (diukur dari baris yang tampil), supaya kode, nomor, tanggal, dan angka
-   * tidak terpotong "KS2611-000…". Lebar VB jadi batas bawah. Kalau tidak muat, yang mengalah hanya kolom
-   * teks lebar (nama, alamat, keterangan); kolom pendek tetap utuh dan tabel bisa digeser ke samping.
+   * tidak terpotong "KS2611-000…". Lebar VB jadi batas bawah. Pengguna juga bisa menarik batas kolom seperti Excel.
    */
   const [fit, setFit] = useState<number[]>([]);
-  const colsKey = cols.map((c) => c.title).join("|");
   useEffect(() => setFit([]), [colsKey]);
   useLayoutEffect(() => {
     const el = ref.current;
@@ -63,21 +111,27 @@ export function VbGrid<T>(props: {
     const need = cols.map((_, j) => {
       let w = 0;
       el.querySelectorAll<HTMLElement>(`[data-c="${j}"] > span`).forEach((sp) => { w = Math.max(w, sp.scrollWidth); });
-      return Math.min(w + 17, 420); // + padding kiri-kanan dan garis
+      return Math.min(w + 22, 420); // + padding kiri-kanan, ikon sortir, dan garis
     });
     setFit((old) => {
       const next = need.map((n, j) => Math.max(n, old[j] ?? 0));
       return next.length === old.length && next.every((n, j) => n === old[j]) ? old : next;
     });
   });
-  const pakai = cols.map((c, j) => Math.max(fit[j] ?? 0, Math.min(c.width, 60)));
+  const pakai = cols.map((c, j) => {
+    if (hasRowNo && j === 0) return Math.max(48, Math.min(fit[0] ?? 48, 72));
+    return Math.max(fit[j] ?? 0, Math.min(c.width, 60));
+  });
   const colWidths = [...pakai];
   const sumPakai = pakai.reduce((s, w) => s + w, 0) || 1;
   if (vw > 0 && sumPakai < vw) {
-    // Ruang lebih dibagi menurut lebar asli VB, supaya proporsinya tetap seperti layar lama.
+    // Ruang lebih dibagi ke kolom data menurut lebar asli VB; kolom "No." tetap ramping seperti row header Excel.
     const sisa = vw - sumPakai;
-    const bobot = cols.reduce((s, c) => s + c.width, 0) || 1;
-    cols.forEach((c, j) => { colWidths[j] += Math.floor((sisa * c.width) / bobot); });
+    const startIdx = hasRowNo && cols.length > 1 ? 1 : 0;
+    const bobot = cols.slice(startIdx).reduce((s, c) => s + c.width, 0) || 1;
+    for (let j = startIdx; j < cols.length; j++) {
+      colWidths[j] += Math.floor((sisa * cols[j].width) / bobot);
+    }
     colWidths[colWidths.length - 1] += vw - colWidths.reduce((s, w) => s + w, 0);
   } else if (vw > 0 && sumPakai > vw) {
     // Kurang ruang: kecilkan kolom teks lebar (>160px) sampai minimal 140px.
@@ -89,16 +143,20 @@ export function VbGrid<T>(props: {
       colWidths[x.j] -= potong;
     });
   }
+  for (const [k, w] of Object.entries(customW)) {
+    const idx = Number(k);
+    if (idx >= 0 && idx < colWidths.length) colWidths[idx] = w;
+  }
   const total = Math.max(colWidths.reduce((s, w) => s + w, 0), vw);
 
   const first = Math.max(0, Math.floor(top / rowH) - 4);
-  const last = Math.min(rows.length, Math.ceil((top + vh) / rowH) + 4);
-  const selIdx = selected == null ? -1 : rows.findIndex((r) => rowKey(r) === selected);
+  const last = Math.min(displayRows.length, Math.ceil((top + vh) / rowH) + 4);
+  const selIdx = selected == null ? -1 : displayRows.findIndex((r) => rowKey(r) === selected);
 
   const move = (i: number) => {
-    const n = Math.max(0, Math.min(rows.length - 1, i));
-    if (!rows.length) return;
-    onSelect(rowKey(rows[n]));
+    const n = Math.max(0, Math.min(displayRows.length - 1, i));
+    if (!displayRows.length) return;
+    onSelect(rowKey(displayRows[n]));
     const el = ref.current;
     if (!el) return;
     const y = n * rowH;
@@ -107,15 +165,85 @@ export function VbGrid<T>(props: {
     else if (y + rowH > el.scrollTop + view) el.scrollTop = y + rowH - view;
   };
 
+  const moveCol = (delta: number) => {
+    const minCol = hasRowNo ? 1 : 0;
+    if (cols.length <= minCol) return;
+    const cur = selCol == null ? (delta > 0 ? minCol : cols.length - 1) : selCol + delta;
+    const next = Math.max(minCol, Math.min(cols.length - 1, cur));
+    setSelCol(next);
+    const el = ref.current;
+    if (!el) return;
+    let left = 0;
+    for (let j = 0; j < next; j++) left += colWidths[j];
+    const right = left + colWidths[next];
+    if (left < el.scrollLeft) el.scrollLeft = left;
+    else if (right > el.scrollLeft + el.clientWidth) el.scrollLeft = right - el.clientWidth;
+  };
+
+  const copySelected = (fullRow: boolean) => {
+    if (selIdx < 0) return;
+    const r = displayRows[selIdx];
+    const start = hasRowNo ? 1 : 0;
+    const text = !fullRow && selCol != null && selCol >= start && selCol < cols.length
+      ? (isiTeks(cols[selCol].render(r, selIdx)) ?? "")
+      : cols.slice(start).map((c) => isiTeks(c.render(r, selIdx)) ?? "").join("\t");
+    if (!navigator.clipboard?.writeText) return;
+    navigator.clipboard.writeText(text).then(() => {
+      toast.success(!fullRow && selCol != null && selCol >= start ? "Isi sel disalin" : "Baris disalin (format Excel)", { duration: 1500 });
+    }).catch(() => undefined);
+  };
+
+  const toggleSort = (colIdx: number) => {
+    if (!sortable || (hasRowNo && colIdx === 0)) return;
+    setSort((cur) => {
+      if (!cur || cur.col !== colIdx) return { col: colIdx, dir: "asc" };
+      if (cur.dir === "asc") return { col: colIdx, dir: "desc" };
+      return null;
+    });
+  };
+
+  const startResize = (e: React.MouseEvent, colIdx: number) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const startX = e.clientX;
+    const startW = colWidths[colIdx];
+    const onMove = (ev: MouseEvent) => {
+      setCustomW((prev) => ({ ...prev, [colIdx]: Math.max(44, startW + (ev.clientX - startX)) }));
+    };
+    const onUp = () => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+  };
+
   const onKey = (e: React.KeyboardEvent) => {
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "c") {
+      if (selIdx >= 0) {
+        e.preventDefault();
+        copySelected(e.shiftKey || selCol == null);
+      }
+      return;
+    }
     const page = Math.max(1, Math.floor((vh - headH) / rowH) - 1);
     if (e.key === "ArrowDown") move(selIdx + 1);
     else if (e.key === "ArrowUp") move(selIdx < 0 ? 0 : selIdx - 1);
-    else if (e.key === "PageDown") move(selIdx + page);
+    else if (e.key === "ArrowRight") {
+      if (selIdx < 0 && displayRows.length) move(0);
+      moveCol(1);
+    } else if (e.key === "ArrowLeft") {
+      if (selIdx < 0 && displayRows.length) move(0);
+      moveCol(-1);
+    } else if (e.key === "Tab") {
+      if (selIdx < 0 && displayRows.length) move(0);
+      moveCol(e.shiftKey ? -1 : 1);
+    } else if (e.key === "PageDown") move(selIdx + page);
     else if (e.key === "PageUp") move(selIdx - page);
     else if (e.key === "Home") move(0);
-    else if (e.key === "End") move(rows.length - 1);
-    else if (e.key === "Enter" && selIdx >= 0) onOpen?.(rows[selIdx]);
+    else if (e.key === "End") move(displayRows.length - 1);
+    else if ((e.key === "Enter" || e.key === "F2") && selIdx >= 0) onOpen?.(displayRows[selIdx]);
+    else if (e.key === "Delete" && selIdx >= 0 && onDelete) onDelete(displayRows[selIdx]);
     else return;
     e.preventDefault();
   };
@@ -129,30 +257,57 @@ export function VbGrid<T>(props: {
       onBlur={() => setFocused(false)}
       onScroll={(e) => setTop(e.currentTarget.scrollTop)}
       onKeyDown={onKey}
-      className="vbg tp-scroll-always relative size-full rounded-md border border-foreground/20 bg-card font-sans text-xs text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+      className="vbg tp-scroll-always relative size-full rounded-md border border-foreground/22 bg-card font-sans text-xs text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
     >
       <div
-        className="sticky top-0 z-10 flex min-w-full border-b border-foreground/25 bg-muted"
+        className="sticky top-0 z-10 flex min-w-full border-b border-foreground/25 bg-muted select-none"
         style={{ width: total, height: headH }}
       >
-        {cols.map((c, i) => (
-          <div
-            key={i}
-            className={cn(
-              "flex flex-none items-center overflow-hidden border-r border-foreground/15 px-2 font-semibold text-foreground last:border-r-0",
-              c.align === "right" && "justify-end text-right",
-              c.align === "center" && "justify-center text-center",
-            )}
-            style={{ width: colWidths[i] }}
-            title={c.title}
-            data-c={i}
-          >
-            <span className="truncate whitespace-nowrap">{c.title}</span>
-          </div>
-        ))}
+        {cols.map((c, i) => {
+          const canSort = sortable && !(hasRowNo && i === 0);
+          const isSorted = sort?.col === i;
+          return (
+            <div
+              key={i}
+              className={cn(
+                "relative flex flex-none items-center overflow-hidden border-r border-foreground/20 px-2 font-semibold text-foreground last:border-r-0",
+                canSort && "cursor-pointer hover:bg-foreground/6",
+                isSorted && "bg-primary/10 text-foreground",
+                c.align === "right" && "justify-end text-right",
+                c.align === "center" && "justify-center text-center",
+              )}
+              style={{ width: colWidths[i] }}
+              title={canSort ? `${c.title} (klik untuk urutkan, tarik batas untuk ubah lebar)` : c.title}
+              data-c={i}
+              onClick={() => toggleSort(i)}
+            >
+              <span className="truncate whitespace-nowrap">{c.title}</span>
+              {isSorted && (
+                sort.dir === "asc"
+                  ? <ArrowUpIcon className="ml-1 size-3 flex-none text-primary" />
+                  : <ArrowDownIcon className="ml-1 size-3 flex-none text-primary" />
+              )}
+              <div
+                role="separator"
+                aria-orientation="vertical"
+                className="absolute top-0 right-0 bottom-0 w-1.5 cursor-col-resize hover:bg-primary/50"
+                onMouseDown={(e) => startResize(e, i)}
+                onClick={(e) => e.stopPropagation()}
+                onDoubleClick={(e) => {
+                  e.stopPropagation();
+                  setCustomW((prev) => {
+                    const next = { ...prev };
+                    delete next[i];
+                    return next;
+                  });
+                }}
+              />
+            </div>
+          );
+        })}
       </div>
-      <div className="relative min-w-full" style={{ width: total, height: rows.length * rowH }}>
-        {rows.slice(first, last).map((r, k) => {
+      <div className="relative min-w-full" style={{ width: total, height: displayRows.length * rowH }}>
+        {displayRows.slice(first, last).map((r, k) => {
           const i = first + k;
           const key = rowKey(r);
           const isSel = key === selected;
@@ -161,35 +316,44 @@ export function VbGrid<T>(props: {
               key={key}
               data-state={isSel ? "selected" : undefined}
               className={cn(
-                "absolute right-0 left-0 flex cursor-default border-b border-foreground/12 transition-colors",
+                "absolute right-0 left-0 flex cursor-default border-b border-foreground/15 transition-colors",
                 isSel
                   ? focused
-                    ? "border-transparent bg-primary font-medium text-primary-foreground"
-                    : "border-transparent bg-primary/80 font-medium text-primary-foreground"
+                    ? "border-primary/40 bg-primary font-medium text-primary-foreground"
+                    : "border-primary/30 bg-primary/80 font-medium text-primary-foreground"
                   : i % 2 === 1
                     ? "bg-muted/25 hover:bg-muted/60"
                     : "hover:bg-muted/60",
               )}
               style={{ top: i * rowH, height: rowH }}
-              onMouseDown={() => onSelect(key)}
               onDoubleClick={() => onOpen?.(r)}
             >
-              {cols.map((c, j) => (
-                <div
-                  key={j}
-                  className={cn(
-                    "flex flex-none items-center overflow-hidden border-r border-foreground/10 px-2 tabular-nums last:border-r-0",
-                    isSel && "border-primary-foreground/20",
-                    c.align === "right" && "justify-end text-right",
-                    c.align === "center" && "justify-center text-center",
-                  )}
-                  style={{ width: colWidths[j] }}
-                  data-c={j}
-                  title={isiTeks(c.render(r, i))}
-                >
-                  <span className="truncate whitespace-nowrap">{c.render(r, i)}</span>
-                </div>
-              ))}
+              {cols.map((c, j) => {
+                const isRowNo = hasRowNo && j === 0;
+                const isActiveCell = isSel && selCol === j;
+                return (
+                  <div
+                    key={j}
+                    className={cn(
+                      "flex flex-none items-center overflow-hidden border-r border-foreground/15 px-2 tabular-nums last:border-r-0",
+                      isRowNo && !isSel && "bg-muted/40 text-muted-foreground",
+                      isSel && "border-primary-foreground/25",
+                      isActiveCell && "bg-primary-foreground/12 ring-2 ring-inset ring-primary-foreground/85",
+                      c.align === "right" && "justify-end text-right",
+                      c.align === "center" && "justify-center text-center",
+                    )}
+                    style={{ width: colWidths[j] }}
+                    data-c={j}
+                    title={isiTeks(c.render(r, i))}
+                    onMouseDown={() => {
+                      onSelect(key);
+                      setSelCol(isRowNo ? null : j);
+                    }}
+                  >
+                    <span className="truncate whitespace-nowrap">{c.render(r, i)}</span>
+                  </div>
+                );
+              })}
             </div>
           );
         })}

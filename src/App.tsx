@@ -18,7 +18,6 @@ import { CetakLabel } from "./pages/CetakLabel";
 import { Katalog } from "./pages/Katalog";
 import { Promo } from "./pages/Promo";
 import { Master } from "./pages/Master";
-import { SimpleMaster } from "./pages/MasterEdit";
 import { Laporan, Tab } from "./pages/Laporan";
 import { Pengaturan } from "./pages/Pengaturan";
 import { Pengguna } from "./pages/Pengguna";
@@ -107,9 +106,9 @@ function DialogBody({ page }: { page: Page }) {
     case "alat": return <Alat />;
     case "poin": return <Poin />;
     case "nontunai": return <JenisNonTunai />;
-    case "satuan": return <SimpleMaster table="mdsatuan" />;
-    case "kelompok": return <SimpleMaster table="mdkelompok" />;
-    case "kategori": return <SimpleMaster table="mdkategori" />;
+    case "satuan": return <Master initial="mdsatuan" />;
+    case "kelompok": return <Master initial="mdkelompok" />;
+    case "kategori": return <Master initial="mdkategori" />;
     default: return null;
   }
 }
@@ -449,9 +448,9 @@ export default function App() {
               {page === "promobonus" && <Promo key="bonus" jenis="bonus" />}
               {page === "promopdp" && <Promo key="pdp" jenis="pdp" />}
               {page === "master" && <Master key={child.seq} initial={child.tab as MasterTable | undefined} />}
-              {page === "satuan" && <SimpleMaster key="satuan" table="mdsatuan" />}
-              {page === "kelompok" && <SimpleMaster key="kelompok" table="mdkelompok" />}
-              {page === "kategori" && <SimpleMaster key="kategori" table="mdkategori" />}
+              {page === "satuan" && <Master key="satuan" initial="mdsatuan" />}
+              {page === "kelompok" && <Master key="kelompok" initial="mdkelompok" />}
+              {page === "kategori" && <Master key="kategori" initial="mdkategori" />}
               {page === "laporan" && <Laporan key={child.seq} initial={child.tab as Tab | undefined} />}
               {page === "pengaturan" && <Pengaturan />}
               {page === "pengguna" && <Pengguna />}

@@ -33,7 +33,8 @@ export function matchFilter(table: MasterTable, f: FilterVal, r: Row): boolean {
     if (f.stok2?.trim() && s > angka(f.stok2)) return false;
     return true;
   }
-  const k = { mdpelanggan: ["kodepelanggan", "namapelanggan"], mdpemasok: ["kodepemasok", "namapemasok"], mdkaryawan: ["kodekaryawan", "namakaryawan"] }[table as string]!;
+  const k = { mdpelanggan: ["kodepelanggan", "namapelanggan"], mdpemasok: ["kodepemasok", "namapemasok"], mdkaryawan: ["kodekaryawan", "namakaryawan"] }[table as string];
+  if (!k) return true;
   return has(r[k[0]], f.kode ?? "") && has(r[k[1]], f.nama ?? "") && has(r.namakontak, f.kontak ?? "") && (table === "mdpemasok" && f.alamat?.trim() ? String(r.alamat ?? "").toUpperCase() === f.alamat.trim().toUpperCase() : has(r.alamat, f.alamat ?? ""))
     && (!f.kota || r.kota === f.kota) && (!f.provinsi || r.provinsi === f.provinsi) && (!f.jabatan || r.jabatan === f.jabatan);
 }
