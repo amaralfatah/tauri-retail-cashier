@@ -10,6 +10,7 @@ import { api, errText, Row } from "../api";
 import { inventoriApi } from "../api/inventori";
 import { useApp } from "../appContext";
 import { CariBarang } from "../components/CariBarang";
+import { EntryGrid, type EntryGridCol, GridKodeInput } from "../components/EntryGrid";
 import { qty, tglID, today } from "../format";
 import { useMsgBox } from "../vb/VbGrid";
 import { CariMaster } from "./keuanganLib";
@@ -25,8 +26,16 @@ interface Bukti { notrans: string; tgl: string; catatan: string; kasir: string; 
 let uidSeq = 0;
 const NOT_FOUND = "Data tidak ditemukan, atau barang tidak aktif.";
 
-/** Lebar kolom (No, Kode, Nama Barang, Satuan, Stok Buku, Stok Fisik, Selisih Stok) dalam persen. */
-const COLS = [5, 14, 34, 8, 13, 13, 13];
+/** Kolom tabel stok opname (lebar dalam persen). */
+const COLS: EntryGridCol[] = [
+  { label: "No", width: 5, align: "right" },
+  { label: "Kode / Barcode", width: 14, align: "left" },
+  { label: "Nama Barang", width: 34, align: "left" },
+  { label: "Satuan", width: 8, align: "left" },
+  { label: "Stok Buku", width: 13, align: "right" },
+  { label: "Stok Fisik", width: 13, align: "right" },
+  { label: "Selisih Stok", width: 13, align: "right" },
+];
 
 export function Opname() {
   const { user, go, setting } = useApp();
@@ -145,11 +154,14 @@ export function Opname() {
           <tr key={`e${i}`}>
             <td className="no">{i + 1}</td>
             <td className="kd">{i === items.length && (
-              <input ref={scanRef} data-slot="grid-input" value={scan} autoComplete="off" autoFocus onChange={(e) => setScan(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") { e.preventDefault(); void onScan(); }
-                  else if (e.key === "F10") { e.preventDefault(); setCari(true); }
-                }} />
+              <GridKodeInput
+                inputRef={scanRef}
+                value={scan}
+                autoFocus
+                onChange={(e) => setScan(e.target.value)}
+                onSearch={() => setCari(true)}
+                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void onScan(); } }}
+              />
             )}</td>
             <td /><td /><td /><td /><td />
           </tr>,
@@ -174,18 +186,16 @@ export function Opname() {
       );
     }
     return (
-      <div className="tj-grid vb-modern" tabIndex={0} ref={gridRef} onKeyDown={onKeyDown}
+      <EntryGrid
+        cols={COLS}
+        gridRef={gridRef}
+        onKeyDown={onKeyDown}
         onKeyDownCapture={(e) => {
           if (e.key === "Enter" && e.target instanceof HTMLInputElement && e.target.dataset.fisik) { e.preventDefault(); scanRef.current?.focus(); }
-        }}>
-        <table>
-          <colgroup>{COLS.map((c, i) => <col key={i} style={{ width: `${c}%` }} />)}</colgroup>
-          <thead>
-            <tr><th className="r">No</th><th className="text-left">Kode / Barcode</th><th className="text-left">Nama Barang</th><th className="text-left">Satuan</th><th className="r">Stok Buku</th><th className="r">Stok Fisik</th><th className="r">Selisih Stok</th></tr>
-          </thead>
-          <tbody>{rows}</tbody>
-        </table>
-      </div>
+        }}
+      >
+        {rows}
+      </EntryGrid>
     );
   };
 

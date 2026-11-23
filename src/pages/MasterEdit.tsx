@@ -798,6 +798,179 @@ export function SimpleMaster(props: { table: Simple; onClose?: () => void; pemas
 /** Panjang angka dan awalan kode otomatis: Kelompok "01", Kategori "001". */
 const SIMPLE_LEBAR: Record<Simple, number> = { mdkelompok: 2, mdkategori: 3, mdsatuan: 0 };
 const NAMA_SIMPLE: Record<Simple, string> = { mdkelompok: "kelompok", mdkategori: "kategori", mdsatuan: "satuan" };
+const LABEL_SIMPLE: Record<Simple, string> = { mdkelompok: "Data Kelompok", mdkategori: "Data Kategori", mdsatuan: "Data Satuan" };
+
+/**
+ * Modal tambah / ubah Data Kelompok, Data Kategori, dan Data Satuan.
+ * Konsisten dengan BarangEdit dan PartyEdit (dipakai dari layar daftar Master Data).
+ */
+export function SimpleEdit(props: {
+  table: Simple;
+  row: Row;
+  isNew: boolean;
+  rows: Row[];
+  onClose: () => void;
+  onChanged: (key: string | null) => void;
+}) {
+  const { table } = props;
+  const { key, name } = KEYS[table];
+  const [v, setV] = useState<Row>({ ...props.row });
+  const [orig, setOrig] = useState<string | null>(props.isNew ? null : s(props.row[key]) || null);
+  const [addKel, setAddKel] = useState(false);
+  const kel = useList(table === "mdkategori" ? "mdkelompok" : null);
+  const msg = useMsgBox();
+  const set = (k: string, val: unknown) => setV((x) => ({ ...x, [k]: val }));
+
+  const autoKode = () => set(key, kodeUrut(props.rows.map((r) => r[key]), "", SIMPLE_LEBAR[table]));
+
+  const simpan = async () => {
+    const kode = s(v[key]).trim();
+    if (!kode) return msg.alert(`Kode ${NAMA_SIMPLE[table]} belum diisi.`, "Informasi");
+    if (!s(v[name]).trim()) return msg.alert(`Nama ${NAMA_SIMPLE[table]} belum diisi.`, "Informasi");
+    const ada = props.rows.find((r) => s(r[key]).toUpperCase() === kode.toUpperCase());
+    const asli = orig ?? (ada ? s(ada[key]) : null);
+    const data: Row = { [key]: kode, [name]: s(v[name]).trim() };
+    if (table === "mdkategori") data.kodekelompok = s(v.kodekelompok);
+    try {
+      await api.masterSave(table, data, asli);
+      props.onChanged(kode);
+      setOrig(null);
+      setV(table === "mdkategori" && v.kodekelompok ? { kodekelompok: v.kodekelompok } : {});
+      msg.alert("Data sudah tersimpan.", "Informasi");
+    } catch (e) {
+      msg.alert(errText(e));
+    }
+  };
+
+  const hapus = () => {
+    const kode = orig ?? s(v[key]).trim();
+    if (!kode) return;
+    const nm = s(v[name]).trim() || kode;
+    msg.confirm(`Hapus ${NAMA_SIMPLE[table]} ${nm}? Data yang sudah dihapus tidak bisa dikembalikan.`, async () => {
+      try {
+        await api.masterDelete(table, kode);
+        setOrig(null);
+        setV({});
+        props.onChanged(null);
+        msg.alert("Data sudah dihapus.", "Informasi");
+      } catch (e) {
+        msg.alert(errText(e));
+      }
+    }, `Hapus ${NAMA_SIMPLE[table]}`, undefined, true);
+  };
+
+  const onEnter = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      void simpan();
+    }
+  };
+
+  return (
+    <ModalFrame
+      title={orig ? `Edit ${LABEL_SIMPLE[table]} — ${orig}` : `Tambah ${LABEL_SIMPLE[table]}`}
+      width={480}
+      onClose={props.onClose}
+      footer={
+        <>
+          <div className="mr-auto flex items-center gap-1.5">
+            <Button type="button" variant="outline" className={`h-8 text-xs ${HAPUS_MERAH}`} data-vb="cHapus" disabled={!orig} onClick={hapus}>
+              Hapus
+            </Button>
+            <Button type="button" variant="outline" className="h-8 text-xs" data-vb="cBaru" onClick={() => { setOrig(null); setV({}); }}>
+              Baru
+            </Button>
+          </div>
+          <Button type="button" variant="outline" className="h-8 text-xs" data-vb="cTutup" onClick={props.onClose}>
+            Tutup <Kbd>Esc</Kbd>
+          </Button>
+          <Button type="button" className="h-8 px-4 text-xs font-semibold" data-vb="cSimpan" onClick={() => void simpan()}>
+            Simpan
+          </Button>
+        </>
+      }
+    >
+      <div className="flex flex-col gap-3">
+        {table === "mdkategori" && (
+          <div className="flex flex-col gap-1" data-vb="cKeloimpokNama">
+            <Label htmlFor="smp-kel" className="text-xs text-muted-foreground">Kelompok</Label>
+            <div className="flex gap-1.5">
+              <NativeSelect
+                id="smp-kel"
+                size="sm"
+                className="min-w-0 flex-1"
+                value={s(v.kodekelompok)}
+                onChange={(e) => set("kodekelompok", e.target.value)}
+              >
+                <NativeSelectOption value="">— Pilih Kelompok —</NativeSelectOption>
+                {kel.rows.map((r) => (
+                  <NativeSelectOption key={r.kodekelompok} value={r.kodekelompok}>
+                    {r.namakelompok} ({r.kodekelompok})
+                  </NativeSelectOption>
+                ))}
+              </NativeSelect>
+              <Button type="button" variant="outline" size="sm" className="h-8 px-2 text-xs font-semibold" data-vb="cAddKelompok" onClick={() => setAddKel(true)}>
+                +
+              </Button>
+            </div>
+          </div>
+        )}
+
+        <div className="flex flex-col gap-1" data-vb="tKode">
+          <Label htmlFor="smp-kode" className="text-xs text-muted-foreground">
+            Kode <span className="text-destructive">*</span>
+          </Label>
+          {SIMPLE_LEBAR[table] > 0 ? (
+            <InputGroup className="h-8">
+              <InputGroupInput
+                id="smp-kode"
+                disabled={!!orig}
+                autoFocus={!orig}
+                className="font-mono text-xs"
+                value={s(v[key])}
+                onChange={(e) => set(key, e.target.value)}
+                onKeyDown={onEnter}
+              />
+              {!orig && (
+                <InputGroupAddon align="inline-end">
+                  <InputGroupButton data-vb="cAutoKode" onClick={autoKode}>
+                    Auto
+                  </InputGroupButton>
+                </InputGroupAddon>
+              )}
+            </InputGroup>
+          ) : (
+            <Input
+              id="smp-kode"
+              disabled={!!orig}
+              autoFocus={!orig}
+              className="h-8 font-mono text-xs"
+              value={s(v[key])}
+              onChange={(e) => set(key, e.target.value)}
+              onKeyDown={onEnter}
+            />
+          )}
+        </div>
+
+        <div className="flex flex-col gap-1" data-vb="tNama">
+          <Label htmlFor="smp-nama" className="text-xs text-muted-foreground">
+            Nama <span className="text-destructive">*</span>
+          </Label>
+          <Input
+            id="smp-nama"
+            autoFocus={!!orig}
+            className="h-8 text-xs"
+            value={s(v[name])}
+            onChange={(e) => set(name, e.target.value)}
+            onKeyDown={onEnter}
+          />
+        </div>
+      </div>
+      {msg.node}
+      {addKel && <SimpleMaster table="mdkelompok" onClose={() => { setAddKel(false); kel.reload(); }} />}
+    </ModalFrame>
+  );
+}
 
 function SimpleBody(props: { table: Simple; onClose?: () => void }) {
   const { table } = props;

@@ -13,6 +13,11 @@ export const MENU = menuData as MenuNode[];
 
 export interface Target { page: Page; tab?: MasterTable | Tab }
 
+/** Menu yang diawali garis pemisah, seperti di menu aplikasi lama. */
+export const SEP_BEFORE: ReadonlySet<string> = new Set([
+  "mnMDDataSupplier", "mnTRReturJual", "mnTRReturBeliPerTrans", "mnTRPelunasanHutang", "mnInvCetakBarcode", "mnInvPromoJual",
+]);
+
 /** Menu asli (kolom namamenu) ke halaman yang sudah ada. */
 export const TARGETS: Record<string, Target> = {
   mnMDDataBarang: { page: "master", tab: "mdbarang" },
@@ -22,6 +27,7 @@ export const TARGETS: Record<string, Target> = {
   mnMDDataSupplier: { page: "master", tab: "mdpemasok" },
   mnMDDataPelanggan: { page: "master", tab: "mdpelanggan" },
   mnMDDataKaryawan: { page: "master", tab: "mdkaryawan" },
+  mnMDDataJenisNonTunai: { page: "nontunai" },
   mnTRTrPenjualan: { page: "jual" },
   mnTRPelunasanPiutang: { page: "piutang" },
   mnTRReturJual: { page: "returjual" },
@@ -75,12 +81,11 @@ export const TARGETS: Record<string, Target> = {
 };
 
 /**
- * Hanya dialog kecil (Pengaturan Database dan Item Non Tunai yang dibuka dari Pengaturan Program)
- * yang tampil sebagai modal; layar kerja lainnya tampil full-size memenuhi ruang kerja utama.
+ * Hanya dialog kecil (Pengaturan Database) yang tampil sebagai modal;
+ * layar kerja lainnya tampil full-size memenuhi ruang kerja utama.
  */
 export const DIALOG_FORM: Partial<Record<Page, string>> = {
   database: "FrmZDatabase",
-  nontunai: "FrmDataJenisNonTunaiItem",
 };
 export const isDialog = (p: Page) => p in DIALOG_FORM;
 
@@ -127,7 +132,7 @@ export const DEFAULT_CAPTION: Record<Page, string> = {
   database: "Pengaturan Database",
   alat: "Alat Bantu",
   poin: "Transaksi Penukaran Poin",
-  nontunai: "Item Pembayaran Non Tunai",
+  nontunai: "Data Jenis Non Tunai",
   satuan: "Data Satuan",
   kelompok: "Data Kelompok",
   kategori: "Data Kategori",

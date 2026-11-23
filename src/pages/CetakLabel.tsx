@@ -9,6 +9,7 @@ import { api, errText, Row } from "../api";
 import { inventoriApi } from "../api/inventori";
 import { useApp } from "../appContext";
 import { CariBarang } from "../components/CariBarang";
+import { EntryGrid, type EntryGridCol, GridKodeInput } from "../components/EntryGrid";
 import { Modal } from "../components/Modal";
 import { qty, rp, today } from "../format";
 import { useMsgBox } from "../vb/VbGrid";
@@ -21,8 +22,15 @@ export type LabelMode = "barcode" | "pricetag";
 
 interface Item { kode: string; barcode: string; nama: string; hrgjual: number; hrgpromo: number; ketpromo: string; jml: number }
 
-/** Lebar kolom (No, Kode, Barcode, Nama Barang, Hrg. Jual, Jml. Cetak) dalam persen. */
-const COLS = [5, 14, 16, 33, 16, 16];
+/** Kolom tabel cetak label (lebar dalam persen). */
+const COLS: EntryGridCol[] = [
+  { label: "No", width: 5, align: "right" },
+  { label: "Kode", width: 14, align: "left" },
+  { label: "Barcode", width: 16, align: "left" },
+  { label: "Nama Barang", width: 33, align: "left" },
+  { label: "Hrg. Jual", width: 16, align: "right" },
+  { label: "Jml. Cetak", width: 16, align: "right" },
+];
 
 const KODE_BARANG = "Kode Barang";
 const BARCODE = "Barcode";
@@ -178,8 +186,14 @@ export function CetakLabel({ mode }: { mode: LabelMode }) {
           <tr key={`e${i}`}>
             <td className="no">{i + 1}</td>
             <td className="kd">{i === items.length && (
-              <input ref={scanRef} data-slot="grid-input" value={scan} autoComplete="off" autoFocus onChange={(e) => setScan(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void onScan(); } }} />
+              <GridKodeInput
+                inputRef={scanRef}
+                value={scan}
+                autoFocus
+                onChange={(e) => setScan(e.target.value)}
+                onSearch={() => setCari(true)}
+                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void onScan(); } }}
+              />
             )}</td>
             <td /><td /><td /><td />
           </tr>,
@@ -201,18 +215,16 @@ export function CetakLabel({ mode }: { mode: LabelMode }) {
       );
     }
     return (
-      <div className="tj-grid vb-modern" tabIndex={0} ref={gridRef} onKeyDown={onKeyDown}
+      <EntryGrid
+        cols={COLS}
+        gridRef={gridRef}
+        onKeyDown={onKeyDown}
         onKeyDownCapture={(e) => {
           if (e.key === "Enter" && e.target instanceof HTMLInputElement && e.target.dataset.jml) { e.preventDefault(); scanRef.current?.focus(); }
-        }}>
-        <table>
-          <colgroup>{COLS.map((c, i) => <col key={i} style={{ width: `${c}%` }} />)}</colgroup>
-          <thead>
-            <tr><th className="r">No</th><th className="text-left">Kode</th><th className="text-left">Barcode</th><th className="text-left">Nama Barang</th><th className="r">Hrg. Jual</th><th className="r">Jml. Cetak</th></tr>
-          </thead>
-          <tbody>{rows}</tbody>
-        </table>
-      </div>
+        }}
+      >
+        {rows}
+      </EntryGrid>
     );
   };
 

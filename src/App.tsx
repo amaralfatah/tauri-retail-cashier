@@ -1,6 +1,6 @@
 import { sekarang } from "@/format";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ChevronDownIcon, ChevronRight, CircleArrowDownIcon, MoonIcon, SunIcon, XIcon } from "lucide-react";
+import { ChevronDownIcon, ChevronRight, CircleArrowDownIcon, MoonIcon, SunIcon } from "lucide-react";
 import { cn } from "cn";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -19,7 +19,6 @@ import { CetakLabel } from "./pages/CetakLabel";
 import { Katalog } from "./pages/Katalog";
 import { Promo } from "./pages/Promo";
 import { Master } from "./pages/Master";
-import { SimpleMaster } from "./pages/MasterEdit";
 import { Laporan, Tab } from "./pages/Laporan";
 import { Pengaturan } from "./pages/Pengaturan";
 import { Pengguna } from "./pages/Pengguna";
@@ -38,7 +37,7 @@ import { Modal } from "./components/Modal";
 import { formSize, useTinggiJudul } from "./vb/VbForm";
 import { ModalFrame } from "./vb/VbGrid";
 import {
-  allowedFor, DEFAULT_CAPTION, DIALOG_FORM, isDialog, MENU, MenuNode, Page, TARGETS, TOOLBAR, ToolBtn,
+  allowedFor, DEFAULT_CAPTION, DIALOG_FORM, isDialog, MENU, MenuNode, Page, SEP_BEFORE, TARGETS, TOOLBAR, ToolBtn,
 } from "./vb/shell";
 import { CobaLagiDialog } from "./components/CobaLagiDialog";
 import { IkonStatusPusat, PeringatanPusat, ringkasStatus } from "./components/StatusPusat";
@@ -115,9 +114,9 @@ function DialogBody({ page }: { page: Page }) {
     case "alat": return <Alat />;
     case "poin": return <Poin />;
     case "nontunai": return <JenisNonTunai />;
-    case "satuan": return <SimpleMaster table="mdsatuan" />;
-    case "kelompok": return <SimpleMaster table="mdkelompok" />;
-    case "kategori": return <SimpleMaster table="mdkategori" />;
+    case "satuan": return <Master initial="mdsatuan" />;
+    case "kelompok": return <Master initial="mdkelompok" />;
+    case "kategori": return <Master initial="mdkategori" />;
     default: return null;
   }
 }
@@ -128,8 +127,9 @@ function PopupItems(props: { nodes: MenuNode[]; kasir: boolean; ditolak: Readonl
     <ul data-slot="menu"
       className={cn("m-0 min-w-52 list-none rounded-md border bg-popover p-1 text-sm text-popover-foreground shadow-lg",
         props.sub ? "absolute top-[-5px] left-full ml-1" : "relative")}>
-      {props.nodes.filter((n) => allowedFor(props.kasir, n, props.ditolak)).map((n) => (
+      {props.nodes.filter((n) => allowedFor(props.kasir, n, props.ditolak)).map((n, i) => (
         <li key={n.id} className="relative" onMouseEnter={() => setOpen(n.children.length ? n.id : null)}>
+          {i > 0 && SEP_BEFORE.has(n.nama) && <div role="separator" data-slot="menu-separator" className="-mx-1 my-1 h-px bg-border" />}
           <button type="button" data-slot="menu-item"
             className={cn("flex w-full cursor-default items-center justify-between gap-4 rounded-sm px-2 py-1.5 text-left outline-none",
               "hover:bg-accent hover:text-accent-foreground focus-visible:bg-accent", open === n.id && "bg-accent text-accent-foreground")}
@@ -355,13 +355,13 @@ export default function App() {
   const page = child.page;
   const activeKey: string =
     page === "home" ? "home"
-    : page === "master" || page === "satuan" || page === "kelompok" || page === "kategori" ? "master"
+    : page === "master" || page === "satuan" || page === "kelompok" || page === "kategori" || page === "nontunai" ? "master"
     : page === "jual" || page === "orderjual" || page === "returjual" || page === "piutang" ? "jual"
     : page === "beli" || page === "orderbeli" || page === "returbeli" || page === "returbelibrg" || page === "hutang" ? "beli"
     : page === "opname" || page === "stokawal" || page === "barcode" || page === "pricetag" || page === "katalog" || page === "promodiskon" || page === "promobonus" || page === "promopdp" ? "inv"
     : page === "laporan" ? "lap"
     : page === "keuangan" ? "keu"
-    : page === "pengaturan" || page === "pengguna" || page === "database" || page === "alat" || page === "poin" || page === "nontunai" ? "atur"
+    : page === "pengaturan" || page === "pengguna" || page === "database" || page === "alat" || page === "poin" ? "atur"
     : page === "panduan" ? "bantu"
     : "";
   const renderToolBtn = (b: ToolBtn, showSep: boolean) => {
@@ -374,7 +374,7 @@ export default function App() {
     const Ikon = b.icon;
     return (
       <span key={b.key} className="flex items-center">
-        {showSep && <Separator orientation="vertical" className={cn("h-5 bg-border", isKeluar ? "mx-2" : "mx-1")} />}
+        {showSep && <Separator orientation="vertical" className="ml-1 mr-1.5 h-5 bg-foreground/20 data-vertical:self-center" />}
         <Button
           type="button"
           variant="ghost"
@@ -385,7 +385,7 @@ export default function App() {
           aria-label={sesi ? b.caption : undefined}
           title={sesi ? b.caption : undefined}
           className={cn(
-            "group/tb h-8 gap-1.5 border-0 px-2 text-[13px] font-medium text-foreground shadow-none transition-colors @min-[1300px]/nav:px-2.5",
+            "group/tb h-8 gap-1.5 border-0 px-2 text-[13px] font-medium text-foreground shadow-none transition-colors @min-[1480px]/nav:px-2.5",
             isKeluar
               ? "hover:bg-destructive/12 hover:text-destructive"
               : "hover:bg-foreground/6 hover:text-foreground",
@@ -401,8 +401,8 @@ export default function App() {
             aria-hidden
             className={cn(
               "size-4 shrink-0",
-              // Layar sempit (±1093px, Ukuran tampilan 125%): menu modul cukup teks supaya Log Off dan Keluar tetap berlabel dan terlihat.
-              b.menu && "hidden @min-[1300px]/nav:block",
+              // Seragam: semua tombol navigasi tampil teks+panah di bawah 1480px (termasuk zoom 115%/125%) dan ikon+teks saat ruang benar-benar cukup.
+              !sesi && "hidden @min-[1480px]/nav:block",
               active ? "text-foreground" : "text-foreground/60",
               // Keluar tidak boleh jadi yang paling mencolok: netral, merah hanya saat disorot.
               isKeluar && "text-foreground/70 group-hover/tb:text-destructive",
@@ -412,7 +412,7 @@ export default function App() {
           <span>{b.key === "home" && getLocal("home") === "Dashboard" ? "Dashboard" : b.caption}</span>
           {bukaMenu && (
             <ChevronDownIcon aria-hidden
-              className={cn("-ml-0.5 hidden size-3.5 shrink-0 transition-transform @min-[1300px]/nav:block", "text-foreground/50", openMenu && "rotate-180")} />
+              className={cn("-ml-0.5 size-3 shrink-0 transition-transform", "text-foreground/45", openMenu && "rotate-180")} />
           )}
         </Button>
       </span>
@@ -421,7 +421,7 @@ export default function App() {
   return (
     <AppCtx.Provider value={{ user, setting, reloadSetting, go }}>
       <div className="mdi-app">
-        <nav className="mdi-toolbar no-print @container/nav flex h-11 items-center gap-0.5 overflow-x-auto border-b border-border bg-muted px-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" aria-label="Menu utama" ref={toolbarRef}>
+        <nav className="mdi-toolbar no-print @container/nav flex h-11 items-center gap-0.5 overflow-x-auto border-b border-border bg-muted px-2.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" aria-label="Menu utama" ref={toolbarRef}>
           {mainButtons.map((b, i) => renderToolBtn(b, i > 0 && !!b.sepBefore))}
           <span className="flex-1" />
           <IkonStatusPusat onBuka={() => { void muatStatusPusat(); setBukaPusat(true); }} />
@@ -438,7 +438,7 @@ export default function App() {
               onClick={bukaPembaruan}
             >
               <CircleArrowDownIcon className="size-4" />
-              <span className="hidden @min-[1300px]/nav:inline">Versi Baru</span>
+              <span className="hidden @min-[1480px]/nav:inline">Versi Baru</span>
               <span aria-hidden className="absolute top-1 right-1 size-2 rounded-full bg-primary ring-2 ring-muted" />
             </Button>
           )}
@@ -452,19 +452,9 @@ export default function App() {
             onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
           >
             {resolvedTheme === "dark" ? <SunIcon className="size-4 text-warning" /> : <MoonIcon className="size-4" />}
-            <span className="hidden @min-[1300px]/nav:inline">{resolvedTheme === "dark" ? "Terang" : "Gelap"}</span>
+            <span className="hidden @min-[1480px]/nav:inline">{resolvedTheme === "dark" ? "Terang" : "Gelap"}</span>
           </Button>
-          {sessionButtons.map((b) => renderToolBtn(b, true))}
-          {/* Layar kasir sudah punya tombol Tutup [Esc]; tombol × kedua membuat kasir ragu mana yang menutup aplikasi. */}
-          {page !== "home" && page !== "jual" && (
-            <span className="flex items-center">
-              <Separator orientation="vertical" className="mx-1 h-4 bg-border" />
-              <Button type="button" variant="ghost" size="icon-sm" aria-label="Tutup jendela" title="Tutup jendela (ESC)"
-                className="text-foreground/75 hover:bg-foreground/6 hover:text-foreground" onClick={() => open("home")}>
-                <XIcon />
-              </Button>
-            </span>
-          )}
+          {sessionButtons.map((b, i) => renderToolBtn(b, i === 0))}
         </nav>
         {popup && popNode && (
           <div className="no-print fixed z-40 mt-1" style={{ left: popup.left, top: popup.top }} ref={popupRef}>
@@ -493,9 +483,10 @@ export default function App() {
               {page === "promobonus" && <Promo key="bonus" jenis="bonus" />}
               {page === "promopdp" && <Promo key="pdp" jenis="pdp" />}
               {page === "master" && <Master key={child.seq} initial={child.tab as MasterTable | undefined} />}
-              {page === "satuan" && <SimpleMaster key="satuan" table="mdsatuan" />}
-              {page === "kelompok" && <SimpleMaster key="kelompok" table="mdkelompok" />}
-              {page === "kategori" && <SimpleMaster key="kategori" table="mdkategori" />}
+              {page === "satuan" && <Master key="satuan" initial="mdsatuan" />}
+              {page === "kelompok" && <Master key="kelompok" initial="mdkelompok" />}
+              {page === "kategori" && <Master key="kategori" initial="mdkategori" />}
+              {page === "nontunai" && <JenisNonTunai />}
               {page === "laporan" && <Laporan key={child.seq} initial={child.tab as Tab | undefined} />}
               {page === "pengaturan" && <Pengaturan />}
               {page === "pengguna" && <Pengguna />}
@@ -512,26 +503,30 @@ export default function App() {
         </main>
         <footer className="mdi-status no-print flex h-7 items-center gap-2.5 border-t border-border bg-muted px-3 text-xs text-foreground/80">
           {/* Nama layar yang sedang dibuka (di VB tampil sebagai [Nama Layar] di judul jendela). */}
-          <span className="truncate font-semibold text-foreground" aria-live="polite">{child.caption}</span>
-          <Separator orientation="vertical" className="h-3.5 bg-border" />
-          <span className="flex items-center gap-1 truncate">
+          <span className="shrink-0 truncate font-semibold text-foreground" aria-live="polite">{child.caption}</span>
+          <Separator orientation="vertical" className="h-3.5 bg-foreground/20 data-vertical:self-center" />
+          <span className="flex shrink-0 items-center gap-1">
             <span className="text-muted-foreground">User:</span>
             <span className="font-semibold text-foreground">{user.iduser}</span>
           </span>
-          <Separator orientation="vertical" className="h-3.5 bg-border" />
-          <span className="flex items-center gap-1 truncate">
+          <Separator orientation="vertical" className="h-3.5 bg-foreground/20 data-vertical:self-center" />
+          <span className="flex shrink-0 items-center gap-1">
             <span className="text-muted-foreground">Status:</span>
             <span className="font-semibold text-foreground">{user.level}</span>
           </span>
-          <Separator orientation="vertical" className="h-3.5 bg-border" />
-          <span className="flex-1" />
+          <Separator orientation="vertical" className="h-3.5 bg-foreground/20 data-vertical:self-center" />
           {(() => {
             const r = ringkasStatus(komputer);
             return r
-              ? <span className="truncate text-foreground/75" title={r.teks} data-slot="status-pusat">{r.teks}</span>
-              : <span className="truncate text-foreground/75" title={dbPath ? `Lokasi data: ${dbPath}` : undefined}>Data tersimpan di komputer ini</span>;
+              ? <span className="min-w-0 flex-1 truncate text-foreground/85" title={r.teks} data-slot="status-pusat">{r.teks}</span>
+              : (
+                <span className="flex min-w-0 flex-1 items-center gap-1" title={dbPath ? `Lokasi Data: ${dbPath}` : undefined}>
+                  <span className="shrink-0 text-muted-foreground">Lokasi Data:</span>
+                  <span className="truncate text-foreground/85">{dbPath || "Data tersimpan di komputer ini"}</span>
+                </span>
+              );
           })()}
-          <Separator orientation="vertical" className="h-3.5 bg-border" />
+          <Separator orientation="vertical" className="h-3.5 bg-foreground/20 data-vertical:self-center" />
           <Jam />
         </footer>
       </div>
@@ -604,6 +599,6 @@ function Jam() {
   }, []);
   const tgl = now.toLocaleDateString("id-ID", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
   const jam = now.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
-  return <span className="font-semibold text-foreground tabular-nums">{tgl} · {jam}</span>;
+  return <span className="shrink-0 font-semibold text-foreground tabular-nums">{tgl} · {jam}</span>;
 }
 

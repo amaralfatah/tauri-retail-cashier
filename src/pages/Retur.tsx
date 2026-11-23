@@ -6,16 +6,16 @@ import { Input } from "@/components/ui/input";
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "@/components/ui/input-group";
 import { Kbd } from "@/components/ui/kbd";
 import { Label } from "@/components/ui/label";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { api, errText, Row } from "../api";
 import { returApi, ReturSumber } from "../api/retur";
 import { useApp } from "../appContext";
 import { CariBarang } from "../components/CariBarang";
+import { EntryGrid, type EntryGridCol, GridKodeInput } from "../components/EntryGrid";
 import { CariTransaksi } from "../components/CariTransaksi";
 import { cetakStruk } from "../components/Struk";
 import { Modal } from "../components/Modal";
 import { qty, rp, tglID, today } from "../format";
-import { useMsgBox } from "../vb/VbGrid";
+import { GridCol, useMsgBox, VbGrid } from "../vb/VbGrid";
 import { CariMaster } from "./keuanganLib";
 import { NumInput } from "./Transaksi";
 
@@ -25,7 +25,7 @@ export type ReturMode = "jual" | "beli" | "brg";
 const FORM: Record<ReturMode, string> = { jual: "FrmTransJualRetur", beli: "FrmTransBeliRetur", brg: "FrmTransBeliReturBrg" };
 const KODE: Record<ReturMode, string> = { jual: "RJ", beli: "RB", brg: "RB" };
 
-interface Baris { b: Row; jml: number; harga: number }
+interface Baris { b: Row; nama?: string; jml: number; harga: number }
 
 export function Retur({ mode }: { mode: ReturMode }) {
   const { user, go, setting } = useApp();
@@ -112,7 +112,7 @@ export function Retur({ mode }: { mode: ReturMode }) {
         h = await returApi.simpanBeliBarang({
           tgl, kodepemasok: pemasok!.kodepemasok, catatan, kodekasir: kasir.kode,
           items: barisan.map((x) => ({
-            kodebarang: x.b.kodebarang, namabarang: x.b.namabarang, kodesatuan: x.b.kodesatuan, satuanjual: x.b.kodesatuan,
+            kodebarang: x.b.kodebarang, namabarang: x.nama?.trim() || x.b.namabarang, kodesatuan: x.b.kodesatuan, satuanjual: x.b.kodesatuan,
             konversi: 1, jmljual: x.jml, harga: x.harga,
           })),
         });
@@ -159,6 +159,7 @@ export function Retur({ mode }: { mode: ReturMode }) {
       if (cariTrans || cariBarang || cariPemasok || cariLain || ada || bukti) return;
       if (e.altKey) {
         if (e.code === "Digit1") { e.preventDefault(); document.querySelector<HTMLElement>('[data-vb="dtTglTrans"] input')?.focus(); return; }
+        if (e.code === "Digit5") { e.preventDefault(); document.querySelector<HTMLElement>('[data-vb="tCatatan"] input')?.focus(); return; }
         const k = e.code === "Digit2" ? (kasirBisaDiganti ? "kasir" : null) : e.code === "Digit3" ? (brg || mode === "beli" ? "pemasok" : "pelanggan") : e.code === "Digit4" ? "sales" : null;
         if (k === "pemasok") { e.preventDefault(); setCariPemasok(true); }
         else if (k) { e.preventDefault(); setCariLain(k as "kasir" | "pelanggan" | "sales"); }
@@ -188,8 +189,14 @@ export function Retur({ mode }: { mode: ReturMode }) {
             <tr key={`e${i}`}>
               <td className="no">{i + 1}</td>
               <td className="kd">{i === n && (
-                <input ref={scanRef} data-slot="grid-input" value={scan} autoComplete="off" autoFocus onChange={(e) => setScan(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void onScan(); } }} />
+                <GridKodeInput
+                  inputRef={scanRef}
+                  value={scan}
+                  autoFocus
+                  onChange={(e) => setScan(e.target.value)}
+                  onSearch={() => setCariBarang(true)}
+                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void onScan(); } }}
+                />
               )}</td>
               <td /><td /><td /><td /><td />
             </tr>,
@@ -201,7 +208,14 @@ export function Retur({ mode }: { mode: ReturMode }) {
           <tr key={kode} className={selected === kode ? "cur" : ""} onMouseDown={() => setSelected(kode)}>
             <td className="no">{i + 1}</td>
             <td>{x.b.barcode || kode}</td>
-            <td className="nm">{x.b.namabarang}</td>
+            <td className="nm kd">
+              <input
+                data-slot="grid-input"
+                value={x.nama ?? x.b.namabarang}
+                onChange={(e) => setBarisan((xs) => xs.map((y) => (y === x ? { ...y, nama: e.target.value } : y)))}
+                onBlur={(e) => { if (!e.target.value.trim()) setBarisan((xs) => xs.map((y) => (y === x ? { ...y, nama: undefined } : y))); }}
+              />
+            </td>
             <td>{x.b.kodesatuan}</td>
             <td className="r"><NumInput className="r" value={x.jml} onChange={(v) => setBarisan((xs) => xs.map((y) => (y === x ? { ...y, jml: v } : y)))} /></td>
             <td className="r"><NumInput className="r" value={x.harga} onChange={(v) => setBarisan((xs) => xs.map((y) => (y === x ? { ...y, harga: v } : y)))} /></td>
@@ -230,26 +244,31 @@ export function Retur({ mode }: { mode: ReturMode }) {
         );
       }
     }
-    const kolom = brg ? [4, 14, 40, 8, 10, 12, 12] : mode === "beli" ? [4, 14, 38, 8, 10, 10, 8, 8] : [4, 12, 32, 7, 9, 10, 10, 8, 8];
+    const kolom = brg ? [5, 14, 39, 8, 10, 12, 12] : mode === "beli" ? [5, 14, 37, 8, 10, 10, 8, 8] : [5, 12, 31, 7, 9, 10, 10, 8, 8];
     const judul = brg
-      ? ["No", "Kode / Barcode", "Nama Barang", "Satuan", "Jml. Retur", "Harga", "Subtotal"]
+      ? ["No.", "Kode / Barcode", "Nama Barang", "Satuan", "Jml. Retur", "Harga", "Subtotal"]
       : mode === "beli"
-        ? ["No", "Kode / Barcode", "Nama Barang", "Satuan", "Jumlah", "Jml. Retur", "Hrg. Beli", "Subtotal"]
-        : ["No", "Kode", "Nama Barang", "Satuan", "Jml. Jual", "Sudah Diretur", "Jml. Retur", "Harga", "Subtotal"];
+        ? ["No.", "Kode / Barcode", "Nama Barang", "Satuan", "Jumlah", "Jml. Retur", "Hrg. Beli", "Subtotal"]
+        : ["No.", "Kode", "Nama Barang", "Satuan", "Jml. Jual", "Sudah Diretur", "Jml. Retur", "Harga", "Subtotal"];
     const kanan = brg ? [4, 5, 6] : mode === "beli" ? [4, 5, 6, 7] : [4, 5, 6, 7, 8];
+    const gridCols: EntryGridCol[] = judul.map((label, i) => ({
+      label,
+      width: kolom[i],
+      align: i === 0 || kanan.includes(i) ? "right" : "left",
+    }));
     return (
-      <div className="tj-grid vb-modern" tabIndex={0} onKeyDown={(e) => {
-        if (e.key === "Delete" && brg && e.target === e.currentTarget) {
-          setBarisan((xs) => xs.filter((x) => x.b.kodebarang !== selected));
-          setSelected(null);
-        }
-      }}>
-        <table>
-          <colgroup>{kolom.map((c, i) => <col key={i} style={{ width: `${c}%` }} />)}</colgroup>
-          <thead><tr>{judul.map((j, i) => <th key={i} className={i === 0 || kanan.includes(i) ? "r" : "text-left"}>{j}</th>)}</tr></thead>
-          <tbody>{rows}</tbody>
-        </table>
-      </div>
+      <EntryGrid
+        cols={gridCols}
+        colKey={mode}
+        onKeyDown={(e) => {
+          if (e.key === "Delete" && brg && e.target === e.currentTarget) {
+            setBarisan((xs) => xs.filter((x) => x.b.kodebarang !== selected));
+            setSelected(null);
+          }
+        }}
+      >
+        {rows}
+      </EntryGrid>
     );
   };
 
@@ -276,7 +295,7 @@ export function Retur({ mode }: { mode: ReturMode }) {
 
   return (
     <div className="flex size-full flex-col overflow-hidden bg-background font-sans text-foreground" data-form={FORM[mode]} onKeyDown={enterKepala}>
-      <div className="grid grid-cols-2 items-end gap-2 border-b bg-background px-3 py-1.5 sm:grid-cols-3 lg:grid-cols-[9rem_8.5rem_10rem_13.5rem_10rem_minmax(0,1fr)]">
+      <div className="grid grid-cols-2 items-end gap-3 border-b bg-background px-3 py-1.5 sm:grid-cols-3 lg:grid-cols-6">
         <div className="flex flex-col gap-1" data-vb="tNoTrans">
           <Label className="block truncate text-xs font-medium text-foreground">No. Retur</Label>
           <Input readOnly tabIndex={-1} value={notrans} className="cursor-default border-transparent bg-muted font-semibold text-foreground tabular-nums shadow-none focus-visible:ring-0" />
@@ -297,7 +316,7 @@ export function Retur({ mode }: { mode: ReturMode }) {
             <InputGroupInput readOnly value={kasir.nama} className="cursor-default font-medium text-foreground" />
             {kasirBisaDiganti && (
               <InputGroupAddon align="inline-end">
-                <InputGroupButton size="icon-xs" aria-label="Pilih kasir" onClick={() => setCariLain("kasir")}>
+                <InputGroupButton size="icon-xs" aria-label="Pilih kasir" className="text-foreground/70 hover:bg-accent hover:text-primary" onClick={() => setCariLain("kasir")}>
                   <SearchIcon />
                 </InputGroupButton>
               </InputGroupAddon>
@@ -312,7 +331,7 @@ export function Retur({ mode }: { mode: ReturMode }) {
           <InputGroup className="border-foreground/20 bg-background">
             <InputGroupInput readOnly value={kontakVal} placeholder={mode === "jual" ? "Pilih pelanggan" : "Pilih supplier"} className="cursor-default font-medium text-foreground" />
             <InputGroupAddon align="inline-end">
-              <InputGroupButton size="icon-xs" aria-label="Pilih kontak" onClick={() => (mode === "jual" ? setCariLain("pelanggan") : setCariPemasok(true))}>
+              <InputGroupButton size="icon-xs" aria-label="Pilih kontak" className="text-foreground/70 hover:bg-accent hover:text-primary" onClick={() => (mode === "jual" ? setCariLain("pelanggan") : setCariPemasok(true))}>
                 <SearchIcon />
               </InputGroupButton>
             </InputGroupAddon>
@@ -326,14 +345,17 @@ export function Retur({ mode }: { mode: ReturMode }) {
           <InputGroup className="border-foreground/20 bg-background">
             <InputGroupInput readOnly value={salesVal} placeholder="Tanpa sales" className="cursor-default text-foreground" />
             <InputGroupAddon align="inline-end">
-              <InputGroupButton size="icon-xs" aria-label="Pilih sales" onClick={() => setCariLain("sales")}>
+              <InputGroupButton size="icon-xs" aria-label="Pilih sales" className="text-foreground/70 hover:bg-accent hover:text-primary" onClick={() => setCariLain("sales")}>
                 <SearchIcon />
               </InputGroupButton>
             </InputGroupAddon>
           </InputGroup>
         </div>
         <div className="flex flex-col gap-1" data-vb="tCatatan">
-          <Label className="text-xs font-medium text-foreground">Catatan</Label>
+          <Label className="flex items-center justify-between text-xs font-medium text-foreground">
+            <span>Catatan</span>
+            <span className="text-[11px] font-normal text-muted-foreground">Alt+5</span>
+          </Label>
           <Input value={catatan} onChange={(e) => setCatatan(e.target.value)} placeholder="Catatan retur (opsional)" className="border-foreground/20 bg-background text-foreground" />
         </div>
       </div>
@@ -416,37 +438,66 @@ export function Retur({ mode }: { mode: ReturMode }) {
 function PilihPemasok(props: { onPick: (p: Row) => void; onClose: () => void }) {
   const [q, setQ] = useState("");
   const [rows, setRows] = useState<Row[]>([]);
+  const [sel, setSel] = useState<string | null>(null);
+  const root = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
-    const t = setTimeout(() => api.masterList("mdpemasok", { search: q, limit: 100, onlyActive: true, sort: "namapemasok" }).then((r) => setRows(r.rows)).catch(() => setRows([])), 150);
-    return () => clearTimeout(t);
+    let batal = false;
+    const t = setTimeout(() => {
+      api.masterList("mdpemasok", { search: q, limit: 100, onlyActive: true, sort: "namapemasok" })
+        .then((r) => {
+          if (batal) return;
+          setRows(r.rows);
+          setSel((cur) => (r.rows.some((x) => x.kodepemasok === cur) ? cur : r.rows[0]?.kodepemasok ?? null));
+        })
+        .catch(() => !batal && setRows([]));
+    }, 150);
+    return () => { batal = true; clearTimeout(t); };
   }, [q]);
+
+  const ambil = (p?: Row) => {
+    const x = p ?? rows.find((y) => y.kodepemasok === sel) ?? rows[0];
+    if (x) props.onPick(x);
+  };
+
+  const cols: GridCol<Row>[] = [
+    { title: "Kode", width: 120, render: (r) => <span className="font-mono">{r.kodepemasok}</span>, sortValue: (r) => String(r.kodepemasok ?? "") },
+    { title: "Nama Supplier", width: 280, render: (r) => r.namapemasok },
+  ];
+
   return (
-    <Modal title="Cari Supplier" onClose={props.onClose}>
-      <Input autoFocus placeholder="Ketik nama atau kode supplier" value={q} onChange={(e) => setQ(e.target.value)}
-        onKeyDown={(e) => { if (e.key === "Enter" && rows[0]) props.onPick(rows[0]); }} />
-      <div className="tp-scroll-always h-75 rounded-md border border-border bg-card font-sans text-xs text-foreground [&>[data-slot=table-container]]:overflow-visible">
-        <Table className="table-fixed border-separate border-spacing-0">
-          <colgroup><col className="w-[28%]" /><col /></colgroup>
-          <TableHeader>
-            <TableRow className="border-b border-border bg-muted hover:bg-muted">
-              <TableHead className="sticky top-0 z-20 h-7 border-r border-border bg-muted px-2 text-left text-xs font-semibold text-foreground">Kode</TableHead>
-              <TableHead className="sticky top-0 z-20 h-7 bg-muted px-2 text-left text-xs font-semibold text-foreground">Nama Supplier</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {rows.map((r) => (
-              <TableRow key={r.kodepemasok} onClick={() => props.onPick(r)} className="cursor-pointer border-b border-border hover:bg-muted">
-                <TableCell className="h-7 truncate border-r border-border px-2 py-0 font-mono">{r.kodepemasok}</TableCell>
-                <TableCell className="h-7 truncate px-2 py-0">{r.namapemasok}</TableCell>
-              </TableRow>
-            ))}
-            {rows.length === 0 && (
-              <TableRow className="border-0 hover:bg-transparent">
-                <TableCell colSpan={2} className="p-4 text-center text-muted-foreground">Supplier yang Anda cari tidak ditemukan.</TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
+    <Modal
+      title="Cari Supplier"
+      onClose={props.onClose}
+      footer={
+        <>
+          <Button type="button" variant="outline" onClick={props.onClose}>Tutup <Kbd>Esc</Kbd></Button>
+          <Button type="button" disabled={!sel} onClick={() => ambil()}>Pilih <Kbd className="bg-primary-foreground/15 text-primary-foreground">Enter</Kbd></Button>
+        </>
+      }
+    >
+      <div ref={root} className="flex flex-col gap-2.5">
+        <Input
+          autoFocus
+          placeholder="Ketik nama atau kode supplier"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") { e.preventDefault(); ambil(); }
+            else if (e.key === "ArrowDown" && rows.length) {
+              e.preventDefault();
+              root.current?.querySelector<HTMLElement>('[data-slot="vbg"], .vbg')?.focus();
+            }
+          }}
+        />
+        <div className="relative h-75">
+          <VbGrid cols={cols} rows={rows} rowKey={(r) => String(r.kodepemasok)} selected={sel} onSelect={setSel} onOpen={ambil} />
+          {rows.length === 0 && (
+            <div className="pointer-events-none absolute inset-x-0 top-[30px] bottom-0 grid place-items-center px-6 text-center text-sm text-muted-foreground">
+              Supplier yang Anda cari tidak ditemukan.
+            </div>
+          )}
+        </div>
       </div>
     </Modal>
   );
