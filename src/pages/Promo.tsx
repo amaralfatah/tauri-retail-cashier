@@ -7,6 +7,7 @@ import { api, errText, Row } from "../api";
 import { inventoriApi, PromoJenis } from "../api/inventori";
 import { useApp } from "../appContext";
 import { CariBarang } from "../components/CariBarang";
+import { EntryGrid, type EntryGridCol, GridKodeInput } from "../components/EntryGrid";
 import { rp, today } from "../format";
 import { useMsgBox } from "../vb/VbGrid";
 import { tglId2Iso, tglIso2Id } from "./inventoriLib";
@@ -173,17 +174,20 @@ export function Promo({ jenis }: { jenis: PromoJenis }) {
       onBlur={() => { const iso = tglId2Iso(r[key]); if (iso) patch(r.uid, { [key]: tglIso2Id(iso) } as Partial<R>); }} />
   );
   const kode = (r: R, field: Kode) => (
-    <input data-slot="grid-input" value={r[field]} autoComplete="off" onChange={(e) => {
-      // Kode berubah: nama dan harga lama dibuang supaya barang baru dicari lagi saat Enter atau pindah kolom.
-      const v = e.target.value;
-      patch(r.uid, (field === "kodebarang" ? { kodebarang: v, namabarang: "", hrgnormal: 0 } : { kodebonus: v, namabonus: "" }) as Partial<R>);
-    }}
+    <GridKodeInput
+      value={r[field]}
+      onSearch={() => setCari({ uid: r.uid, field })}
+      onChange={(e) => {
+        // Kode berubah: nama dan harga lama dibuang supaya barang baru dicari lagi saat Enter atau pindah kolom.
+        const v = e.target.value;
+        patch(r.uid, (field === "kodebarang" ? { kodebarang: v, namabarang: "", hrgnormal: 0 } : { kodebonus: v, namabonus: "" }) as Partial<R>);
+      }}
       onKeyDown={(e) => {
-        if (e.key === "F10") { e.preventDefault(); setCari({ uid: r.uid, field }); }
-        else if (e.key === "Enter" && r[field].trim() && !(field === "kodebarang" ? r.namabarang : r.namabonus)) { e.preventDefault(); void cariKode(r.uid, field, r[field]); }
+        if (e.key === "Enter" && r[field].trim() && !(field === "kodebarang" ? r.namabarang : r.namabonus)) { e.preventDefault(); void cariKode(r.uid, field, r[field]); }
       }}
       onBlur={() => { if (r[field].trim() && !(field === "kodebarang" ? r.namabarang : r.namabonus)) void cariKode(r.uid, field, r[field]); }}
-      onDoubleClick={() => setCari({ uid: r.uid, field })} />
+      onDoubleClick={() => setCari({ uid: r.uid, field })}
+    />
   );
   const num = (r: R, key: "minbeli" | "jmlbonus" | "minbelanja") => !r.kodebarang ? null : (
     <NumInput className="r" value={r[key]} onChange={(v) => patch(r.uid, { [key]: v } as Partial<R>)} />
@@ -240,20 +244,24 @@ export function Promo({ jenis }: { jenis: PromoJenis }) {
         </tr>,
       );
     }
+    const gridCols: EntryGridCol[] = [
+      { label: "No", width: 4, align: "right" },
+      ...cols.map((c) => ({ label: c.t, width: c.w * 0.96, align: (c.r ? "right" : "left") as EntryGridCol["align"] })),
+    ];
     return (
-      <div className="tj-grid vb-modern" ref={gridRef}
+      <EntryGrid
+        cols={gridCols}
+        colKey={jenis}
+        gridRef={gridRef}
         onKeyDown={(e) => {
           if (e.key !== "Enter" || !(e.target instanceof HTMLInputElement)) return;
           const all = [...(gridRef.current?.querySelectorAll<HTMLInputElement>("tbody input") ?? [])];
           const at = all.indexOf(e.target);
           if (at >= 0 && all[at + 1]) { e.preventDefault(); all[at + 1].focus(); all[at + 1].select(); }
-        }}>
-        <table>
-          <colgroup><col style={{ width: "4%" }} />{cols.map((c, i) => <col key={i} style={{ width: `${c.w * 0.96}%` }} />)}</colgroup>
-          <thead><tr><th className="r">No</th>{cols.map((c, i) => <th key={i} className={c.r ? "r" : "text-left"}>{c.t}</th>)}</tr></thead>
-          <tbody>{trs}</tbody>
-        </table>
-      </div>
+        }}
+      >
+        {trs}
+      </EntryGrid>
     );
   };
 

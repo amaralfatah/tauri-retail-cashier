@@ -9,6 +9,7 @@ import { api, errText, Row } from "../api";
 import { inventoriApi } from "../api/inventori";
 import { useApp } from "../appContext";
 import { CariBarang } from "../components/CariBarang";
+import { EntryGrid, type EntryGridCol, GridKodeInput } from "../components/EntryGrid";
 import { qty, today } from "../format";
 import { useMsgBox } from "../vb/VbGrid";
 import { CariMaster } from "./keuanganLib";
@@ -21,8 +22,18 @@ interface Item { uid: number; b: Row; awal: number }
 let uidSeq = 0;
 const NOT_FOUND = "Data tidak ditemukan, atau barang tidak aktif.";
 
-/** Lebar kolom (No, Kode, Nama Barang, Satuan, Stok Awal, Stok Masuk, Stok Keluar, Stok Opname, Stok Akhir) dalam persen. */
-const COLS = [4, 12, 26, 7, 11, 10, 10, 10, 10];
+/** Kolom tabel stok awal (lebar dalam persen). */
+const COLS: EntryGridCol[] = [
+  { label: "No", width: 4, align: "right" },
+  { label: "Kode / Barcode", width: 12, align: "left" },
+  { label: "Nama Barang", width: 26, align: "left" },
+  { label: "Satuan", width: 7, align: "left" },
+  { label: "Stok Awal", width: 11, align: "right" },
+  { label: "Stok Masuk", width: 10, align: "right" },
+  { label: "Stok Keluar", width: 10, align: "right" },
+  { label: "Stok Opname", width: 10, align: "right" },
+  { label: "Stok Akhir", width: 10, align: "right" },
+];
 
 export function StokAwal() {
   const { user, go } = useApp();
@@ -123,11 +134,14 @@ export function StokAwal() {
           <tr key={`e${i}`}>
             <td className="no">{i + 1}</td>
             <td className="kd">{i === items.length && (
-              <input ref={scanRef} data-slot="grid-input" value={scan} autoComplete="off" autoFocus onChange={(e) => setScan(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") { e.preventDefault(); void onScan(); }
-                  else if (e.key === "F10") { e.preventDefault(); setCari(true); }
-                }} />
+              <GridKodeInput
+                inputRef={scanRef}
+                value={scan}
+                autoFocus
+                onChange={(e) => setScan(e.target.value)}
+                onSearch={() => setCari(true)}
+                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void onScan(); } }}
+              />
             )}</td>
             <td /><td /><td /><td /><td /><td /><td />
           </tr>,
@@ -153,18 +167,16 @@ export function StokAwal() {
       );
     }
     return (
-      <div className="tj-grid vb-modern" tabIndex={0} ref={gridRef} onKeyDown={onKeyDown}
+      <EntryGrid
+        cols={COLS}
+        gridRef={gridRef}
+        onKeyDown={onKeyDown}
         onKeyDownCapture={(e) => {
           if (e.key === "Enter" && e.target instanceof HTMLInputElement && e.target.dataset.awal) { e.preventDefault(); scanRef.current?.focus(); }
-        }}>
-        <table>
-          <colgroup>{COLS.map((c, i) => <col key={i} style={{ width: `${c}%` }} />)}</colgroup>
-          <thead>
-            <tr><th className="r">No</th><th className="text-left">Kode / Barcode</th><th className="text-left">Nama Barang</th><th className="text-left">Satuan</th><th className="r">Stok Awal</th><th className="r">Stok Masuk</th><th className="r">Stok Keluar</th><th className="r">Stok Opname</th><th className="r">Stok Akhir</th></tr>
-          </thead>
-          <tbody>{rows}</tbody>
-        </table>
-      </div>
+        }}
+      >
+        {rows}
+      </EntryGrid>
     );
   };
 

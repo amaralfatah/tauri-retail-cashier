@@ -11,13 +11,14 @@ import { useKasirAktif } from "../lib/kasirAktif";
 import { CariBarang } from "../components/CariBarang";
 import { CariSatuan } from "../components/CariSatuan";
 import { CariTransaksi } from "../components/CariTransaksi";
+import { EntryGrid, type EntryGridCol, GRID_TH, GridSearchButton } from "../components/EntryGrid";
 import { Alert, Modal } from "../components/Modal";
 import { Otentikasi } from "../components/Otentikasi";
 import { cetakStruk, Struk } from "../components/Struk";
 import { StrukPenjualan } from "../components/StrukPenjualan";
 import { addDays, hargaJual, num, qty, rp, tglID, today, Unit, unitsOf } from "../format";
 import { Geom, formCaption } from "../vb/VbForm";
-import { ModalFrame, useMsgBox } from "../vb/VbGrid";
+import { GridCol, ModalFrame, useMsgBox, VbGrid } from "../vb/VbGrid";
 import { BarangEdit } from "./MasterEdit";
 import { PoinMember } from "./Poin";
 import { CariMaster } from "./keuanganLib";
@@ -156,31 +157,11 @@ const COLS = [3.7, 12.4, 43.5, 6.3, 6.3, 13.4, 14.4];
 /** Pembelian: tambah kolom Hrg. Jual dan Margin (sebelum Subtotal). */
 const COLS_BELI = [3.5, 11, 29, 6, 6, 12, 12, 9, 11.5];
 
-function Lens({ onClick, title }: { onClick?: () => void; title: string }) {
-  return (
-    <Button
-      type="button"
-      variant="ghost"
-      size="icon-xs"
-      tabIndex={-1}
-      aria-label={title}
-      title={title}
-      onMouseDown={(e) => e.preventDefault()}
-      onClick={onClick}
-      className="absolute top-1/2 right-0.5 size-4 -translate-y-1/2 rounded-xs text-ring hover:bg-accent hover:text-ring"
-    >
-      <SearchIcon className="size-3" />
-    </Button>
-  );
-}
-
 /** Bingkai sel aktif ala spreadsheet: garis biru 2px + pegangan kotak di pojok kanan bawah. */
 const ACT_CELL =
   "relative z-10 overflow-visible bg-card p-0! before:pointer-events-none before:absolute before:-inset-px before:z-10 before:border-2 before:border-ring after:pointer-events-none after:absolute after:-right-0.75 after:-bottom-0.75 after:z-20 after:size-1.5 after:border after:border-card after:bg-ring";
 const GRID_INPUT =
   "h-full! w-full rounded-none border-0 bg-transparent dark:bg-transparent read-only:bg-transparent dark:read-only:bg-transparent px-1.5! py-0! text-sm text-foreground shadow-none focus-visible:ring-0 md:text-sm";
-const GRID_TH =
-  "sticky top-0 z-20 h-8! truncate border-r border-b border-foreground/20 bg-muted px-2! py-0! text-[13px] font-semibold tracking-tight text-foreground select-none last:border-r-0";
 const GRID_TD =
   "h-7! truncate border-r border-b border-foreground/15 px-2! py-0! text-sm text-foreground tabular-nums last:border-r-0";
 const GRID_TD_EMPTY =
@@ -218,33 +199,6 @@ function DetailGrid(props: {
   const [col, setCol] = useState<Kol>("jml");
   const [boxH, setBoxH] = useState(460);
   const defaultCols = props.jual ? COLS : COLS_BELI;
-  const [colWidths, setColWidths] = useState<number[]>(() => [...defaultCols]);
-  useEffect(() => { setColWidths([...defaultCols]); }, [props.jual]); // eslint-disable-line react-hooks/exhaustive-deps
-  const startResize = (ci: number) => (ev: React.MouseEvent) => {
-    ev.preventDefault();
-    ev.stopPropagation();
-    const totalW = props.gridRef.current?.clientWidth || 800;
-    const startX = ev.clientX;
-    const startW = [...colWidths];
-    const minPct = Math.max(3, (36 / totalW) * 100);
-    const onMove = (m: MouseEvent) => {
-      const dxPct = ((m.clientX - startX) / totalW) * 100;
-      const pair = startW[ci] + startW[ci + 1];
-      const nextA = Math.min(pair - minPct, Math.max(minPct, startW[ci] + dxPct));
-      const next = [...startW];
-      next[ci] = nextA;
-      next[ci + 1] = pair - nextA;
-      setColWidths(next);
-    };
-    const onUp = () => {
-      document.body.style.cursor = "";
-      window.removeEventListener("mousemove", onMove);
-      window.removeEventListener("mouseup", onUp);
-    };
-    document.body.style.cursor = "col-resize";
-    window.addEventListener("mousemove", onMove);
-    window.addEventListener("mouseup", onUp);
-  };
   useEffect(() => {
     if (g || !props.gridRef.current) return;
     const el = props.gridRef.current;
@@ -372,7 +326,7 @@ function DetailGrid(props: {
                     onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); props.entry!.onEnter(); } }}
                     className={cn(GRID_INPUT, "pr-6!")}
                   />
-                  {entryActive && <Lens title="Cari barang [F10]" onClick={props.entry!.onCari} />}
+                  {entryActive && <GridSearchButton title="Cari barang [F10]" onClick={props.entry!.onCari} />}
                 </div>
               )}
             </TableCell>
@@ -401,7 +355,7 @@ function DetailGrid(props: {
             {act("kode") ? (
               <div className="relative h-full">
                 <Input readOnly data-act="kode" value={kodeTampil} className={cn(GRID_INPUT, "cursor-default pr-6!")} />
-                <Lens title="Cari barang [F10]" onClick={() => props.onCariKode(l.key)} />
+                <GridSearchButton title="Cari barang [F10]" onClick={() => props.onCariKode(l.key)} />
               </div>
             ) : kodeTampil}
           </TableCell>
@@ -425,7 +379,7 @@ function DetailGrid(props: {
             {act("satuan") ? (
               <div className="relative h-full">
                 <Input readOnly data-act="satuan" value={l.units[l.ui].satuan} className={cn(GRID_INPUT, "cursor-default pr-6! text-center")} />
-                <Lens title="Cari satuan" onClick={() => props.onCariSatuan(l.key)} />
+                <GridSearchButton title="Cari satuan" onClick={() => props.onCariSatuan(l.key)} />
               </div>
             ) : l.units[l.ui].satuan}
           </TableCell>
@@ -479,47 +433,29 @@ function DetailGrid(props: {
       );
     }
 
-    const headers: { label: string; align: string }[] = [
-      { label: "No", align: "text-center" },
-      { label: "Kode / Barcode", align: "text-left" },
-      { label: "Nama Barang", align: "text-left" },
-      { label: "Satuan", align: "text-center" },
-      { label: "Jml", align: "text-right" },
-      { label: props.jual ? "Hrg. Jual" : "Hrg. Beli", align: "text-right" },
-      ...(!props.jual ? [{ label: "Hrg. Jual", align: "text-right" }, { label: "Margin", align: "text-right" }] : []),
-      { label: "Subtotal", align: "text-right" },
+    const headers: { label: string; align: EntryGridCol["align"] }[] = [
+      { label: "No", align: "center" },
+      { label: "Kode / Barcode", align: "left" },
+      { label: "Nama Barang", align: "left" },
+      { label: "Satuan", align: "center" },
+      { label: "Jml", align: "right" },
+      { label: props.jual ? "Hrg. Jual" : "Hrg. Beli", align: "right" },
+      ...(!props.jual ? [{ label: "Hrg. Jual", align: "right" as const }, { label: "Margin", align: "right" as const }] : []),
+      { label: "Subtotal", align: "right" },
     ];
+    const gridCols: EntryGridCol[] = headers.map((h, i) => ({ ...h, width: defaultCols[i] }));
 
     return (
-      <div
-        tabIndex={0}
-        ref={props.gridRef}
+      <EntryGrid
+        cols={gridCols}
+        colKey={props.jual ? "jual" : "beli"}
+        gridRef={props.gridRef}
         onKeyDown={onKeyDown}
         onKeyDownCapture={onKeyDownCapture}
-        className="tp-scroll-always relative size-full rounded-md border border-border bg-card font-sans text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring/40 [&>[data-slot=table-container]]:overflow-visible [&_td]:py-0! [&_th]:py-0!"
+        cellStyles={false}
       >
-        <Table className="table-fixed border-separate border-spacing-0">
-          <colgroup>{colWidths.map((c, i) => <col key={i} style={{ width: `${c}%` }} />)}</colgroup>
-          <TableHeader>
-            <TableRow className="border-0 hover:bg-transparent">
-              {headers.map((h, i) => (
-                <TableHead key={i} className={cn(GRID_TH, h.align)}>
-                  {h.label}
-                  {i < headers.length - 1 && (
-                    <span
-                      onMouseDown={startResize(i)}
-                      onDoubleClick={() => setColWidths([...defaultCols])}
-                      title="Seret untuk ubah lebar kolom (klik ganda untuk reset)"
-                      className="absolute top-0 right-0 z-20 h-full w-1.5 cursor-col-resize hover:bg-primary/40"
-                    />
-                  )}
-                </TableHead>
-              ))}
-            </TableRow>
-          </TableHeader>
-          <TableBody>{rows}</TableBody>
-        </Table>
-      </div>
+        {rows}
+      </EntryGrid>
     );
 }
 
@@ -623,7 +559,11 @@ function CariDataDialog(props: { jenis: CariJenis; onAmbil: (nomor: string) => v
     return () => { batal = true; clearTimeout(t); };
   }, [props.jenis, q, dari, sampai, muat, nomorKey]);
 
-  const ambil = () => { if (sel) props.onAmbil(sel); else setErr("Pilih dulu data yang akan diambil."); };
+  const ambil = (r?: Row) => {
+    const no = r ? r[nomorKey] : sel;
+    if (no) props.onAmbil(no);
+    else setErr("Pilih dulu data yang akan diambil.");
+  };
   // Seperti aslinya: Kasir dan Lainnya login lewat Verifikasi Admin dulu, baru ditanya "akan dihapus?".
   const mulaiHapus = () => {
     if (!sel) return;
@@ -644,17 +584,19 @@ function CariDataDialog(props: { jenis: CariJenis; onAmbil: (nomor: string) => v
     }
   };
 
-  const move = (d: number) => {
-    const i = list.findIndex((x) => x[nomorKey] === sel);
-    const n = list[Math.max(0, Math.min(list.length - 1, i + d))];
-    if (n) setSel(n[nomorKey]);
-  };
-
-  const onListKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "ArrowDown") { e.preventDefault(); move(1); }
-    else if (e.key === "ArrowUp") { e.preventDefault(); move(-1); }
-    else if (e.key === "Enter") { e.preventDefault(); ambil(); }
-  };
+  const cols: GridCol<Row>[] = [
+    { title: props.jenis === "pending" ? "No. Pending" : "No. Order", width: 150, render: (r) => r[nomorKey] },
+    {
+      title: "Tanggal",
+      width: 100,
+      align: "center",
+      render: (r) => tglID(props.jenis === "pending" ? r.tgltrans : r.tglorder),
+      sortValue: (r) => String((props.jenis === "pending" ? r.tgltrans : r.tglorder) ?? ""),
+    },
+    { title: kontakLabel, width: 220, render: (r) => r.kontak },
+    { title: "Kasir", width: 120, render: (r) => r.kasir },
+    { title: "Jumlah", width: 120, align: "right", render: (r) => rp(r.jmltrans), sortValue: (r) => Number(r.jmltrans) || 0 },
+  ];
 
   const apa = props.jenis === "pending" ? "data pending" : "order";
   const judul = props.jenis === "pending" ? "Data Transaksi Pending" : props.jenis === "orderjual" ? "Cari Order Penjualan" : "Cari Order Pembelian";
@@ -666,7 +608,7 @@ function CariDataDialog(props: { jenis: CariJenis; onAmbil: (nomor: string) => v
         if (e.key === "Enter") { e.preventDefault(); e.stopPropagation(); setMuat((n) => n + 1); }
         else if (e.key === "ArrowDown" && e.target.closest('[data-vb="tData"]') && list.length) {
           e.preventDefault();
-          document.querySelector<HTMLElement>('[data-slot="cari-data"], .cari-data')?.focus();
+          e.currentTarget.querySelector<HTMLElement>('[data-slot="vbg"], .vbg')?.focus();
         }
       }}
     >
@@ -690,7 +632,7 @@ function CariDataDialog(props: { jenis: CariJenis; onAmbil: (nomor: string) => v
             <Button type="button" variant="outline" className="h-8 text-xs" data-vb="cClose" onClick={props.onClose}>
               Tutup <Kbd>Esc</Kbd>
             </Button>
-            <Button type="button" className="h-8 text-xs" data-vb="cAmbil" disabled={!sel} onClick={ambil}>
+            <Button type="button" className="h-8 text-xs" data-vb="cAmbil" disabled={!sel} onClick={() => ambil()}>
               Ambil <Kbd className="bg-primary-foreground/15 text-primary-foreground">Enter</Kbd>
             </Button>
           </>
@@ -723,54 +665,13 @@ function CariDataDialog(props: { jenis: CariJenis; onAmbil: (nomor: string) => v
             </Button>
           </div>
 
-          <div
-            data-slot="cari-data"
-            data-vb="lsData"
-            tabIndex={0}
-            onKeyDown={onListKeyDown}
-            className="cari-data tp-scroll-always min-h-0 flex-1 rounded-md border border-border bg-card font-sans text-xs text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring/40 [&>[data-slot=table-container]]:overflow-visible"
-          >
-            <Table className="table-fixed border-separate border-spacing-0">
-              <TableHeader>
-                <TableRow className="border-b border-border bg-muted hover:bg-muted">
-                  <TableHead className="sticky top-0 z-20 h-7 w-[150px] border-r border-border bg-muted px-2 text-left text-xs font-semibold text-foreground">{props.jenis === "pending" ? "No. Pending" : "No. Order"}</TableHead>
-                  <TableHead className="sticky top-0 z-20 h-7 w-[100px] border-r border-border bg-muted px-2 text-center text-xs font-semibold text-foreground">Tanggal</TableHead>
-                  <TableHead className="sticky top-0 z-20 h-7 border-r border-border bg-muted px-2 text-left text-xs font-semibold text-foreground">{kontakLabel}</TableHead>
-                  <TableHead className="sticky top-0 z-20 h-7 w-[120px] border-r border-border bg-muted px-2 text-left text-xs font-semibold text-foreground">Kasir</TableHead>
-                  <TableHead className="sticky top-0 z-20 h-7 w-[120px] bg-muted px-2 text-right text-xs font-semibold text-foreground">Jumlah</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {list.map((r) => {
-                  const cur = r[nomorKey] === sel;
-                  return (
-                    <TableRow
-                      key={r[nomorKey]}
-                      data-state={cur ? "selected" : undefined}
-                      onMouseDown={() => setSel(r[nomorKey])}
-                      onDoubleClick={ambil}
-                      className={cn(
-                        "cursor-default border-b border-border",
-                        cur ? "bg-primary text-primary-foreground hover:bg-primary" : "hover:bg-muted",
-                      )}
-                    >
-                      <TableCell className={cn("h-7 truncate border-r px-2 py-0 tabular-nums", cur ? "border-transparent" : "border-border")}>{r[nomorKey]}</TableCell>
-                      <TableCell className={cn("h-7 truncate border-r px-2 py-0 text-center tabular-nums", cur ? "border-transparent" : "border-border")}>{tglID(props.jenis === "pending" ? r.tgltrans : r.tglorder)}</TableCell>
-                      <TableCell className={cn("h-7 truncate border-r px-2 py-0", cur ? "border-transparent" : "border-border")}>{r.kontak}</TableCell>
-                      <TableCell className={cn("h-7 truncate border-r px-2 py-0", cur ? "border-transparent" : "border-border")}>{r.kasir}</TableCell>
-                      <TableCell className="h-7 truncate px-2 py-0 text-right tabular-nums">{rp(r.jmltrans)}</TableCell>
-                    </TableRow>
-                  );
-                })}
-                {list.length === 0 && (
-                  <TableRow className="border-0 hover:bg-transparent">
-                    <TableCell colSpan={5} className="p-6 text-center text-muted-foreground">
-                      {props.jenis === "pending" ? "Belum ada transaksi yang di-pending." : "Belum ada order yang menunggu diambil."}
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
+          <div className="relative min-h-0 flex-1" data-vb="lsData">
+            <VbGrid cols={cols} rows={list} rowKey={(r) => String(r[nomorKey])} selected={sel} onSelect={setSel} onOpen={ambil} />
+            {list.length === 0 && (
+              <div className="pointer-events-none absolute inset-x-0 top-[30px] bottom-0 grid place-items-center px-6 text-center text-sm text-muted-foreground">
+                {props.jenis === "pending" ? "Belum ada transaksi yang di-pending." : "Belum ada order yang menunggu diambil."}
+              </div>
+            )}
           </div>
         </div>
 
@@ -808,6 +709,7 @@ function CariDataDialog(props: { jenis: CariJenis; onAmbil: (nomor: string) => v
 /** Tombol Stok Min: daftar barang yang stoknya sudah di bawah atau sama dengan stok minimal; pengguna memilih satu per satu. */
 function StokMinDialog(props: { onPick: (b: Row) => void; onClose: () => void }) {
   const [daftar, setDaftar] = useState<Row[] | null>(null);
+  const [sel, setSel] = useState<string | null>(null);
   const [dipilih, setDipilih] = useState<Set<string>>(new Set());
   const [err, setErr] = useState("");
   useEffect(() => {
@@ -818,54 +720,53 @@ function StokMinDialog(props: { onPick: (b: Row) => void; onClose: () => void })
         semua.push(...r.rows);
         if (semua.length >= r.total || r.rows.length === 0) break;
       }
-      setDaftar(semua.filter((b) => b.jenis === "Barang" && Number(b.stokmin) > 0 && Number(b.stokakhir) <= Number(b.stokmin)));
+      const tipis = semua.filter((b) => b.jenis === "Barang" && Number(b.stokmin) > 0 && Number(b.stokakhir) <= Number(b.stokmin));
+      setDaftar(tipis);
+      setSel(tipis[0]?.kodebarang ?? null);
     })().catch((e) => setErr(errText(e)));
   }, []);
+
+  const pilih = (b?: Row) => {
+    const x = b ?? (daftar ?? []).find((y) => y.kodebarang === sel);
+    if (!x) return;
+    props.onPick(x);
+    setDipilih((s) => new Set(s).add(x.kodebarang));
+  };
+
+  const cols: GridCol<Row>[] = [
+    { title: "Kode", width: 110, render: (b) => b.kodebarang },
+    { title: "Nama Barang", width: 260, render: (b) => b.namabarang },
+    { title: "Stok", width: 85, align: "right", render: (b) => qty(b.stokakhir), sortValue: (b) => Number(b.stokakhir) || 0 },
+    { title: "Stok Min", width: 85, align: "right", render: (b) => qty(b.stokmin), sortValue: (b) => Number(b.stokmin) || 0 },
+    { title: "Dipilih", width: 56, align: "center", render: (b) => <span className="font-bold text-primary">{dipilih.has(b.kodebarang) ? "✓" : ""}</span> },
+  ];
+
   return (
-    <Modal title="Stok Minimum" onClose={props.onClose} wide footer={<Button autoFocus onClick={props.onClose}>Tutup</Button>}>
+    <Modal
+      title="Stok Minimum"
+      onClose={props.onClose}
+      wide
+      footer={
+        <>
+          <Button variant="outline" onClick={props.onClose}>Tutup <Kbd>Esc</Kbd></Button>
+          <Button disabled={!sel} onClick={() => pilih()}>Pilih <Kbd className="bg-primary-foreground/15 text-primary-foreground">Enter</Kbd></Button>
+        </>
+      }
+    >
       <Alert>{err}</Alert>
-      <p>Klik barang yang akan dipesan. Jumlahnya bisa Anda ubah di tabel.</p>
-      <div
-        data-slot="cari-data"
-        className="tp-scroll-always h-75 rounded-md border border-border bg-card font-sans text-xs text-foreground [&>[data-slot=table-container]]:overflow-visible"
-      >
-        <Table className="table-fixed border-separate border-spacing-0">
-          <colgroup><col className="w-[18%]" /><col /><col className="w-[14%]" /><col className="w-[14%]" /><col className="w-8" /></colgroup>
-          <TableHeader>
-            <TableRow className="border-b border-border bg-muted hover:bg-muted">
-              <TableHead className="sticky top-0 z-20 h-7 border-r border-border bg-muted px-2 text-left text-xs font-semibold text-foreground">Kode</TableHead>
-              <TableHead className="sticky top-0 z-20 h-7 border-r border-border bg-muted px-2 text-left text-xs font-semibold text-foreground">Nama Barang</TableHead>
-              <TableHead className="sticky top-0 z-20 h-7 border-r border-border bg-muted px-2 text-right text-xs font-semibold text-foreground">Stok</TableHead>
-              <TableHead className="sticky top-0 z-20 h-7 border-r border-border bg-muted px-2 text-right text-xs font-semibold text-foreground">Stok Min</TableHead>
-              <TableHead className="sticky top-0 z-20 h-7 bg-muted px-1 text-center text-xs font-semibold text-foreground" />
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {(daftar ?? []).map((b) => (
-              <TableRow
-                key={b.kodebarang}
-                onClick={() => { props.onPick(b); setDipilih((x) => new Set(x).add(b.kodebarang)); }}
-                className="cursor-pointer border-b border-border hover:bg-muted"
-              >
-                <TableCell className="h-7 truncate border-r border-border px-2 py-0 tabular-nums">{b.kodebarang}</TableCell>
-                <TableCell className="h-7 truncate border-r border-border px-2 py-0">{b.namabarang}</TableCell>
-                <TableCell className="h-7 truncate border-r border-border px-2 py-0 text-right tabular-nums">{qty(b.stokakhir)}</TableCell>
-                <TableCell className="h-7 truncate border-r border-border px-2 py-0 text-right tabular-nums">{qty(b.stokmin)}</TableCell>
-                <TableCell className="h-7 px-1 py-0 text-center font-bold text-primary">{dipilih.has(b.kodebarang) ? "✓" : ""}</TableCell>
-              </TableRow>
-            ))}
-            {daftar && daftar.length === 0 && (
-              <TableRow className="border-0 hover:bg-transparent">
-                <TableCell colSpan={5} className="p-4 text-center text-muted-foreground">Tidak ada barang yang stoknya sudah di bawah stok minimal.</TableCell>
-              </TableRow>
-            )}
-            {!daftar && !err && (
-              <TableRow className="border-0 hover:bg-transparent">
-                <TableCell colSpan={5} className="p-4 text-center text-muted-foreground">Mohon tunggu sebentar.</TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
+      <p>Klik dua kali atau tekan Enter pada barang yang akan dipesan. Jumlahnya bisa Anda ubah di tabel.</p>
+      <div className="relative h-75">
+        <VbGrid cols={cols} rows={daftar ?? []} rowKey={(b) => String(b.kodebarang)} selected={sel} onSelect={setSel} onOpen={pilih} />
+        {daftar && daftar.length === 0 && (
+          <div className="pointer-events-none absolute inset-x-0 top-[30px] bottom-0 grid place-items-center px-6 text-center text-sm text-muted-foreground">
+            Tidak ada barang yang stoknya sudah di bawah stok minimal.
+          </div>
+        )}
+        {!daftar && !err && (
+          <div className="pointer-events-none absolute inset-x-0 top-[30px] bottom-0 grid place-items-center px-6 text-center text-sm text-muted-foreground">
+            Mohon tunggu sebentar.
+          </div>
+        )}
       </div>
     </Modal>
   );
@@ -1688,7 +1589,7 @@ function TransaksiIsi({ mode, order = false }: { mode: Mode; order?: boolean }) 
                 <span>Batal</span>
                 <Kbd className="border border-destructive/35 bg-destructive/10 text-destructive">{jual && !order ? "F6" : "F1"}</Kbd>
               </Button>
-              <Separator orientation="vertical" className="mx-0.5 h-4 bg-border" />
+              <Separator orientation="vertical" className="mx-0.5 h-5 bg-foreground/20 data-vertical:self-center" />
               {!order && (
                 <Button type="button" variant="outline" size="default" data-vb="cAmbilOrder" className={cn(TOMBOL_BAWAH, "h-8 px-2.5 text-xs font-medium")} onClick={() => setModal("ambilorder")}>
                   <span>Ambil Order</span>
@@ -1736,7 +1637,7 @@ function TransaksiIsi({ mode, order = false }: { mode: Mode; order?: boolean }) 
               )}
               {jual && !order && (
                 <>
-                  <Separator orientation="vertical" className="mx-0.5 h-4 bg-border" />
+                  <Separator orientation="vertical" className="mx-0.5 h-5 bg-foreground/20 data-vertical:self-center" />
                   <DropdownMenu>
                     <DropdownMenuTrigger render={<Button type="button" variant="outline" size="default" data-vb="cLainnya" className={cn(TOMBOL_BAWAH, "h-8 gap-1 px-2.5 text-xs font-medium")} />}>
                       Lainnya <ChevronDownIcon className="size-3.5" />

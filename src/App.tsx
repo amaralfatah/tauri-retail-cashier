@@ -332,7 +332,7 @@ export default function App() {
     const Ikon = b.icon;
     return (
       <span key={b.key} className="flex items-center">
-        {showSep && <Separator orientation="vertical" className="mx-1.5 h-4 bg-border/80" />}
+        {showSep && <Separator orientation="vertical" className="ml-1 mr-1.5 h-5 bg-foreground/20 data-vertical:self-center" />}
         <Button
           type="button"
           variant="ghost"
@@ -459,21 +459,23 @@ export default function App() {
         </main>
         <footer className="mdi-status no-print flex h-7 items-center gap-2.5 border-t border-border bg-muted px-3 text-xs text-foreground/80">
           {/* Nama layar yang sedang dibuka (di VB tampil sebagai [Nama Layar] di judul jendela). */}
-          <span className="truncate font-semibold text-foreground" aria-live="polite">{child.caption}</span>
-          <Separator orientation="vertical" className="h-3.5 bg-border" />
-          <span className="flex items-center gap-1 truncate">
+          <span className="shrink-0 truncate font-semibold text-foreground" aria-live="polite">{child.caption}</span>
+          <Separator orientation="vertical" className="h-3.5 bg-foreground/20 data-vertical:self-center" />
+          <span className="flex shrink-0 items-center gap-1">
             <span className="text-muted-foreground">User:</span>
             <span className="font-semibold text-foreground">{user.iduser}</span>
           </span>
-          <Separator orientation="vertical" className="h-3.5 bg-border" />
-          <span className="flex items-center gap-1 truncate">
+          <Separator orientation="vertical" className="h-3.5 bg-foreground/20 data-vertical:self-center" />
+          <span className="flex shrink-0 items-center gap-1">
             <span className="text-muted-foreground">Status:</span>
             <span className="font-semibold text-foreground">{user.level}</span>
           </span>
-          <Separator orientation="vertical" className="h-3.5 bg-border" />
-          <span className="flex-1" />
-          <span className="truncate text-foreground/75" title={dbPath ? `Lokasi data: ${dbPath}` : undefined}>Data tersimpan di komputer ini</span>
-          <Separator orientation="vertical" className="h-3.5 bg-border" />
+          <Separator orientation="vertical" className="h-3.5 bg-foreground/20 data-vertical:self-center" />
+          <span className="flex min-w-0 flex-1 items-center gap-1" title={dbPath ? `Lokasi Data: ${dbPath}` : undefined}>
+            <span className="shrink-0 text-muted-foreground">Lokasi Data:</span>
+            <span className="truncate text-foreground/85">{dbPath || "Data tersimpan di komputer ini"}</span>
+          </span>
+          <Separator orientation="vertical" className="h-3.5 bg-foreground/20 data-vertical:self-center" />
           <Jam />
         </footer>
       </div>
@@ -535,6 +537,6 @@ function Jam() {
   }, []);
   const tgl = now.toLocaleDateString("id-ID", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
   const jam = now.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
-  return <span className="font-semibold text-foreground tabular-nums">{tgl} · {jam}</span>;
+  return <span className="shrink-0 font-semibold text-foreground tabular-nums">{tgl} · {jam}</span>;
 }
 

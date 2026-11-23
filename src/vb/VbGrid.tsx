@@ -27,6 +27,53 @@ function parseIdNumber(s: string): number | null {
   return Number.isFinite(num) ? num : null;
 }
 
+/** Ubah angka format Indonesia (termasuk awalan "Rp ") menjadi number untuk ringkasan bilah status. */
+function parseStatusNumber(s: string): number | null {
+  const cleaned = s.trim().replace(/^Rp\s*/i, "").trim();
+  return parseIdNumber(cleaned);
+}
+
+function loadStoredWidths(key: string): Record<number, number> {
+  try {
+    const raw = window.localStorage.getItem(key);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {};
+    const out: Record<number, number> = {};
+    for (const [k, v] of Object.entries(parsed)) {
+      const idx = Number(k);
+      if (Number.isInteger(idx) && idx >= 0 && typeof v === "number" && Number.isFinite(v) && v >= 40 && v <= 1200) {
+        out[idx] = v;
+      }
+    }
+    return out;
+  } catch {
+    return {};
+  }
+}
+
+function saveStoredWidths(key: string, widths: Record<number, number>) {
+  try {
+    if (Object.keys(widths).length === 0) {
+      window.localStorage.removeItem(key);
+    } else {
+      window.localStorage.setItem(key, JSON.stringify(widths));
+    }
+  } catch {
+    // Abaikan jika localStorage tidak tersedia
+  }
+}
+
+let measureCanvas: HTMLCanvasElement | null = null;
+function measureTextPx(text: string, font: string): number {
+  if (typeof document === "undefined") return text.length * 7;
+  if (!measureCanvas) measureCanvas = document.createElement("canvas");
+  const ctx = measureCanvas.getContext("2d");
+  if (!ctx) return text.length * 7;
+  ctx.font = font;
+  return ctx.measureText(text).width;
+}
+
 /* ---- Tabel gaya Excel / ListView: garis kisi tegas, sortir kolom, ubah lebar kolom, navigasi sel ---- */
 export interface GridCol<T> {
   title: string;
@@ -45,8 +92,10 @@ export function VbGrid<T>(props: {
   onOpen?: (row: T) => void;
   onDelete?: (row: T) => void;
   sortable?: boolean;
+  storageKey?: string;
+  showStatus?: boolean;
 }) {
-  const { cols, rows, rowKey, selected, onSelect, onOpen, onDelete, sortable = true } = props;
+  const { cols, rows, rowKey, selected, onSelect, onOpen, onDelete, sortable = true, storageKey, showStatus = true } = props;
   const ref = useRef<HTMLDivElement>(null);
   const [top, setTop] = useState(0);
   const [vh, setVh] = useState(300);
@@ -54,19 +103,34 @@ export function VbGrid<T>(props: {
   const [focused, setFocused] = useState(false);
   const [selCol, setSelCol] = useState<number | null>(null);
   const [sort, setSort] = useState<{ col: number; dir: "asc" | "desc" } | null>(null);
-  const [customW, setCustomW] = useState<Record<number, number>>({});
+  const [copied, setCopied] = useState(false);
+  const copyTimerRef = useRef<number | null>(null);
 
   const rowH = 28;
   const headH = 30;
   const colsKey = cols.map((c) => c.title).join("|");
+  const effectiveStorageKey = storageKey ?? `tp:vbgrid:${colsKey}`;
+  const [customW, setCustomW] = useState<Record<number, number>>(() => loadStoredWidths(effectiveStorageKey));
   const hasRowNo = cols.length > 0 && (cols[0].title === "No." || cols[0].title === "No");
   const hasFixedFirst = hasRowNo || (cols.length > 0 && cols[0].title === "" && cols[0].width <= 48);
 
+  const prevColsKeyRef = useRef(colsKey);
+  const prevStorageKeyRef = useRef(effectiveStorageKey);
   useEffect(() => {
-    setSort(null);
-    setCustomW({});
-    setSelCol(null);
-  }, [colsKey]);
+    if (prevColsKeyRef.current !== colsKey) {
+      prevColsKeyRef.current = colsKey;
+      setSort(null);
+      setSelCol(null);
+    }
+    if (prevStorageKeyRef.current !== effectiveStorageKey) {
+      prevStorageKeyRef.current = effectiveStorageKey;
+      setCustomW(loadStoredWidths(effectiveStorageKey));
+    }
+  }, [colsKey, effectiveStorageKey]);
+
+  useEffect(() => () => {
+    if (copyTimerRef.current != null) window.clearTimeout(copyTimerRef.current);
+  }, []);
 
   const displayRows = useMemo(() => {
     if (!sort || sort.col < 0 || sort.col >= cols.length) return rows;
@@ -185,12 +249,16 @@ export function VbGrid<T>(props: {
     if (selIdx < 0) return;
     const r = displayRows[selIdx];
     const start = hasRowNo ? 1 : 0;
-    const text = !fullRow && selCol != null && selCol >= start && selCol < cols.length
+    const useSingleCell = !fullRow && selCol !== null && selCol >= 0 && selCol < cols.length;
+    const text = useSingleCell
       ? (isiTeks(cols[selCol].render(r, selIdx)) ?? "")
       : cols.slice(start).map((c) => isiTeks(c.render(r, selIdx)) ?? "").join("\t");
     if (!navigator.clipboard?.writeText) return;
     navigator.clipboard.writeText(text).then(() => {
-      toast.success(!fullRow && selCol != null && selCol >= start ? "Isi sel disalin" : "Baris disalin (format Excel)", { duration: 1500 });
+      setCopied(true);
+      if (copyTimerRef.current != null) window.clearTimeout(copyTimerRef.current);
+      copyTimerRef.current = window.setTimeout(() => setCopied(false), 1500);
+      toast.success(useSingleCell ? "Isi sel disalin" : "Baris disalin (format Excel)", { duration: 1500 });
     }).catch(() => undefined);
   };
 
@@ -208,22 +276,79 @@ export function VbGrid<T>(props: {
     e.stopPropagation();
     const startX = e.clientX;
     const startW = colWidths[colIdx];
+    let latestW = startW;
+    let moved = false;
     const onMove = (ev: MouseEvent) => {
-      setCustomW((prev) => ({ ...prev, [colIdx]: Math.max(44, startW + (ev.clientX - startX)) }));
+      moved = true;
+      latestW = Math.max(44, Math.round(startW + (ev.clientX - startX)));
+      setCustomW((prev) => ({ ...prev, [colIdx]: latestW }));
     };
     const onUp = () => {
       window.removeEventListener("mousemove", onMove);
       window.removeEventListener("mouseup", onUp);
+      if (moved) {
+        setCustomW((prev) => {
+          const next = { ...prev, [colIdx]: latestW };
+          saveStoredWidths(effectiveStorageKey, next);
+          return next;
+        });
+      }
     };
     window.addEventListener("mousemove", onMove);
     window.addEventListener("mouseup", onUp);
   };
 
+  const autoFitCol = (colIdx: number) => {
+    const col = cols[colIdx];
+    if (!col) return;
+    const headFont = "600 12px Inter, system-ui, -apple-system, sans-serif";
+    const cellFont = "400 12px Inter, system-ui, -apple-system, sans-serif";
+    let maxW = measureTextPx(col.title, headFont) + (sortable ? 14 : 0);
+    const limit = Math.min(displayRows.length, 200);
+    for (let idx = 0; idx < limit; idx++) {
+      const txt = isiTeks(col.render(displayRows[idx], idx));
+      if (txt) {
+        const w = measureTextPx(txt, cellFont);
+        if (w > maxW) maxW = w;
+      }
+    }
+    const fitted = Math.max(48, Math.min(520, Math.ceil(maxW + 24)));
+    setCustomW((prev) => {
+      const next = { ...prev, [colIdx]: fitted };
+      saveStoredWidths(effectiveStorageKey, next);
+      return next;
+    });
+  };
+
+  const colSummary = useMemo(() => {
+    if (!showStatus || selCol === null || selCol < 0 || selCol >= cols.length) return null;
+    const col = cols[selCol];
+    if (!col || col.align !== "right") return null;
+    let sum = 0;
+    let count = 0;
+    let hasDecimal = false;
+    for (let idx = 0; idx < displayRows.length; idx++) {
+      const txt = isiTeks(col.render(displayRows[idx], idx));
+      if (!txt) continue;
+      const num = parseStatusNumber(txt);
+      if (num !== null) {
+        sum += num;
+        count += 1;
+        if (!Number.isInteger(num)) hasDecimal = true;
+      }
+    }
+    if (count < 2) return null;
+    const formatted = sum.toLocaleString("id-ID", {
+      maximumFractionDigits: hasDecimal ? 2 : 0,
+    });
+    return { title: col.title, formatted };
+  }, [showStatus, selCol, cols, displayRows]);
+
   const onKey = (e: React.KeyboardEvent) => {
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "c") {
-      if (selIdx >= 0) {
+      if (!window.getSelection()?.toString() && selIdx >= 0) {
         e.preventDefault();
-        copySelected(e.shiftKey || selCol == null);
+        copySelected(e.shiftKey || selCol === null);
       }
       return;
     }
@@ -250,115 +375,137 @@ export function VbGrid<T>(props: {
   };
 
   return (
-    <div
-      data-slot="vbg"
-      ref={ref}
-      tabIndex={0}
-      onFocus={() => setFocused(true)}
-      onBlur={() => setFocused(false)}
-      onScroll={(e) => setTop(e.currentTarget.scrollTop)}
-      onKeyDown={onKey}
-      className="vbg tp-scroll-always relative size-full rounded-md border border-foreground/22 bg-card font-sans text-xs text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-    >
+    <div className="flex h-full w-full flex-col overflow-hidden rounded-md border border-border bg-card font-sans text-xs text-foreground focus-within:ring-2 focus-within:ring-ring/40">
       <div
-        className="sticky top-0 z-10 flex min-w-full border-b border-foreground/25 bg-muted select-none"
-        style={{ width: total, height: headH }}
+        data-slot="vbg"
+        ref={ref}
+        tabIndex={0}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
+        onScroll={(e) => setTop(e.currentTarget.scrollTop)}
+        onKeyDown={onKey}
+        className="vbg tp-scroll-always relative min-h-0 flex-1 overflow-auto outline-none"
       >
-        {cols.map((c, i) => {
-          const canSort = sortable && !(hasRowNo && i === 0);
-          const isSorted = sort?.col === i;
-          return (
-            <div
-              key={i}
-              className={cn(
-                "relative flex flex-none items-center overflow-hidden border-r border-foreground/20 px-2 font-semibold text-foreground last:border-r-0",
-                canSort && "cursor-pointer hover:bg-foreground/6",
-                isSorted && "bg-primary/10 text-foreground",
-                c.align === "right" && "justify-end text-right",
-                c.align === "center" && "justify-center text-center",
-              )}
-              style={{ width: colWidths[i] }}
-              title={canSort ? `${c.title} (klik untuk urutkan, tarik batas untuk ubah lebar)` : c.title}
-              data-c={i}
-              onClick={() => toggleSort(i)}
-            >
-              <span className="truncate whitespace-nowrap">{c.title}</span>
-              {isSorted && (
-                sort.dir === "asc"
-                  ? <ArrowUpIcon className="ml-1 size-3 flex-none text-primary" />
-                  : <ArrowDownIcon className="ml-1 size-3 flex-none text-primary" />
-              )}
+        <div
+          className="sticky top-0 z-10 flex min-w-full border-b border-foreground/25 bg-muted select-none"
+          style={{ width: total, height: headH }}
+        >
+          {cols.map((c, i) => {
+            const canSort = sortable && !(hasRowNo && i === 0);
+            const isSorted = sort?.col === i;
+            const isActiveCol = selIdx >= 0 && selCol === i;
+            return (
               <div
-                role="separator"
-                aria-orientation="vertical"
-                className="absolute top-0 right-0 bottom-0 w-1.5 cursor-col-resize hover:bg-primary/50"
-                onMouseDown={(e) => startResize(e, i)}
-                onClick={(e) => e.stopPropagation()}
-                onDoubleClick={(e) => {
-                  e.stopPropagation();
-                  setCustomW((prev) => {
-                    const next = { ...prev };
-                    delete next[i];
-                    return next;
-                  });
-                }}
-              />
-            </div>
-          );
-        })}
+                key={i}
+                className={cn(
+                  "relative flex flex-none items-center overflow-hidden border-r border-foreground/20 px-2 font-semibold text-foreground last:border-r-0",
+                  canSort && "cursor-pointer hover:bg-foreground/6",
+                  isSorted && "bg-primary/10 text-foreground",
+                  isActiveCol && "bg-primary/15 border-b-2 border-b-primary",
+                  c.align === "right" && "justify-end text-right",
+                  c.align === "center" && "justify-center text-center",
+                )}
+                style={{ width: colWidths[i] }}
+                title={canSort ? `${c.title} (klik untuk urutkan, tarik batas untuk ubah lebar)` : c.title}
+                data-c={i}
+                onClick={() => toggleSort(i)}
+              >
+                <span className="truncate whitespace-nowrap">{c.title}</span>
+                {isSorted && (
+                  sort.dir === "asc"
+                    ? <ArrowUpIcon className="ml-1 size-3 flex-none text-primary" />
+                    : <ArrowDownIcon className="ml-1 size-3 flex-none text-primary" />
+                )}
+                <div
+                  role="separator"
+                  aria-orientation="vertical"
+                  title="Tarik untuk ubah lebar, klik ganda untuk pas otomatis"
+                  className="absolute top-0 right-0 bottom-0 w-1.5 cursor-col-resize hover:bg-primary/50"
+                  onMouseDown={(e) => startResize(e, i)}
+                  onClick={(e) => e.stopPropagation()}
+                  onDoubleClick={(e) => {
+                    e.stopPropagation();
+                    autoFitCol(i);
+                  }}
+                />
+              </div>
+            );
+          })}
+        </div>
+        <div className="relative min-w-full" style={{ width: total, height: displayRows.length * rowH }}>
+          {displayRows.slice(first, last).map((r, k) => {
+            const i = first + k;
+            const key = rowKey(r);
+            const isSel = key === selected;
+            return (
+              <div
+                key={key}
+                data-state={isSel ? "selected" : undefined}
+                className={cn(
+                  "absolute right-0 left-0 flex cursor-default border-b border-foreground/15 transition-colors",
+                  isSel
+                    ? focused
+                      ? "border-primary/40 bg-primary font-medium text-primary-foreground"
+                      : "border-primary/30 bg-primary/80 font-medium text-primary-foreground"
+                    : i % 2 === 1
+                      ? "bg-muted/25 hover:bg-muted/60"
+                      : "hover:bg-muted/60",
+                )}
+                style={{ top: i * rowH, height: rowH }}
+                onDoubleClick={() => onOpen?.(r)}
+              >
+                {cols.map((c, j) => {
+                  const isRowNo = hasRowNo && j === 0;
+                  const isActiveCell = isSel && selCol === j;
+                  return (
+                    <div
+                      key={j}
+                      className={cn(
+                        "flex flex-none items-center overflow-hidden border-r border-foreground/15 px-2 tabular-nums last:border-r-0",
+                        isRowNo && !isSel && "bg-muted/40 text-muted-foreground",
+                        isSel && "border-primary-foreground/25",
+                        isActiveCell && "relative bg-primary-foreground/12 ring-2 ring-inset ring-primary-foreground/85 after:pointer-events-none after:absolute after:right-0 after:bottom-0 after:size-1.5 after:bg-primary-foreground",
+                        c.align === "right" && "justify-end text-right",
+                        c.align === "center" && "justify-center text-center",
+                      )}
+                      style={{ width: colWidths[j] }}
+                      data-c={j}
+                      title={isiTeks(c.render(r, i))}
+                      onMouseDown={() => {
+                        onSelect(key);
+                        setSelCol(isRowNo ? null : j);
+                      }}
+                    >
+                      <span className="truncate whitespace-nowrap">{c.render(r, i)}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })}
+        </div>
       </div>
-      <div className="relative min-w-full" style={{ width: total, height: displayRows.length * rowH }}>
-        {displayRows.slice(first, last).map((r, k) => {
-          const i = first + k;
-          const key = rowKey(r);
-          const isSel = key === selected;
-          return (
-            <div
-              key={key}
-              data-state={isSel ? "selected" : undefined}
-              className={cn(
-                "absolute right-0 left-0 flex cursor-default border-b border-foreground/15 transition-colors",
-                isSel
-                  ? focused
-                    ? "border-primary/40 bg-primary font-medium text-primary-foreground"
-                    : "border-primary/30 bg-primary/80 font-medium text-primary-foreground"
-                  : i % 2 === 1
-                    ? "bg-muted/25 hover:bg-muted/60"
-                    : "hover:bg-muted/60",
-              )}
-              style={{ top: i * rowH, height: rowH }}
-              onDoubleClick={() => onOpen?.(r)}
-            >
-              {cols.map((c, j) => {
-                const isRowNo = hasRowNo && j === 0;
-                const isActiveCell = isSel && selCol === j;
-                return (
-                  <div
-                    key={j}
-                    className={cn(
-                      "flex flex-none items-center overflow-hidden border-r border-foreground/15 px-2 tabular-nums last:border-r-0",
-                      isRowNo && !isSel && "bg-muted/40 text-muted-foreground",
-                      isSel && "border-primary-foreground/25",
-                      isActiveCell && "bg-primary-foreground/12 ring-2 ring-inset ring-primary-foreground/85",
-                      c.align === "right" && "justify-end text-right",
-                      c.align === "center" && "justify-center text-center",
-                    )}
-                    style={{ width: colWidths[j] }}
-                    data-c={j}
-                    title={isiTeks(c.render(r, i))}
-                    onMouseDown={() => {
-                      onSelect(key);
-                      setSelCol(isRowNo ? null : j);
-                    }}
-                  >
-                    <span className="truncate whitespace-nowrap">{c.render(r, i)}</span>
-                  </div>
-                );
-              })}
+      {showStatus && (
+        <div className="flex h-6 flex-none items-center justify-between gap-2 border-t border-border bg-muted/70 px-2.5 text-[11px] text-muted-foreground tabular-nums select-none">
+          <div className="flex items-center gap-2 truncate">
+            <span>
+              {selIdx >= 0
+                ? `Baris ${(selIdx + 1).toLocaleString("id-ID")} / ${displayRows.length.toLocaleString("id-ID")}`
+                : `${displayRows.length.toLocaleString("id-ID")} baris`}
+            </span>
+            {copied && (
+              <span className="rounded bg-primary/15 px-1.5 py-0.5 text-[10px] font-medium text-primary">
+                Tersalin
+              </span>
+            )}
+          </div>
+          {colSummary && (
+            <div className="truncate font-medium text-foreground/80">
+              Jumlah {colSummary.title}: {colSummary.formatted}
             </div>
-          );
-        })}
-      </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -375,7 +522,7 @@ export function VbToolbar({ items }: { items: ToolItem[] }) {
         const isClose = b.caption === "Tutup";
         return (
           <span key={b.caption} className={cn("flex items-center", isClose && "ml-auto")}>
-            {b.sepBefore && !isClose && <span className="mx-1 h-4 w-px bg-border" />}
+            {b.sepBefore && !isClose && <span className="ml-0.5 mr-1.5 h-5 w-px bg-foreground/20" />}
             <Button
               type="button"
               variant={isPrimary ? "default" : "outline"}

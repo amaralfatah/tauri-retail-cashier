@@ -1,13 +1,11 @@
 import { useEffect, useRef, useState } from "react";
-import { cn } from "cn";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Kbd } from "@/components/ui/kbd";
 import { Label } from "@/components/ui/label";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { api, Row } from "../api";
 import { rp, tglID, today } from "../format";
-import { ModalFrame } from "../vb/VbGrid";
+import { GridCol, ModalFrame, VbGrid } from "../vb/VbGrid";
 
 /**
  * FrmCariTransJual / FrmCariTransBeli: daftar transaksi untuk dipilih (asal retur, cetak ulang, surat jalan, SPK).
@@ -19,7 +17,7 @@ export function CariTransaksi(props: { kode: "TJ" | "TB"; onPick: (notrans: stri
   const [tgl1, setTgl1] = useState(today());
   const [tgl2, setTgl2] = useState(today());
   const [rows, setRows] = useState<Row[]>([]);
-  const [sel, setSel] = useState(0);
+  const [sel, setSel] = useState<string | null>(null);
   const [muat, setMuat] = useState(0);
   const root = useRef<HTMLDivElement>(null);
 
@@ -29,19 +27,25 @@ export function CariTransaksi(props: { kode: "TJ" | "TB"; onPick: (notrans: stri
       api.listTransaksi(props.kode, tgl1, tgl2, cari)
         .then((r) => {
           const list = Array.isArray(r) ? r : [];
-          if (!batal) { setRows(list); setSel(0); }
+          if (!batal) { setRows(list); setSel((cur) => (list.some((x) => x.notrans === cur) ? cur : list[0]?.notrans ?? null)); }
         })
         .catch(() => !batal && setRows([]));
     }, 250);
     return () => { batal = true; clearTimeout(t); };
   }, [props.kode, tgl1, tgl2, cari, muat]);
 
-  const ambil = () => rows[sel] && props.onPick(rows[sel].notrans);
-  const onListKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "ArrowDown") { e.preventDefault(); setSel((s) => Math.min(s + 1, rows.length - 1)); }
-    else if (e.key === "ArrowUp") { e.preventDefault(); setSel((s) => Math.max(s - 1, 0)); }
-    else if (e.key === "Enter") { e.preventDefault(); ambil(); }
+  const ambil = (r?: Row) => {
+    const x = r ?? rows.find((y) => y.notrans === sel);
+    if (x) props.onPick(x.notrans);
   };
+
+  const cols: GridCol<Row>[] = [
+    { title: "No. Transaksi", width: 150, render: (r) => r.notrans },
+    { title: "Tanggal", width: 100, render: (r) => tglID(r.tgltrans), sortValue: (r) => String(r.tgltrans ?? "") },
+    { title: jual ? "Pelanggan" : "Supplier", width: 220, render: (r) => r.kontak },
+    { title: "Sales", width: 130, render: (r) => r.sales },
+    { title: "Total", width: 120, align: "right", render: (r) => rp(r.totaltrans), sortValue: (r) => Number(r.totaltrans) || 0 },
+  ];
 
   return (
     <ModalFrame title={jual ? "Cari Transaksi Penjualan" : "Cari Transaksi Pembelian"} width={760} height={500} onClose={props.onClose}>
@@ -59,7 +63,7 @@ export function CariTransaksi(props: { kode: "TJ" | "TB"; onPick: (notrans: stri
                 if (e.key === "Enter") { e.preventDefault(); e.stopPropagation(); setMuat((n) => n + 1); }
                 else if (e.key === "ArrowDown" && rows.length) {
                   e.preventDefault();
-                  root.current?.querySelector<HTMLElement>('[data-slot="cari-data"], .cari-data')?.focus();
+                  root.current?.querySelector<HTMLElement>('[data-slot="vbg"], .vbg')?.focus();
                 }
               }}
             />
@@ -77,50 +81,10 @@ export function CariTransaksi(props: { kode: "TJ" | "TB"; onPick: (notrans: stri
           </Button>
         </div>
 
-        <div
-          data-slot="cari-data"
-          data-vb="lsData"
-          tabIndex={0}
-          onKeyDown={onListKeyDown}
-          className="cari-data tp-scroll-always min-h-0 flex-1 rounded-md border border-foreground/20 bg-card font-sans text-xs text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring/40 [&>[data-slot=table-container]]:overflow-visible"
-        >
-          <Table className="table-fixed border-collapse">
-            <colgroup><col className="w-[22%]" /><col className="w-[14%]" /><col className="w-[28%]" /><col className="w-[18%]" /><col className="w-[18%]" /></colgroup>
-            <TableHeader>
-              <TableRow className="border-b border-border bg-muted hover:bg-muted">
-                <TableHead className="sticky top-0 z-20 h-7 border-r border-border bg-muted px-2 text-left text-xs font-semibold text-foreground">No. Transaksi</TableHead>
-                <TableHead className="sticky top-0 z-20 h-7 border-r border-border bg-muted px-2 text-left text-xs font-semibold text-foreground">Tanggal</TableHead>
-                <TableHead className="sticky top-0 z-20 h-7 border-r border-border bg-muted px-2 text-left text-xs font-semibold text-foreground">{jual ? "Pelanggan" : "Supplier"}</TableHead>
-                <TableHead className="sticky top-0 z-20 h-7 border-r border-border bg-muted px-2 text-left text-xs font-semibold text-foreground">Sales</TableHead>
-                <TableHead className="sticky top-0 z-20 h-7 bg-muted px-2 text-right text-xs font-semibold text-foreground">Total</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {rows.map((r, i) => {
-                const cur = i === sel;
-                return (
-                  <TableRow
-                    key={r.notrans}
-                    data-state={cur ? "selected" : undefined}
-                    onMouseDown={() => setSel(i)}
-                    onDoubleClick={() => props.onPick(r.notrans)}
-                    className={cn(
-                      "cursor-default border-b border-border",
-                      cur ? "bg-primary text-primary-foreground hover:bg-primary" : "hover:bg-muted",
-                    )}
-                  >
-                    <TableCell className={cn("h-7 truncate border-r px-2 py-0 tabular-nums", cur ? "border-transparent" : "border-border")}>{r.notrans}</TableCell>
-                    <TableCell className={cn("h-7 truncate border-r px-2 py-0 tabular-nums", cur ? "border-transparent" : "border-border")}>{tglID(r.tgltrans)}</TableCell>
-                    <TableCell className={cn("h-7 truncate border-r px-2 py-0", cur ? "border-transparent" : "border-border")}>{r.kontak}</TableCell>
-                    <TableCell className={cn("h-7 truncate border-r px-2 py-0", cur ? "border-transparent" : "border-border")}>{r.sales}</TableCell>
-                    <TableCell className="h-7 truncate px-2 py-0 text-right tabular-nums">{rp(r.totaltrans)}</TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
+        <div className="relative min-h-0 flex-1" data-vb="lsData">
+          <VbGrid cols={cols} rows={rows} rowKey={(r) => String(r.notrans)} selected={sel} onSelect={setSel} onOpen={ambil} />
           {rows.length === 0 && (
-            <div className="px-6 py-8 text-center text-sm text-muted-foreground">
+            <div className="pointer-events-none absolute inset-x-0 top-[30px] bottom-0 grid place-items-center px-6 text-center text-sm text-muted-foreground">
               {jual ? "Transaksi tidak ditemukan. Ubah tanggal atau coba kata lain." : "Pembelian tidak ditemukan. Ubah tanggal atau coba kata lain."}
             </div>
           )}
@@ -133,7 +97,7 @@ export function CariTransaksi(props: { kode: "TJ" | "TB"; onPick: (notrans: stri
               <span>Tutup</span>
               <Kbd className="border border-border bg-muted text-foreground">Esc</Kbd>
             </Button>
-            <Button type="button" variant="default" size="default" data-vb="cAmbil" className="h-8 gap-1.5 px-3.5 text-xs font-semibold" onClick={ambil}>
+            <Button type="button" variant="default" size="default" data-vb="cAmbil" className="h-8 gap-1.5 px-3.5 text-xs font-semibold" onClick={() => ambil()}>
               <span>Ambil</span>
               <Kbd className="border border-primary-foreground/30 bg-primary-foreground/20 text-primary-foreground">Enter</Kbd>
             </Button>
