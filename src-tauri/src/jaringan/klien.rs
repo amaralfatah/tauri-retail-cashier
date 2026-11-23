@@ -349,7 +349,8 @@ impl Klien {
                     continue;
                 }
             }
-            if selisih.is_some() {
+            // Pemeriksaan yang masih berjalan saat komputer berhenti menjadi Kasir tidak boleh menulis jam Pusat lagi.
+            if selisih.is_some() && kunci(&self.pengaturan).mode == Mode::Kasir {
                 *kunci(&self.selisih_jam) = selisih;
             }
             return Ok((a, halo, Some(nama)));
