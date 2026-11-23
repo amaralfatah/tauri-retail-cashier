@@ -189,7 +189,7 @@ export function Pengguna() {
               type="button"
               variant="outline"
               size="sm"
-              className="h-7 gap-1.5 text-xs font-medium"
+              className="h-8 gap-1.5 text-xs font-medium"
               onClick={() => setPilihKar(true)}
             >
               {f.namakaryawan
@@ -211,7 +211,7 @@ export function Pengguna() {
                 }}
                 className="w-full"
               >
-                <NativeSelectOption value="" />
+                <NativeSelectOption value="">— Pilih Level —</NativeSelectOption>
                 {LEVELS.map((x) => <NativeSelectOption key={x} value={x}>{x}</NativeSelectOption>)}
               </NativeSelect>
             </div>
@@ -223,7 +223,7 @@ export function Pengguna() {
                 disabled={!baru}
                 onChange={(e) => setF((o) => ({ ...o, iduser: e.target.value }))}
                 placeholder="Nama untuk masuk"
-                className="h-7 border-foreground/25 bg-background text-xs"
+                className="h-8 border-foreground/25 bg-background text-xs"
               />
             </div>
 
@@ -237,14 +237,14 @@ export function Pengguna() {
                   autoComplete="new-password"
                   placeholder={baru ? "Sandi baru" : "(Tetap)"}
                   onChange={(e) => setF((o) => ({ ...o, password: e.target.value }))}
-                  className="h-7 flex-1 border-foreground/25 bg-background text-xs"
+                  className="h-8 flex-1 border-foreground/25 bg-background text-xs"
                 />
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
                   data-vb="cCek"
-                  className="h-7 px-2 text-xs"
+                  className="h-8 px-2.5 text-xs"
                   title="Kenapa kata sandi tidak terlihat?"
                   aria-label="Kenapa kata sandi tidak terlihat?"
                   onClick={() => msg.alert("Kata sandi disimpan dalam bentuk terenkripsi, jadi tidak bisa ditampilkan. Kalau pengguna lupa, isi kata sandi baru lalu klik Simpan.")}
@@ -323,13 +323,13 @@ function FilterPengguna(props: { value: { cari: string; level: string; status: s
         <div className="flex flex-col gap-1.5">
           <Label className="text-xs font-medium text-foreground">Level</Label>
           <NativeSelect className="w-full" value={v.level} onChange={(e) => setV({ ...v, level: e.target.value })}>
-            <option value="">{"{Semua}"}</option>{LEVELS.map((x) => <option key={x} value={x}>{x}</option>)}
+            <option value="">Semua</option>{LEVELS.map((x) => <option key={x} value={x}>{x}</option>)}
           </NativeSelect>
         </div>
         <div className="flex flex-col gap-1.5">
           <Label className="text-xs font-medium text-foreground">Status</Label>
           <NativeSelect className="w-full" value={v.status} onChange={(e) => setV({ ...v, status: e.target.value })}>
-            <option value="">{"{Semua}"}</option>{["Aktif", "Non Aktif", "Belum ada password"].map((x) => <option key={x} value={x}>{x}</option>)}
+            <option value="">Semua</option>{["Aktif", "Non Aktif", "Belum ada password"].map((x) => <option key={x} value={x}>{x}</option>)}
           </NativeSelect>
         </div>
       </div>

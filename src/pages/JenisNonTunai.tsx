@@ -63,18 +63,18 @@ export function JenisNonTunai() {
         <div className="flex flex-col gap-1" data-vb="cJenisNama">
           <Label className="text-xs font-medium text-foreground">Jenis Pembayaran</Label>
           <NativeSelect value={kode} onChange={(e) => pilihKode(e.target.value)} className="w-full">
-            <NativeSelectOption value="" />
+            <NativeSelectOption value="">— Pilih Jenis —</NativeSelectOption>
             {jenis.map((j) => <NativeSelectOption key={j.kode} value={j.kode}>{j.namajenis}</NativeSelectOption>)}
           </NativeSelect>
         </div>
         <div className="flex flex-col gap-1" data-vb="cJenisKode">
           <Label className="text-xs font-medium text-foreground">Kode Jenis</Label>
           <NativeSelect value={kode} onChange={(e) => pilihKode(e.target.value)} className="w-full">
-            <NativeSelectOption value="" />
+            <NativeSelectOption value="">—</NativeSelectOption>
             {jenis.map((j) => <NativeSelectOption key={j.kode} value={j.kode}>{j.kode}</NativeSelectOption>)}
           </NativeSelect>
         </div>
-        <Button type="button" variant="outline" size="default" data-vb="cTambahJenis" className="h-7 px-3 text-xs font-semibold" onClick={() => setTambah(true)}>
+        <Button type="button" variant="outline" size="default" data-vb="cTambahJenis" className="h-8 px-3 text-xs font-semibold" onClick={() => setTambah(true)}>
           + Jenis
         </Button>
         <div className="flex flex-col gap-1 sm:col-span-3" data-vb="tItemPembayaran">
@@ -166,14 +166,14 @@ function JenisForm(props: { onClose: () => void }) {
         <div className="grid grid-cols-1 items-end gap-2 rounded-md border border-border bg-card p-3 sm:grid-cols-[120px_auto_1fr]">
           <div className="flex flex-col gap-1" data-vb="tKodeJenis">
             <Label className="text-xs font-medium text-foreground">Kode Jenis</Label>
-            <Input value={kode} readOnly={false} onChange={(e) => setKode(e.target.value)} className="h-7 bg-background text-xs" />
+            <Input value={kode} readOnly={false} onChange={(e) => setKode(e.target.value)} className="h-8 bg-background text-xs" />
           </div>
-          <Button type="button" variant="outline" size="sm" data-vb="cAuto" className="h-7 px-2.5 text-xs font-medium" onClick={() => setKode(kodeUrut(rows.map((r) => s(r.kode)), "", 2))}>
+          <Button type="button" variant="outline" size="sm" data-vb="cAuto" className="h-8 px-2.5 text-xs font-medium" onClick={() => setKode(kodeUrut(rows.map((r) => s(r.kode)), "", 2))}>
             Kode otomatis
           </Button>
           <div className="flex flex-col gap-1" data-vb="tNamaJenis">
             <Label className="text-xs font-medium text-foreground">Nama Jenis Pembayaran</Label>
-            <Input value={nama} onChange={(e) => setNama(e.target.value)} className="h-7 text-xs" />
+            <Input value={nama} onChange={(e) => setNama(e.target.value)} className="h-8 text-xs" />
           </div>
         </div>
 

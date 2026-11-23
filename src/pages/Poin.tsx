@@ -83,16 +83,16 @@ export function PoinMember(props: { kode?: string; onClose?: () => void }) {
             placeholder="Ketik kode lalu Enter..."
             onChange={(e) => setKode(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter" && !props.kode && kode.trim()) { e.preventDefault(); void muat(kode); } }}
-            className={`h-7 text-xs ${props.kode ? "bg-muted" : ""}`}
+            className={`h-8 text-xs ${props.kode ? "bg-muted" : ""}`}
           />
         </div>
         <div className="flex flex-col gap-1" data-vb="tPelangganNama">
           <Label className="text-xs font-medium text-foreground">Nama Pelanggan</Label>
-          <Input readOnly value={member?.namapelanggan ?? ""} className="h-7 bg-muted text-xs font-medium" />
+          <Input readOnly value={member?.namapelanggan ?? ""} className="h-8 bg-muted text-xs font-medium" />
         </div>
         <div className="flex flex-col gap-1" data-vb="tPoinJml">
           <Label className="text-xs font-medium text-foreground">Jumlah Poin Saat Ini</Label>
-          <Input readOnly value={member ? rp(poin) : ""} className="h-7 bg-display text-right text-sm font-bold text-display-foreground tabular-nums" />
+          <Input readOnly value={member ? rp(poin) : ""} className="h-8 bg-display text-right text-sm font-bold text-display-foreground tabular-nums" />
         </div>
 
         <div className="flex flex-col gap-1" data-vb="tPoinPenukaran">
@@ -102,7 +102,7 @@ export function PoinMember(props: { kode?: string; onClose?: () => void }) {
             disabled={!member}
             onChange={(e) => setTukar(e.target.value)}
             placeholder="0"
-            className="h-7 text-right text-xs font-semibold tabular-nums"
+            className="h-8 text-right text-xs font-semibold tabular-nums"
           />
         </div>
         <div className="flex flex-col gap-1" data-vb="tPoinCatatan">
@@ -112,12 +112,12 @@ export function PoinMember(props: { kode?: string; onClose?: () => void }) {
             disabled={!member}
             onChange={(e) => setCatatan(e.target.value)}
             placeholder="Hadiah / potongan..."
-            className="h-7 text-xs"
+            className="h-8 text-xs"
           />
         </div>
         <div className="flex flex-col gap-1" data-vb="tPoinSisa">
           <Label className="text-xs font-medium text-foreground">Sisa Poin</Label>
-          <Input readOnly value={member ? rp(lebih ? poin : poin - tukarN) : ""} className="h-7 bg-muted text-right text-xs font-bold tabular-nums" />
+          <Input readOnly value={member ? rp(lebih ? poin : poin - tukarN) : ""} className="h-8 bg-muted text-right text-xs font-bold tabular-nums" />
         </div>
       </div>
 
@@ -128,14 +128,14 @@ export function PoinMember(props: { kode?: string; onClose?: () => void }) {
         <div className="flex items-center gap-1.5">
           <Label className="text-xs text-muted-foreground">Tampilkan</Label>
           <div data-vb="tJmlData">
-            <Input value={jml} onChange={(e) => setJml(e.target.value)} className="h-7 w-16 text-right text-xs tabular-nums" />
+            <Input value={jml} onChange={(e) => setJml(e.target.value)} className="h-8 w-16 text-right text-xs tabular-nums" />
           </div>
           <Button
             type="button"
             variant="outline"
             size="sm"
             data-vb="cRefresh"
-            className="h-7 px-2.5 text-xs font-medium"
+            className="h-8 px-2.5 text-xs font-medium"
             onClick={() => (member ? void muat(member.kodepelanggan) : kode.trim() ? void muat(kode) : undefined)}
           >
             Refresh

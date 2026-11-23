@@ -136,7 +136,7 @@ function VNum(props: { value: number; onChange?: (v: number) => void; f: string;
       onBlur={onBlur}
       onChange={onChange}
       className={cn(
-        "h-full! w-full rounded-none border-0 bg-transparent px-1.5! py-0! shadow-none tabular-nums focus-visible:ring-0 [font-family:inherit] [font-size:inherit] [font-weight:inherit] md:[font-size:inherit]",
+        "h-full! w-full rounded-none border-0 bg-transparent dark:bg-transparent read-only:bg-transparent dark:read-only:bg-transparent px-1.5! py-0! shadow-none tabular-nums focus-visible:ring-0 [font-family:inherit] [font-size:inherit] [font-weight:inherit] md:[font-size:inherit]",
         props.right && "text-right",
         readOnly && "cursor-default text-foreground",
         props.className,
@@ -178,7 +178,7 @@ function Lens({ onClick, title }: { onClick?: () => void; title: string }) {
 const ACT_CELL =
   "relative z-10 overflow-visible bg-card p-0! before:pointer-events-none before:absolute before:-inset-px before:z-10 before:border-2 before:border-ring after:pointer-events-none after:absolute after:-right-0.75 after:-bottom-0.75 after:z-20 after:size-1.5 after:border after:border-card after:bg-ring";
 const GRID_INPUT =
-  "h-full! w-full rounded-none border-0 bg-transparent px-1.5! py-0! text-sm text-foreground shadow-none focus-visible:ring-0 md:text-sm";
+  "h-full! w-full rounded-none border-0 bg-transparent dark:bg-transparent read-only:bg-transparent dark:read-only:bg-transparent px-1.5! py-0! text-sm text-foreground shadow-none focus-visible:ring-0 md:text-sm";
 const GRID_TH =
   "sticky top-0 z-20 h-8! truncate border-r border-b border-foreground/20 bg-muted px-2! py-0! text-[13px] font-semibold tracking-tight text-foreground select-none last:border-r-0";
 const GRID_TD =
@@ -1556,7 +1556,7 @@ function TransaksiIsi({ mode, order = false }: { mode: Mode; order?: boolean }) 
                   value={scan}
                   autoComplete="off"
                   placeholder="Scan atau ketik kode barang (mis. 3*kode)"
-                  className="h-full flex-1 rounded-none border-0 bg-transparent px-2.5 text-sm font-medium text-foreground shadow-none placeholder:font-normal placeholder:text-muted-foreground/75 focus-visible:ring-0 md:text-sm"
+                  className="h-full flex-1 rounded-none border-0 bg-transparent dark:bg-transparent px-2.5 text-sm font-medium text-foreground shadow-none placeholder:font-normal placeholder:text-muted-foreground/75 focus-visible:ring-0 md:text-sm"
                   onFocus={() => setScanFokus(true)}
                   onBlur={() => setScanFokus(false)}
                   onChange={(e) => setScan(e.target.value)}
@@ -1592,7 +1592,7 @@ function TransaksiIsi({ mode, order = false }: { mode: Mode; order?: boolean }) 
                     </button>
                   </div>
                 ) : (
-                  <span className="pointer-events-none flex shrink-0 items-center gap-1 pr-2.5 text-[11px] text-muted-foreground select-none">
+                  <span className="pointer-events-none flex shrink-0 items-center gap-1 pr-1.5 text-[11px] text-muted-foreground select-none">
                     <Kbd className="border border-border bg-muted/60 px-1.5 text-[10px] text-muted-foreground">Enter ↵</Kbd>
                   </span>
                 )}
@@ -1933,7 +1933,7 @@ export function NumInput(props: { value: number; onChange: (v: number) => void; 
       onBlur={() => setFocus(false)}
       onChange={(e) => { setText(e.target.value); props.onChange(Number(e.target.value.replace(",", ".")) || 0); }}
       className={cn(
-        "num h-full! w-full rounded-none border-0 bg-transparent px-1.5! py-0! text-right text-sm text-foreground shadow-none tabular-nums focus-visible:ring-0 md:text-sm",
+        "num h-full! w-full rounded-none border-0 bg-transparent dark:bg-transparent read-only:bg-transparent dark:read-only:bg-transparent px-1.5! py-0! text-right text-sm text-foreground shadow-none tabular-nums focus-visible:ring-0 md:text-sm",
         props.className,
       )}
     />

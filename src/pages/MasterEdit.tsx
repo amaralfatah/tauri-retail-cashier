@@ -874,18 +874,18 @@ function SimpleBody(props: { table: Simple; onClose?: () => void }) {
             <div className="flex flex-col gap-1" data-vb="cKeloimpokNama">
               <Label className="text-xs font-medium text-foreground">Kelompok</Label>
               <NativeSelect value={s(v.kodekelompok)} onChange={(e) => set("kodekelompok", e.target.value)} className="w-full">
-                <NativeSelectOption value="" />
+                <NativeSelectOption value="">— Pilih Kelompok —</NativeSelectOption>
                 {kel.rows.map((r) => <NativeSelectOption key={r.kodekelompok} value={r.kodekelompok}>{r.namakelompok}</NativeSelectOption>)}
               </NativeSelect>
             </div>
             <div className="flex flex-col gap-1" data-vb="cKelompokKode">
               <Label className="text-xs font-medium text-foreground">Kode</Label>
               <NativeSelect value={s(v.kodekelompok)} onChange={(e) => set("kodekelompok", e.target.value)} className="w-full">
-                <NativeSelectOption value="" />
+                <NativeSelectOption value="">—</NativeSelectOption>
                 {kel.rows.map((r) => <NativeSelectOption key={r.kodekelompok} value={r.kodekelompok}>{r.kodekelompok}</NativeSelectOption>)}
               </NativeSelect>
             </div>
-            <Button type="button" variant="outline" size="sm" data-vb="cAddKelompok" className="h-7 px-2.5 text-xs font-semibold" onClick={() => setAddKel(true)}>
+            <Button type="button" variant="outline" size="default" data-vb="cAddKelompok" className="h-8 px-2.5 text-xs font-semibold" onClick={() => setAddKel(true)}>
               +
             </Button>
           </div>
@@ -893,16 +893,16 @@ function SimpleBody(props: { table: Simple; onClose?: () => void }) {
         <div className={`grid items-end gap-2 ${SIMPLE_LEBAR[table] > 0 ? "grid-cols-[140px_auto_1fr]" : "grid-cols-[140px_1fr]"}`}>
           <div className="flex flex-col gap-1" data-vb="tKode">
             <Label className="text-xs font-medium text-foreground">Kode <span className="text-destructive">*</span></Label>
-            <Input value={s(v[key])} readOnly={false} onChange={(e) => set(key, e.target.value)} className="h-7 bg-background text-xs" />
+            <Input value={s(v[key])} readOnly={false} onChange={(e) => set(key, e.target.value)} className="h-8 bg-background text-xs" />
           </div>
           {SIMPLE_LEBAR[table] > 0 ? (
-            <Button type="button" variant="outline" size="sm" data-vb="cAutoKode" className="h-7 px-2.5 text-xs font-medium" onClick={autoKode}>
+            <Button type="button" variant="outline" size="default" data-vb="cAutoKode" className="h-8 px-2.5 text-xs font-medium" onClick={autoKode}>
               Kode otomatis
             </Button>
           ) : null}
           <div className="flex flex-col gap-1" data-vb="tNama">
             <Label className="text-xs font-medium text-foreground">Nama <span className="text-destructive">*</span></Label>
-            <Input value={s(v[name])} readOnly={false} onChange={(e) => set(name, e.target.value)} className="h-7 bg-background text-xs" />
+            <Input value={s(v[name])} readOnly={false} onChange={(e) => set(name, e.target.value)} className="h-8 bg-background text-xs" />
           </div>
         </div>
       </div>

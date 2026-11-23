@@ -189,7 +189,7 @@ function MdList({ table }: { table: MasterTable }) {
           onChange={(e) => setCari(e.target.value)}
           placeholder={cfg.placeholder}
           aria-label={cfg.labelCari}
-          className="w-72"
+          className="h-8 w-72"
         />
         <Kbd className="border border-border bg-card text-foreground">Ctrl+F</Kbd>
       </div>
@@ -205,21 +205,21 @@ function MdList({ table }: { table: MasterTable }) {
           <div className="flex items-center gap-2" data-vb="cKelompokNama">
             <Label className="text-xs font-semibold text-foreground">Kelompok</Label>
             <NativeSelect value={kel} onChange={(e) => setKel(e.target.value)} className="w-56">
-              <NativeSelectOption value="">{"{Semua Kelompok}"}</NativeSelectOption>
+              <NativeSelectOption value="">Semua Kelompok</NativeSelectOption>
               {kelompok.map((k) => <NativeSelectOption key={k.kodekelompok} value={k.kodekelompok}>{k.namakelompok}</NativeSelectOption>)}
             </NativeSelect>
           </div>
           <div className="flex items-center gap-2" data-vb="cKategoriNama">
             <Label className="text-xs font-semibold text-foreground">Kategori</Label>
             <NativeSelect value={kat} onChange={(e) => setKat(e.target.value)} className="w-56">
-              <NativeSelectOption value="">{"{Semua Kategori}"}</NativeSelectOption>
+              <NativeSelectOption value="">Semua Kategori</NativeSelectOption>
               {katList.map((k) => <NativeSelectOption key={k.kodekategori} value={k.kodekategori}>{k.namakategori}</NativeSelectOption>)}
             </NativeSelect>
           </div>
           <div className="flex items-center gap-2" data-vb="cmbUrut">
             <Label className="text-xs font-semibold text-foreground">Urutkan berdasarkan</Label>
             <NativeSelect value={urut} onChange={(e) => setUrut(e.target.value)} className="w-44">
-              <NativeSelectOption value="" />
+              <NativeSelectOption value="">Urutan standar</NativeSelectOption>
               {URUT.map((u) => <NativeSelectOption key={u[0]} value={u[0]}>{u[0]}</NativeSelectOption>)}
             </NativeSelect>
           </div>

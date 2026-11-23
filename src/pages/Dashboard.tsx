@@ -103,13 +103,13 @@ export function Dashboard(props: { onTutup: () => void }) {
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border pb-2">
         <h1 className="text-sm font-bold text-foreground">Ringkasan Toko</h1>
         <div className="flex items-center gap-1.5">
-          <Button type="button" variant="outline" size="sm" data-vb="vkCommand1" className="h-7 bg-background px-2.5 text-xs font-medium" onClick={() => window.dispatchEvent(new Event("tokopro:notifikasi"))}>
+          <Button type="button" variant="outline" size="default" data-vb="vkCommand1" className="h-8 bg-background px-2.5 text-xs font-medium" onClick={() => window.dispatchEvent(new Event("tokopro:notifikasi"))}>
             Notifikasi
           </Button>
-          <Button type="button" variant="outline" size="sm" data-vb="cRefresh" className="h-7 bg-background px-2.5 text-xs font-medium" onClick={muat}>
+          <Button type="button" variant="outline" size="default" data-vb="cRefresh" className="h-8 bg-background px-2.5 text-xs font-medium" onClick={muat}>
             Refresh
           </Button>
-          <Button type="button" variant="outline" size="sm" data-vb="cClose" className="h-7 bg-background px-2.5 text-xs font-medium" onClick={props.onTutup}>
+          <Button type="button" variant="outline" size="default" data-vb="cClose" className="h-8 bg-background px-2.5 text-xs font-medium" onClick={props.onTutup}>
             <span>Tutup</span>
             <Kbd className="border border-border bg-muted text-foreground">Esc</Kbd>
           </Button>

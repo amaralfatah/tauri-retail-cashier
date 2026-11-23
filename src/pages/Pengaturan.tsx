@@ -141,62 +141,62 @@ export function Pengaturan() {
             <div className="grid grid-cols-1 gap-x-4 gap-y-2.5 sm:grid-cols-2" data-vb="picTab(0)">
               <div className="flex flex-col gap-1 sm:col-span-2" data-vb="tNamaUsaha">
                 <Label className="text-xs font-medium text-foreground">Nama Usaha</Label>
-                <Input value={String(v.namausaha ?? "")} disabled={!bisaUbah} onChange={(e) => set("namausaha", e.target.value)} className="h-7 text-xs" />
+                <Input value={String(v.namausaha ?? "")} disabled={!bisaUbah} onChange={(e) => set("namausaha", e.target.value)} className="h-8 text-xs" />
               </div>
               <div className="flex flex-col gap-1" data-vb="tBidangUsaha">
                 <Label className="text-xs font-medium text-foreground">Bidang Usaha</Label>
-                <Input value={String(v.bidangusaha ?? "")} disabled={!bisaUbah} onChange={(e) => set("bidangusaha", e.target.value)} className="h-7 text-xs" />
+                <Input value={String(v.bidangusaha ?? "")} disabled={!bisaUbah} onChange={(e) => set("bidangusaha", e.target.value)} className="h-8 text-xs" />
               </div>
               <div className="flex flex-col gap-1" data-vb="tPemilik">
                 <Label className="text-xs font-medium text-foreground">Nama Pemilik</Label>
-                <Input value={String(v.pemilik ?? "")} disabled={!bisaUbah} onChange={(e) => set("pemilik", e.target.value)} className="h-7 text-xs" />
+                <Input value={String(v.pemilik ?? "")} disabled={!bisaUbah} onChange={(e) => set("pemilik", e.target.value)} className="h-8 text-xs" />
               </div>
               <div className="flex flex-col gap-1 sm:col-span-2" data-vb="tAlamat">
                 <Label className="text-xs font-medium text-foreground">Alamat</Label>
-                <Input value={String(v.alamat ?? "")} disabled={!bisaUbah} onChange={(e) => set("alamat", e.target.value)} className="h-7 text-xs" />
+                <Input value={String(v.alamat ?? "")} disabled={!bisaUbah} onChange={(e) => set("alamat", e.target.value)} className="h-8 text-xs" />
               </div>
               <div className="flex flex-col gap-1" data-vb="tKota">
                 <Label className="text-xs font-medium text-foreground">Kota</Label>
-                <Input value={String(v.kota ?? "")} disabled={!bisaUbah} onChange={(e) => set("kota", e.target.value)} className="h-7 text-xs" />
+                <Input value={String(v.kota ?? "")} disabled={!bisaUbah} onChange={(e) => set("kota", e.target.value)} className="h-8 text-xs" />
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div className="flex flex-col gap-1" data-vb="tProvinsi">
                   <Label className="text-xs font-medium text-foreground">Provinsi</Label>
-                  <Input value={String(v.provinsi ?? "")} disabled={!bisaUbah} onChange={(e) => set("provinsi", e.target.value)} className="h-7 text-xs" />
+                  <Input value={String(v.provinsi ?? "")} disabled={!bisaUbah} onChange={(e) => set("provinsi", e.target.value)} className="h-8 text-xs" />
                 </div>
                 <div className="flex flex-col gap-1" data-vb="tKodePos">
                   <Label className="text-xs font-medium text-foreground">Kode Pos</Label>
-                  <Input value={String(v.kodepos ?? "")} disabled={!bisaUbah} onChange={(e) => set("kodepos", e.target.value)} className="h-7 text-xs" />
+                  <Input value={String(v.kodepos ?? "")} disabled={!bisaUbah} onChange={(e) => set("kodepos", e.target.value)} className="h-8 text-xs" />
                 </div>
               </div>
               <div className="flex flex-col gap-1" data-vb="tNoTlp">
                 <Label className="text-xs font-medium text-foreground">No. Telepon</Label>
-                <Input value={String(v.tlp ?? "")} disabled={!bisaUbah} onChange={(e) => set("tlp", e.target.value)} className="h-7 text-xs" />
+                <Input value={String(v.tlp ?? "")} disabled={!bisaUbah} onChange={(e) => set("tlp", e.target.value)} className="h-8 text-xs" />
               </div>
               <div className="flex flex-col gap-1" data-vb="tFax">
                 <Label className="text-xs font-medium text-foreground">Fax</Label>
-                <Input value={String(v.fax ?? "")} disabled={!bisaUbah} onChange={(e) => set("fax", e.target.value)} className="h-7 text-xs" />
+                <Input value={String(v.fax ?? "")} disabled={!bisaUbah} onChange={(e) => set("fax", e.target.value)} className="h-8 text-xs" />
               </div>
               <div className="flex flex-col gap-1" data-vb="tEmail">
                 <Label className="text-xs font-medium text-foreground">Email</Label>
-                <Input value={String(v.email ?? "")} disabled={!bisaUbah} onChange={(e) => set("email", e.target.value)} className="h-7 text-xs" />
+                <Input value={String(v.email ?? "")} disabled={!bisaUbah} onChange={(e) => set("email", e.target.value)} className="h-8 text-xs" />
               </div>
               <div className="flex flex-col gap-1" data-vb="tWeb">
                 <Label className="text-xs font-medium text-foreground">Website</Label>
-                <Input value={String(v.website ?? "")} disabled={!bisaUbah} onChange={(e) => set("website", e.target.value)} className="h-7 text-xs" />
+                <Input value={String(v.website ?? "")} disabled={!bisaUbah} onChange={(e) => set("website", e.target.value)} className="h-8 text-xs" />
               </div>
               <div className="flex flex-col gap-1" data-vb="tLogo">
                 <Label className="text-xs font-medium text-foreground">File Logo</Label>
                 <div className="flex gap-1">
-                  <Input value={l.logo} onChange={(e) => setLocalVal("logo", e.target.value)} className="h-7 flex-1 text-xs" />
-                  <Button type="button" variant="outline" size="sm" data-vb="cOpenLogo" className="h-7 px-2" onClick={() => void pilihGbr("logo")()}>...</Button>
+                  <Input value={l.logo} onChange={(e) => setLocalVal("logo", e.target.value)} className="h-8 flex-1 text-xs" />
+                  <Button type="button" variant="outline" size="sm" data-vb="cOpenLogo" className="h-8 px-2" onClick={() => void pilihGbr("logo")()}>...</Button>
                 </div>
               </div>
               <div className="flex flex-col gap-1" data-vb="tBackground">
                 <Label className="text-xs font-medium text-foreground">File Background</Label>
                 <div className="flex gap-1">
-                  <Input value={l.background} onChange={(e) => setLocalVal("background", e.target.value)} className="h-7 flex-1 text-xs" />
-                  <Button type="button" variant="outline" size="sm" data-vb="cOpenBG" className="h-7 px-2" onClick={() => void pilihGbr("background")()}>...</Button>
+                  <Input value={l.background} onChange={(e) => setLocalVal("background", e.target.value)} className="h-8 flex-1 text-xs" />
+                  <Button type="button" variant="outline" size="sm" data-vb="cOpenBG" className="h-8 px-2" onClick={() => void pilihGbr("background")()}>...</Button>
                 </div>
               </div>
               <div className="flex items-center justify-end pt-1 sm:col-span-2">
@@ -241,11 +241,11 @@ export function Pengaturan() {
                   <div className="grid grid-cols-2 gap-2">
                     <div className="flex flex-col gap-1" data-vb="tMinTransPoin">
                       <Label className="text-[11px] text-muted-foreground">Min. Transaksi Poin</Label>
-                      <Input value={String(v.mintranspoin ?? "")} disabled={!bisaUbah} onChange={(e) => set("mintranspoin", e.target.value)} className="h-7 text-right text-xs tabular-nums" />
+                      <Input value={String(v.mintranspoin ?? "")} disabled={!bisaUbah} onChange={(e) => set("mintranspoin", e.target.value)} className="h-8 text-right text-xs tabular-nums" />
                     </div>
                     <div className="flex flex-col gap-1" data-vb="tJmlPoin">
                       <Label className="text-[11px] text-muted-foreground">Jml. Poin Didapat</Label>
-                      <Input value={String(v.jmlpointrans ?? "")} disabled={!bisaUbah} onChange={(e) => set("jmlpointrans", e.target.value)} className="h-7 text-right text-xs tabular-nums" />
+                      <Input value={String(v.jmlpointrans ?? "")} disabled={!bisaUbah} onChange={(e) => set("jmlpointrans", e.target.value)} className="h-8 text-right text-xs tabular-nums" />
                     </div>
                   </div>
                   <CheckRow vb="chkBerlakuKelipatan" label="Berlaku kelipatan total belanja" checked={chkChecked("berlakukelipatanpoin")} onChange={(on) => setChk("berlakukelipatanpoin", on)} disabled={!bisaUbah} />
@@ -255,7 +255,7 @@ export function Pengaturan() {
                   <div className="grid grid-cols-2 gap-2">
                     <div className="flex flex-col gap-1" data-vb="tJthTempo">
                       <Label className="text-[11px] text-muted-foreground">Tempo Piutang (Hari)</Label>
-                      <Input value={String(v.tempopiutang ?? "")} disabled={!bisaUbah} onChange={(e) => set("tempopiutang", e.target.value.replace(/\D/g, ""))} className="h-7 text-right text-xs tabular-nums" />
+                      <Input value={String(v.tempopiutang ?? "")} disabled={!bisaUbah} onChange={(e) => set("tempopiutang", e.target.value.replace(/\D/g, ""))} className="h-8 text-right text-xs tabular-nums" />
                     </div>
                     <div className="flex flex-col gap-1" data-vb="cmbModeScan">
                       <Label className="text-[11px] text-muted-foreground">Mode Scan Barcode</Label>
@@ -273,13 +273,13 @@ export function Pengaturan() {
                   <div className="flex flex-col gap-1">
                     <CheckRow vb="chkAktifFoto" label="Tampilkan Foto Barang" checked={l.aktifFoto === "1"} onChange={(on) => setLocalVal("aktifFoto", on ? "1" : "0")} />
                     <div className="flex gap-1" data-vb="tLokasiFoto">
-                      <Input value={l.lokasiFoto} onChange={(e) => setLocalVal("lokasiFoto", e.target.value)} placeholder="Folder foto barang" className="h-7 flex-1 text-xs" />
-                      <Button type="button" variant="outline" size="sm" data-vb="cOpenFoto" className="h-7 px-2" onClick={() => void pilihFolderFoto()}>...</Button>
+                      <Input value={l.lokasiFoto} onChange={(e) => setLocalVal("lokasiFoto", e.target.value)} placeholder="Folder foto barang" className="h-8 flex-1 text-xs" />
+                      <Button type="button" variant="outline" size="sm" data-vb="cOpenFoto" className="h-8 px-2" onClick={() => void pilihFolderFoto()}>...</Button>
                     </div>
                   </div>
                   {bisaUbah && (
                     <div className="flex justify-end pt-1">
-                      <Button type="button" variant="outline" size="sm" className="h-7 bg-background text-xs font-medium" onClick={() => go("nontunai")}>
+                      <Button type="button" variant="outline" size="sm" className="h-8 bg-background text-xs font-medium" onClick={() => go("nontunai")}>
                         Jenis Non Tunai
                       </Button>
                     </div>
@@ -294,19 +294,19 @@ export function Pengaturan() {
               <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
                 <div className="flex flex-col gap-1" data-vb="tHeader1">
                   <Label className="text-xs font-medium text-foreground">Header Struk Baris 1</Label>
-                  <Input value={String(v.header1 ?? "")} disabled={!bisaUbah} onChange={(e) => set("header1", e.target.value)} className="h-7 text-xs" />
+                  <Input value={String(v.header1 ?? "")} disabled={!bisaUbah} onChange={(e) => set("header1", e.target.value)} className="h-8 text-xs" />
                 </div>
                 <div className="flex flex-col gap-1" data-vb="tHeader2">
                   <Label className="text-xs font-medium text-foreground">Header Struk Baris 2</Label>
-                  <Input value={String(v.header2 ?? "")} disabled={!bisaUbah} onChange={(e) => set("header2", e.target.value)} className="h-7 text-xs" />
+                  <Input value={String(v.header2 ?? "")} disabled={!bisaUbah} onChange={(e) => set("header2", e.target.value)} className="h-8 text-xs" />
                 </div>
                 <div className="flex flex-col gap-1" data-vb="tFooter1">
                   <Label className="text-xs font-medium text-foreground">Footer Struk Baris 1</Label>
-                  <Input value={String(v.footer1 ?? "")} disabled={!bisaUbah} onChange={(e) => set("footer1", e.target.value)} className="h-7 text-xs" />
+                  <Input value={String(v.footer1 ?? "")} disabled={!bisaUbah} onChange={(e) => set("footer1", e.target.value)} className="h-8 text-xs" />
                 </div>
                 <div className="flex flex-col gap-1" data-vb="tFooter2">
                   <Label className="text-xs font-medium text-foreground">Footer Struk Baris 2</Label>
-                  <Input value={String(v.footer2 ?? "")} disabled={!bisaUbah} onChange={(e) => set("footer2", e.target.value)} className="h-7 text-xs" />
+                  <Input value={String(v.footer2 ?? "")} disabled={!bisaUbah} onChange={(e) => set("footer2", e.target.value)} className="h-8 text-xs" />
                 </div>
               </div>
 
@@ -331,7 +331,7 @@ export function Pengaturan() {
                 </div>
                 <div className="flex flex-col gap-1" data-vb="tPortPrinter">
                   <Label className="text-xs font-medium text-foreground">Nama / Port Printer</Label>
-                  <Input value={l.portPrinter} onChange={(e) => setLocalVal("portPrinter", e.target.value)} className="h-7 text-xs" />
+                  <Input value={l.portPrinter} onChange={(e) => setLocalVal("portPrinter", e.target.value)} className="h-8 text-xs" />
                 </div>
               </div>
 
@@ -342,11 +342,11 @@ export function Pengaturan() {
                   <div className="grid grid-cols-2 gap-2">
                     <div className="flex flex-col gap-1" data-vb="tPortDrawer">
                       <Label className="text-[11px] text-muted-foreground">Port Drawer</Label>
-                      <Input value={l.portDrawer} onChange={(e) => setLocalVal("portDrawer", e.target.value)} className="h-7 text-xs" />
+                      <Input value={l.portDrawer} onChange={(e) => setLocalVal("portDrawer", e.target.value)} className="h-8 text-xs" />
                     </div>
                     <div className="flex flex-col gap-1" data-vb="tKodeDrawer">
                       <Label className="text-[11px] text-muted-foreground">Kode Drawer</Label>
-                      <Input value={l.kodeDrawer} onChange={(e) => setLocalVal("kodeDrawer", e.target.value)} className="h-7 text-xs" />
+                      <Input value={l.kodeDrawer} onChange={(e) => setLocalVal("kodeDrawer", e.target.value)} className="h-8 text-xs" />
                     </div>
                   </div>
                 </div>
@@ -361,11 +361,11 @@ export function Pengaturan() {
                     </div>
                     <div className="flex flex-col gap-1" data-vb="tExQty">
                       <Label className="text-[11px] text-muted-foreground">Contoh</Label>
-                      <Input value={exQty} onChange={(e) => setExQty(e.target.value.replace(/[^\d,.]/g, ""))} className="h-7 text-right text-xs tabular-nums" />
+                      <Input value={exQty} onChange={(e) => setExQty(e.target.value.replace(/[^\d,.]/g, ""))} className="h-8 text-right text-xs tabular-nums" />
                     </div>
                     <div className="flex flex-col gap-1" data-vb="tExQty2">
                       <Label className="text-[11px] text-muted-foreground">Hasil</Label>
-                      <Input readOnly value={formatPola(l.formatQty, angkaContoh(exQty))} className="h-7 bg-muted text-right text-xs tabular-nums" />
+                      <Input readOnly value={formatPola(l.formatQty, angkaContoh(exQty))} className="h-8 bg-muted text-right text-xs tabular-nums" />
                     </div>
                   </div>
                   <div className="grid grid-cols-3 items-end gap-2">
@@ -377,11 +377,11 @@ export function Pengaturan() {
                     </div>
                     <div className="flex flex-col gap-1" data-vb="tExHrg">
                       <Label className="text-[11px] text-muted-foreground">Contoh</Label>
-                      <Input value={exHrg} onChange={(e) => setExHrg(e.target.value.replace(/[^\d,.]/g, ""))} className="h-7 text-right text-xs tabular-nums" />
+                      <Input value={exHrg} onChange={(e) => setExHrg(e.target.value.replace(/[^\d,.]/g, ""))} className="h-8 text-right text-xs tabular-nums" />
                     </div>
                     <div className="flex flex-col gap-1" data-vb="tExHrg2">
                       <Label className="text-[11px] text-muted-foreground">Hasil</Label>
-                      <Input readOnly value={formatPola(l.formatHrg, angkaContoh(exHrg))} className="h-7 bg-muted text-right text-xs tabular-nums" />
+                      <Input readOnly value={formatPola(l.formatHrg, angkaContoh(exHrg))} className="h-8 bg-muted text-right text-xs tabular-nums" />
                     </div>
                   </div>
                 </div>
