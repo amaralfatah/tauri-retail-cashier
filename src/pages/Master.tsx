@@ -249,7 +249,7 @@ function MdList({ table }: { table: MasterTable }) {
       : `Belum ada ${cfg.title}. Klik Baru untuk menambah.`;
 
   const kotakCari = (
-    <div className="ml-auto flex items-center gap-2" data-vb="tCari">
+    <div className="ml-auto flex items-center gap-1.5" data-vb="tCari">
       <Input
         ref={cariRef}
         type="search"
@@ -257,7 +257,7 @@ function MdList({ table }: { table: MasterTable }) {
         onChange={(e) => setCari(e.target.value)}
         placeholder={cfg.placeholder}
         aria-label={cfg.labelCari}
-        className="h-8 w-72"
+        className="h-8 w-56 xl:w-64"
       />
       <Kbd className="border border-border bg-card text-foreground">Ctrl+F</Kbd>
     </div>
@@ -268,11 +268,11 @@ function MdList({ table }: { table: MasterTable }) {
       <div data-vb="tbMenu">
         <VbToolbar items={toolItems} />
       </div>
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-border bg-muted/40 px-3 py-2 text-xs">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-border bg-muted/40 px-3 py-2 text-xs">
         {(table === "mdbarang" || table === "mdkategori") && (
-          <div className="flex items-center gap-2" data-vb="cKelompokNama">
+          <div className="flex items-center gap-1.5" data-vb="cKelompokNama">
             <Label className="text-xs font-semibold text-foreground">Kelompok</Label>
-            <NativeSelect value={kel} onChange={(e) => setKel(e.target.value)} className="w-56">
+            <NativeSelect value={kel} onChange={(e) => setKel(e.target.value)} className="w-40 xl:w-48">
               <NativeSelectOption value="">Semua Kelompok</NativeSelectOption>
               {kelompok.map((k) => <NativeSelectOption key={k.kodekelompok} value={k.kodekelompok}>{k.namakelompok}</NativeSelectOption>)}
             </NativeSelect>
@@ -280,16 +280,16 @@ function MdList({ table }: { table: MasterTable }) {
         )}
         {table === "mdbarang" && (
           <>
-            <div className="flex items-center gap-2" data-vb="cKategoriNama">
+            <div className="flex items-center gap-1.5" data-vb="cKategoriNama">
               <Label className="text-xs font-semibold text-foreground">Kategori</Label>
-              <NativeSelect value={kat} onChange={(e) => setKat(e.target.value)} className="w-56">
+              <NativeSelect value={kat} onChange={(e) => setKat(e.target.value)} className="w-40 xl:w-48">
                 <NativeSelectOption value="">Semua Kategori</NativeSelectOption>
                 {katList.map((k) => <NativeSelectOption key={k.kodekategori} value={k.kodekategori}>{k.namakategori}</NativeSelectOption>)}
               </NativeSelect>
             </div>
-            <div className="flex items-center gap-2" data-vb="cmbUrut">
-              <Label className="text-xs font-semibold text-foreground">Urutkan berdasarkan</Label>
-              <NativeSelect value={urut} onChange={(e) => setUrut(e.target.value)} className="w-44">
+            <div className="flex items-center gap-1.5" data-vb="cmbUrut">
+              <Label className="text-xs font-semibold text-foreground">Urutkan</Label>
+              <NativeSelect value={urut} onChange={(e) => setUrut(e.target.value)} className="w-36 xl:w-40">
                 <NativeSelectOption value="">Urutan standar</NativeSelectOption>
                 {URUT.map((u) => <NativeSelectOption key={u[0]} value={u[0]}>{u[0]}</NativeSelectOption>)}
               </NativeSelect>

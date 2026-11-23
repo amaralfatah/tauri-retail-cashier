@@ -81,12 +81,11 @@ export const TARGETS: Record<string, Target> = {
 };
 
 /**
- * Hanya dialog kecil (Pengaturan Database dan Item Non Tunai yang dibuka dari Pengaturan Program)
- * yang tampil sebagai modal; layar kerja lainnya tampil full-size memenuhi ruang kerja utama.
+ * Hanya dialog kecil (Pengaturan Database) yang tampil sebagai modal;
+ * layar kerja lainnya tampil full-size memenuhi ruang kerja utama.
  */
 export const DIALOG_FORM: Partial<Record<Page, string>> = {
   database: "FrmZDatabase",
-  nontunai: "FrmDataJenisNonTunaiItem",
 };
 export const isDialog = (p: Page) => p in DIALOG_FORM;
 
@@ -133,7 +132,7 @@ export const DEFAULT_CAPTION: Record<Page, string> = {
   database: "Pengaturan Database",
   alat: "Alat Bantu",
   poin: "Transaksi Penukaran Poin",
-  nontunai: "Item Pembayaran Non Tunai",
+  nontunai: "Data Jenis Non Tunai",
   satuan: "Data Satuan",
   kelompok: "Data Kelompok",
   kategori: "Data Kategori",

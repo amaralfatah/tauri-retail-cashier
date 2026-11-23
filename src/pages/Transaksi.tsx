@@ -1389,7 +1389,7 @@ function TransaksiIsi({ mode, order = false }: { mode: Mode; order?: boolean }) 
     <div className="flex size-full flex-col overflow-hidden bg-background" data-form={formName} onKeyDown={enterKepala}>
       {tanya.node}
       <>
-          <div className="grid grid-cols-2 items-end gap-2 border-b bg-background px-3 py-1.5 sm:grid-cols-3 lg:grid-cols-[9rem_8.5rem_10rem_13.5rem_10rem_minmax(0,1fr)]">
+          <div className="grid grid-cols-2 items-end gap-3 border-b bg-background px-3 py-1.5 sm:grid-cols-3 lg:grid-cols-6">
             <div className="flex flex-col gap-1" data-vb="tNoTrans">
               <Label className="block truncate text-xs font-medium text-foreground">{order ? "No. Order" : "No. Transaksi"}</Label>
               <Input readOnly tabIndex={-1} value={noKoreksi || notrans} className="cursor-default border-transparent bg-muted font-semibold text-foreground tabular-nums shadow-none focus-visible:ring-0" />
@@ -1734,20 +1734,20 @@ function TransaksiIsi({ mode, order = false }: { mode: Mode; order?: boolean }) 
                   )}
                 </>
               )}
-              <Separator orientation="vertical" className="mx-0.5 h-4 bg-border" />
-              <DropdownMenu>
-                <DropdownMenuTrigger render={<Button type="button" variant="outline" size="default" data-vb="cLainnya" className={cn(TOMBOL_BAWAH, "h-8 gap-1 px-2.5 text-xs font-medium")} />}>
-                  Lainnya <ChevronDownIcon className="size-3.5" />
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" side="top" className="w-44">
-                  {jual && !order && (
-                    <>
+              {jual && !order && (
+                <>
+                  <Separator orientation="vertical" className="mx-0.5 h-4 bg-border" />
+                  <DropdownMenu>
+                    <DropdownMenuTrigger render={<Button type="button" variant="outline" size="default" data-vb="cLainnya" className={cn(TOMBOL_BAWAH, "h-8 gap-1 px-2.5 text-xs font-medium")} />}>
+                      Lainnya <ChevronDownIcon className="size-3.5" />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start" side="top" className="w-44">
                       <DropdownMenuItem data-vb="cSuratJalan" onClick={() => bukaPilih("sj")}>Surat Jalan</DropdownMenuItem>
                       <DropdownMenuItem data-vb="cSPK" onClick={() => bukaPilih("spk")}>SPK Gudang</DropdownMenuItem>
-                    </>
-                  )}
-                </DropdownMenuContent>
-              </DropdownMenu>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </>
+              )}
             </div>
             <div className="flex items-center gap-1.5">
               {!kotakScan && (

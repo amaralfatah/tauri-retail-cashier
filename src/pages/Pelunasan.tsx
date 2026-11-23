@@ -36,6 +36,7 @@ export function Pelunasan({ jenis, jatuhTempo }: { jenis: PelunasanJenis; jatuhT
   const [mode, setMode] = useState(MODE[0]);
   const [nominal, setNominal] = useState(0);
   const [cek, setCek] = useState<Set<string>>(new Set());
+  const [sel, setSel] = useState<string | null>(null);
   const [cari, setCari] = useState(false);
   const [cariJth, setCariJth] = useState(false);
   const [kasir, setKasir] = useState<Kontak>({ kode: user.kodekaryawan, nama: user.namakaryawan });
@@ -108,11 +109,20 @@ export function Pelunasan({ jenis, jatuhTempo }: { jenis: PelunasanJenis; jatuhT
   }, [kontak, perTrans, dicek, nominal, cek, kasir, jenis, tgl, piutang, msg, muat]);
 
   const batal = useCallback(() => {
-    setKartu([]); setNominal(0); setCek(new Set()); setTgl(today()); setMode(MODE[0]);
+    setKartu([]); setNominal(0); setCek(new Set()); setSel(null); setTgl(today()); setMode(MODE[0]);
     setKasir({ kode: user.kodekaryawan, nama: user.namakaryawan });
   }, [user]);
 
-  const nomor: GridCol<Row> = { title: "No", width: 40, align: "right", render: (_r, i) => i + 1 };
+  const toggleCek = useCallback((no: string) => {
+    setCek((s) => {
+      const t = new Set(s);
+      if (t.has(no)) t.delete(no);
+      else t.add(no);
+      return t;
+    });
+  }, []);
+
+  const nomor: GridCol<Row> = { title: "No.", width: 48, align: "right", render: (_r, i) => i + 1 };
   const kolom = (terbayar: (r: Row, i: number) => number): GridCol<Row>[] => [
     { title: piutang ? "No. Piutang" : "No. Hutang", width: 110, render: (r) => r.nopiutang },
     { title: "No. Trans", width: 110, render: (r) => r.noreftrans },
@@ -124,7 +134,7 @@ export function Pelunasan({ jenis, jatuhTempo }: { jenis: PelunasanJenis; jatuhT
   const kolomNominal = [nomor, ...kolom((_r, i) => alokasi[i] ?? 0)];
   const kolomCek: GridCol<Row>[] = [
     {
-      title: "", width: 38, align: "center",
+      title: "", width: 42, align: "center",
       render: (r) => {
         const no = String(r.nopiutang);
         return (
@@ -143,9 +153,9 @@ export function Pelunasan({ jenis, jatuhTempo }: { jenis: PelunasanJenis; jatuhT
     const onKey = (e: KeyboardEvent) => {
       if (terbuka) return;
       if (e.key === "Escape") { e.preventDefault(); go("home"); }
+      else if (e.key === "F4" || (e.altKey && e.code === "KeyS")) { e.preventDefault(); void simpan(); }
+      else if (e.key === "F1" || (e.altKey && e.code === "KeyB")) { e.preventDefault(); batal(); }
       else if (e.altKey && e.code === "Digit1") { e.preventDefault(); document.querySelector<HTMLElement>('[data-vb="dtTglTrans"] input')?.focus(); }
-      else if (e.altKey && e.code === "KeyS") { e.preventDefault(); void simpan(); }
-      else if (e.altKey && e.code === "KeyB") { e.preventDefault(); batal(); }
       else if (e.altKey && e.code === "Digit2") { e.preventDefault(); if (user.level.toUpperCase() !== "KASIR") setCariKasir(true); }
       else if (e.altKey && e.code === "Digit3") { e.preventDefault(); setCari(true); }
       else if (e.altKey && e.code === "KeyT") { e.preventDefault(); document.querySelector<HTMLElement>(".vbg")?.focus(); }
@@ -155,16 +165,17 @@ export function Pelunasan({ jenis, jatuhTempo }: { jenis: PelunasanJenis; jatuhT
   });
 
   const isKasir = user.level.toUpperCase() === "KASIR";
+  const jumlahBayar = perTrans ? dicek : nominal;
 
   return (
-    <div className="vb-modern flex size-full min-h-0 flex-col justify-between gap-2.5 bg-background p-3 font-sans text-xs text-foreground" data-form={FORM[jenis]}>
-      <div className="grid grid-cols-2 items-end gap-2.5 rounded-md border border-border bg-card p-2.5 sm:grid-cols-4">
+    <div className="vb-modern flex size-full min-h-0 flex-col overflow-hidden bg-background font-sans text-foreground" data-form={FORM[jenis]}>
+      <div className="grid grid-cols-2 items-end gap-3 border-b bg-background px-3 py-1.5 sm:grid-cols-4">
         <div className="flex flex-col gap-1" data-vb="dtTglTrans">
           <Label className="flex items-center justify-between text-xs font-medium text-foreground">
             <span>Tgl. Transaksi</span>
             <span className="text-[11px] font-normal text-muted-foreground">Alt+1</span>
           </Label>
-          <Input type="date" value={tgl} onChange={(e) => e.target.value && setTgl(e.target.value)} className="h-7 text-xs tabular-nums" />
+          <Input type="date" value={tgl} onChange={(e) => e.target.value && setTgl(e.target.value)} className="border-foreground/20 bg-background pr-1.5 text-foreground tabular-nums" />
         </div>
         <div className="flex flex-col gap-1" data-vb="tKasirNama">
           <Label className="flex items-center justify-between text-xs font-medium text-foreground">
@@ -172,10 +183,10 @@ export function Pelunasan({ jenis, jatuhTempo }: { jenis: PelunasanJenis; jatuhT
             <span className="text-[11px] font-normal text-muted-foreground">Alt+2</span>
           </Label>
           <InputGroup className={isKasir ? "border-transparent bg-muted" : "border-foreground/20 bg-background"}>
-            <InputGroupInput readOnly value={kasir.nama} className="h-7 cursor-default text-xs font-medium text-foreground" />
+            <InputGroupInput readOnly value={kasir.nama} className="cursor-default font-medium text-foreground" />
             {!isKasir && (
               <InputGroupAddon align="inline-end">
-                <InputGroupButton size="icon-xs" aria-label="Pilih kasir" data-vb="cCariKasir" onClick={() => setCariKasir(true)}>
+                <InputGroupButton size="icon-xs" aria-label="Pilih kasir" data-vb="cCariKasir" className="text-foreground/70 hover:bg-accent hover:text-primary" onClick={() => setCariKasir(true)}>
                   <SearchIcon />
                 </InputGroupButton>
               </InputGroupAddon>
@@ -188,9 +199,9 @@ export function Pelunasan({ jenis, jatuhTempo }: { jenis: PelunasanJenis; jatuhT
             <span className="text-[11px] font-normal text-muted-foreground">Alt+3</span>
           </Label>
           <InputGroup className="border-foreground/20 bg-background">
-            <InputGroupInput readOnly value={kontak?.nama ?? ""} placeholder={piutang ? "Pilih pelanggan..." : "Pilih supplier..."} className="h-7 cursor-default text-xs font-medium text-foreground" />
+            <InputGroupInput readOnly value={kontak?.nama ?? ""} placeholder={piutang ? "Pilih pelanggan..." : "Pilih supplier..."} className="cursor-default font-medium text-foreground" />
             <InputGroupAddon align="inline-end">
-              <InputGroupButton size="icon-xs" aria-label="Pilih kontak" data-vb={piutang ? "cCariPelanggan" : "cCariPemasok"} onClick={() => setCari(true)}>
+              <InputGroupButton size="icon-xs" aria-label="Pilih kontak" data-vb={piutang ? "cCariPelanggan" : "cCariPemasok"} className="text-foreground/70 hover:bg-accent hover:text-primary" onClick={() => setCari(true)}>
                 <SearchIcon />
               </InputGroupButton>
             </InputGroupAddon>
@@ -204,11 +215,52 @@ export function Pelunasan({ jenis, jatuhTempo }: { jenis: PelunasanJenis; jatuhT
         </div>
       </div>
 
-      <div className="relative min-h-0 flex-1" data-vb={perTrans ? "lsData" : "tdDetail"}>
+      <div className="flex flex-wrap items-center justify-between gap-4 border-b bg-display px-4 py-2 text-display-foreground">
+        <div className="flex items-center gap-4">
+          <div className="flex flex-col">
+            <span className="text-[11px] font-medium tracking-wider text-display-foreground/65 uppercase">
+              {perTrans ? "Dipilih / Total" : "Jml. Kartu"}
+            </span>
+            <span className="text-2xl leading-none font-bold tabular-nums">
+              {perTrans ? `${cek.size} / ${kartu.length}` : kartu.length}
+            </span>
+          </div>
+          <div className="h-8 w-px bg-display-foreground/15" />
+          <div className="flex flex-col">
+            <span className="text-[11px] font-medium tracking-wider text-display-foreground/65 uppercase">
+              {piutang ? "Piutang Pelanggan" : "Hutang Supplier"}
+            </span>
+            <span className="text-sm font-semibold text-display-foreground/90">
+              {kontak
+                ? `${kontak.nama} · ${perTrans ? "Centang transaksi yang dilunasi (Enter/klik ganda)" : "Isi nominal pelunasan di bawah"} · Alt+T ke tabel`
+                : `Tekan Alt+3 untuk memilih ${piutang ? "pelanggan" : "supplier"}`}
+            </span>
+          </div>
+        </div>
+        <div className="flex items-baseline gap-1.5">
+          <span className="text-sm font-medium text-display-foreground/70 lg:text-base">Rp</span>
+          <span className="text-3xl leading-none font-bold tracking-tight tabular-nums lg:text-[2.5rem]">{rp(jumlahBayar > 0 ? jumlahBayar : total)}</span>
+        </div>
+      </div>
+
+      <div className="relative min-h-0 flex-1 bg-muted/20 p-2.5" data-vb={perTrans ? "lsData" : "tdDetail"}>
         {perTrans ? (
-          <VbGrid cols={kolomCek} rows={kartu} rowKey={(r) => String(r.nopiutang)} selected={null} onSelect={() => undefined} />
+          <VbGrid
+            cols={kolomCek}
+            rows={kartu}
+            rowKey={(r) => String(r.nopiutang)}
+            selected={sel}
+            onSelect={setSel}
+            onOpen={(r) => toggleCek(String(r.nopiutang))}
+          />
         ) : (
-          <VbGrid cols={kolomNominal} rows={kartu} rowKey={(r) => String(r.nopiutang)} selected={null} onSelect={() => undefined} />
+          <VbGrid
+            cols={kolomNominal}
+            rows={kartu}
+            rowKey={(r) => String(r.nopiutang)}
+            selected={sel}
+            onSelect={setSel}
+          />
         )}
         {kartu.length === 0 && (
           <div className="pointer-events-none absolute inset-x-0 top-1/2 px-6 text-center text-sm text-muted-foreground">
@@ -219,7 +271,7 @@ export function Pelunasan({ jenis, jatuhTempo }: { jenis: PelunasanJenis; jatuhT
         )}
       </div>
 
-      <div className="grid grid-cols-1 gap-2.5 rounded-md border border-border bg-card p-2.5 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-2.5 border-t border-border bg-card px-3 py-2 sm:grid-cols-3">
         <div className="flex flex-col gap-1" data-vb={perTrans ? "tTotal" : "tTotalPiutang"}>
           <Label className="text-xs font-medium text-muted-foreground">Total {jenis}</Label>
           <Input readOnly value={rp(perTrans ? dicek : total)} className="h-8 bg-muted text-right text-sm font-bold tabular-nums" />
@@ -242,11 +294,11 @@ export function Pelunasan({ jenis, jatuhTempo }: { jenis: PelunasanJenis; jatuhT
         </div>
       </div>
 
-      <div className="-mx-3 -mb-3 flex flex-wrap items-center justify-between gap-2 border-t border-border bg-muted px-3 py-1.5">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border bg-muted px-3 py-1.5">
         <div className="flex flex-wrap items-center gap-1.5">
           <Button type="button" variant="outline" size="default" data-vb="cBatal" className="h-8 border-destructive/40 bg-background px-2.5 text-xs font-medium text-destructive shadow-xs hover:bg-destructive/10 hover:text-destructive" onClick={batal}>
             <span>Batal</span>
-            <Kbd className="border border-destructive/35 bg-destructive/10 text-destructive">Alt+B</Kbd>
+            <Kbd className="border border-destructive/35 bg-destructive/10 text-destructive">F1</Kbd>
           </Button>
         </div>
         <div className="flex items-center gap-1.5">
@@ -256,7 +308,7 @@ export function Pelunasan({ jenis, jatuhTempo }: { jenis: PelunasanJenis; jatuhT
           </Button>
           <Button type="button" variant="default" size="default" data-vb="cSimpan" className="h-8 gap-1.5 px-3.5 text-xs font-semibold shadow-xs" onClick={() => void simpan()}>
             <span>Simpan</span>
-            <Kbd className="border border-primary-foreground/30 bg-primary-foreground/20 text-primary-foreground">Alt+S</Kbd>
+            <Kbd className="border border-primary-foreground/30 bg-primary-foreground/20 text-primary-foreground">F4</Kbd>
           </Button>
         </div>
       </div>

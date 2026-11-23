@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ChevronDownIcon, ChevronRight, CircleArrowDownIcon, MoonIcon, SunIcon, XIcon } from "lucide-react";
+import { ChevronDownIcon, ChevronRight, CircleArrowDownIcon, MoonIcon, SunIcon } from "lucide-react";
 import { cn } from "cn";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -313,13 +313,13 @@ export default function App() {
   const page = child.page;
   const activeKey: string =
     page === "home" ? "home"
-    : page === "master" || page === "satuan" || page === "kelompok" || page === "kategori" ? "master"
+    : page === "master" || page === "satuan" || page === "kelompok" || page === "kategori" || page === "nontunai" ? "master"
     : page === "jual" || page === "orderjual" || page === "returjual" || page === "piutang" ? "jual"
     : page === "beli" || page === "orderbeli" || page === "returbeli" || page === "returbelibrg" || page === "hutang" ? "beli"
     : page === "opname" || page === "stokawal" || page === "barcode" || page === "pricetag" || page === "katalog" || page === "promodiskon" || page === "promobonus" || page === "promopdp" ? "inv"
     : page === "laporan" ? "lap"
     : page === "keuangan" ? "keu"
-    : page === "pengaturan" || page === "pengguna" || page === "database" || page === "alat" || page === "poin" || page === "nontunai" ? "atur"
+    : page === "pengaturan" || page === "pengguna" || page === "database" || page === "alat" || page === "poin" ? "atur"
     : page === "panduan" ? "bantu"
     : "";
   const renderToolBtn = (b: ToolBtn, showSep: boolean) => {
@@ -332,7 +332,7 @@ export default function App() {
     const Ikon = b.icon;
     return (
       <span key={b.key} className="flex items-center">
-        {showSep && <Separator orientation="vertical" className={cn("h-5 bg-border", isKeluar ? "mx-2" : "mx-1")} />}
+        {showSep && <Separator orientation="vertical" className="mx-1.5 h-4 bg-border/80" />}
         <Button
           type="button"
           variant="ghost"
@@ -343,7 +343,7 @@ export default function App() {
           aria-label={sesi ? b.caption : undefined}
           title={sesi ? b.caption : undefined}
           className={cn(
-            "group/tb h-8 gap-1.5 border-0 px-2 text-[13px] font-medium text-foreground shadow-none transition-colors @min-[1300px]/nav:px-2.5",
+            "group/tb h-8 gap-1.5 border-0 px-2 text-[13px] font-medium text-foreground shadow-none transition-colors @min-[1480px]/nav:px-2.5",
             isKeluar
               ? "hover:bg-destructive/12 hover:text-destructive"
               : "hover:bg-foreground/6 hover:text-foreground",
@@ -359,8 +359,8 @@ export default function App() {
             aria-hidden
             className={cn(
               "size-4 shrink-0",
-              // Layar sempit (±1093px, Ukuran tampilan 125%): menu modul cukup teks supaya Log Off dan Keluar tetap berlabel dan terlihat.
-              b.menu && "hidden @min-[1300px]/nav:block",
+              // Seragam: semua tombol navigasi tampil teks+panah di bawah 1480px (termasuk zoom 115%/125%) dan ikon+teks saat ruang benar-benar cukup.
+              !sesi && "hidden @min-[1480px]/nav:block",
               active ? "text-foreground" : "text-foreground/60",
               // Keluar tidak boleh jadi yang paling mencolok: netral, merah hanya saat disorot.
               isKeluar && "text-foreground/70 group-hover/tb:text-destructive",
@@ -370,7 +370,7 @@ export default function App() {
           <span>{b.key === "home" && getLocal("home") === "Dashboard" ? "Dashboard" : b.caption}</span>
           {bukaMenu && (
             <ChevronDownIcon aria-hidden
-              className={cn("-ml-0.5 hidden size-3.5 shrink-0 transition-transform @min-[1300px]/nav:block", "text-foreground/50", openMenu && "rotate-180")} />
+              className={cn("-ml-0.5 size-3 shrink-0 transition-transform", "text-foreground/45", openMenu && "rotate-180")} />
           )}
         </Button>
       </span>
@@ -379,7 +379,7 @@ export default function App() {
   return (
     <AppCtx.Provider value={{ user, setting, reloadSetting, go }}>
       <div className="mdi-app">
-        <nav className="mdi-toolbar no-print @container/nav flex h-11 items-center gap-0.5 overflow-x-auto border-b border-border bg-muted px-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" aria-label="Menu utama" ref={toolbarRef}>
+        <nav className="mdi-toolbar no-print @container/nav flex h-11 items-center gap-0.5 overflow-x-auto border-b border-border bg-muted px-2.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" aria-label="Menu utama" ref={toolbarRef}>
           {mainButtons.map((b, i) => renderToolBtn(b, i > 0 && !!b.sepBefore))}
           <span className="flex-1" />
           {versiBaru && (
@@ -395,7 +395,7 @@ export default function App() {
               onClick={bukaPembaruan}
             >
               <CircleArrowDownIcon className="size-4" />
-              <span className="hidden @min-[1300px]/nav:inline">Versi Baru</span>
+              <span className="hidden @min-[1480px]/nav:inline">Versi Baru</span>
               <span aria-hidden className="absolute top-1 right-1 size-2 rounded-full bg-primary ring-2 ring-muted" />
             </Button>
           )}
@@ -409,19 +409,9 @@ export default function App() {
             onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
           >
             {resolvedTheme === "dark" ? <SunIcon className="size-4 text-warning" /> : <MoonIcon className="size-4" />}
-            <span className="hidden @min-[1300px]/nav:inline">{resolvedTheme === "dark" ? "Terang" : "Gelap"}</span>
+            <span className="hidden @min-[1480px]/nav:inline">{resolvedTheme === "dark" ? "Terang" : "Gelap"}</span>
           </Button>
-          {sessionButtons.map((b) => renderToolBtn(b, true))}
-          {/* Layar kasir sudah punya tombol Tutup [Esc]; tombol × kedua membuat kasir ragu mana yang menutup aplikasi. */}
-          {page !== "home" && page !== "jual" && (
-            <span className="flex items-center">
-              <Separator orientation="vertical" className="mx-1 h-4 bg-border" />
-              <Button type="button" variant="ghost" size="icon-sm" aria-label="Tutup jendela" title="Tutup jendela (ESC)"
-                className="text-foreground/75 hover:bg-foreground/6 hover:text-foreground" onClick={() => open("home")}>
-                <XIcon />
-              </Button>
-            </span>
-          )}
+          {sessionButtons.map((b, i) => renderToolBtn(b, i === 0))}
         </nav>
         {popup && popNode && (
           <div className="no-print fixed z-40 mt-1" style={{ left: popup.left, top: popup.top }} ref={popupRef}>
@@ -452,6 +442,7 @@ export default function App() {
               {page === "satuan" && <Master key="satuan" initial="mdsatuan" />}
               {page === "kelompok" && <Master key="kelompok" initial="mdkelompok" />}
               {page === "kategori" && <Master key="kategori" initial="mdkategori" />}
+              {page === "nontunai" && <JenisNonTunai />}
               {page === "laporan" && <Laporan key={child.seq} initial={child.tab as Tab | undefined} />}
               {page === "pengaturan" && <Pengaturan />}
               {page === "pengguna" && <Pengguna />}

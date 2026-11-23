@@ -159,6 +159,7 @@ export function Retur({ mode }: { mode: ReturMode }) {
       if (cariTrans || cariBarang || cariPemasok || cariLain || ada || bukti) return;
       if (e.altKey) {
         if (e.code === "Digit1") { e.preventDefault(); document.querySelector<HTMLElement>('[data-vb="dtTglTrans"] input')?.focus(); return; }
+        if (e.code === "Digit5") { e.preventDefault(); document.querySelector<HTMLElement>('[data-vb="tCatatan"] input')?.focus(); return; }
         const k = e.code === "Digit2" ? (kasirBisaDiganti ? "kasir" : null) : e.code === "Digit3" ? (brg || mode === "beli" ? "pemasok" : "pelanggan") : e.code === "Digit4" ? "sales" : null;
         if (k === "pemasok") { e.preventDefault(); setCariPemasok(true); }
         else if (k) { e.preventDefault(); setCariLain(k as "kasir" | "pelanggan" | "sales"); }
@@ -232,10 +233,10 @@ export function Retur({ mode }: { mode: ReturMode }) {
     }
     const kolom = brg ? [4, 14, 40, 8, 10, 12, 12] : mode === "beli" ? [4, 14, 38, 8, 10, 10, 8, 8] : [4, 12, 32, 7, 9, 10, 10, 8, 8];
     const judul = brg
-      ? ["No", "Kode / Barcode", "Nama Barang", "Satuan", "Jml. Retur", "Harga", "Subtotal"]
+      ? ["No.", "Kode / Barcode", "Nama Barang", "Satuan", "Jml. Retur", "Harga", "Subtotal"]
       : mode === "beli"
-        ? ["No", "Kode / Barcode", "Nama Barang", "Satuan", "Jumlah", "Jml. Retur", "Hrg. Beli", "Subtotal"]
-        : ["No", "Kode", "Nama Barang", "Satuan", "Jml. Jual", "Sudah Diretur", "Jml. Retur", "Harga", "Subtotal"];
+        ? ["No.", "Kode / Barcode", "Nama Barang", "Satuan", "Jumlah", "Jml. Retur", "Hrg. Beli", "Subtotal"]
+        : ["No.", "Kode", "Nama Barang", "Satuan", "Jml. Jual", "Sudah Diretur", "Jml. Retur", "Harga", "Subtotal"];
     const kanan = brg ? [4, 5, 6] : mode === "beli" ? [4, 5, 6, 7] : [4, 5, 6, 7, 8];
     return (
       <div className="tj-grid vb-modern" tabIndex={0} onKeyDown={(e) => {
@@ -276,7 +277,7 @@ export function Retur({ mode }: { mode: ReturMode }) {
 
   return (
     <div className="flex size-full flex-col overflow-hidden bg-background font-sans text-foreground" data-form={FORM[mode]} onKeyDown={enterKepala}>
-      <div className="grid grid-cols-2 items-end gap-2 border-b bg-background px-3 py-1.5 sm:grid-cols-3 lg:grid-cols-[9rem_8.5rem_10rem_13.5rem_10rem_minmax(0,1fr)]">
+      <div className="grid grid-cols-2 items-end gap-3 border-b bg-background px-3 py-1.5 sm:grid-cols-3 lg:grid-cols-6">
         <div className="flex flex-col gap-1" data-vb="tNoTrans">
           <Label className="block truncate text-xs font-medium text-foreground">No. Retur</Label>
           <Input readOnly tabIndex={-1} value={notrans} className="cursor-default border-transparent bg-muted font-semibold text-foreground tabular-nums shadow-none focus-visible:ring-0" />
@@ -297,7 +298,7 @@ export function Retur({ mode }: { mode: ReturMode }) {
             <InputGroupInput readOnly value={kasir.nama} className="cursor-default font-medium text-foreground" />
             {kasirBisaDiganti && (
               <InputGroupAddon align="inline-end">
-                <InputGroupButton size="icon-xs" aria-label="Pilih kasir" onClick={() => setCariLain("kasir")}>
+                <InputGroupButton size="icon-xs" aria-label="Pilih kasir" className="text-foreground/70 hover:bg-accent hover:text-primary" onClick={() => setCariLain("kasir")}>
                   <SearchIcon />
                 </InputGroupButton>
               </InputGroupAddon>
@@ -312,7 +313,7 @@ export function Retur({ mode }: { mode: ReturMode }) {
           <InputGroup className="border-foreground/20 bg-background">
             <InputGroupInput readOnly value={kontakVal} placeholder={mode === "jual" ? "Pilih pelanggan" : "Pilih supplier"} className="cursor-default font-medium text-foreground" />
             <InputGroupAddon align="inline-end">
-              <InputGroupButton size="icon-xs" aria-label="Pilih kontak" onClick={() => (mode === "jual" ? setCariLain("pelanggan") : setCariPemasok(true))}>
+              <InputGroupButton size="icon-xs" aria-label="Pilih kontak" className="text-foreground/70 hover:bg-accent hover:text-primary" onClick={() => (mode === "jual" ? setCariLain("pelanggan") : setCariPemasok(true))}>
                 <SearchIcon />
               </InputGroupButton>
             </InputGroupAddon>
@@ -326,14 +327,17 @@ export function Retur({ mode }: { mode: ReturMode }) {
           <InputGroup className="border-foreground/20 bg-background">
             <InputGroupInput readOnly value={salesVal} placeholder="Tanpa sales" className="cursor-default text-foreground" />
             <InputGroupAddon align="inline-end">
-              <InputGroupButton size="icon-xs" aria-label="Pilih sales" onClick={() => setCariLain("sales")}>
+              <InputGroupButton size="icon-xs" aria-label="Pilih sales" className="text-foreground/70 hover:bg-accent hover:text-primary" onClick={() => setCariLain("sales")}>
                 <SearchIcon />
               </InputGroupButton>
             </InputGroupAddon>
           </InputGroup>
         </div>
         <div className="flex flex-col gap-1" data-vb="tCatatan">
-          <Label className="text-xs font-medium text-foreground">Catatan</Label>
+          <Label className="flex items-center justify-between text-xs font-medium text-foreground">
+            <span>Catatan</span>
+            <span className="text-[11px] font-normal text-muted-foreground">Alt+5</span>
+          </Label>
           <Input value={catatan} onChange={(e) => setCatatan(e.target.value)} placeholder="Catatan retur (opsional)" className="border-foreground/20 bg-background text-foreground" />
         </div>
       </div>

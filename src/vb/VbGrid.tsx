@@ -59,7 +59,8 @@ export function VbGrid<T>(props: {
   const rowH = 28;
   const headH = 30;
   const colsKey = cols.map((c) => c.title).join("|");
-  const hasRowNo = cols.length > 0 && cols[0].title === "No.";
+  const hasRowNo = cols.length > 0 && (cols[0].title === "No." || cols[0].title === "No");
+  const hasFixedFirst = hasRowNo || (cols.length > 0 && cols[0].title === "" && cols[0].width <= 48);
 
   useEffect(() => {
     setSort(null);
@@ -119,15 +120,15 @@ export function VbGrid<T>(props: {
     });
   });
   const pakai = cols.map((c, j) => {
-    if (hasRowNo && j === 0) return Math.max(48, Math.min(fit[0] ?? 48, 72));
+    if (hasFixedFirst && j === 0) return hasRowNo ? Math.max(48, Math.min(fit[0] ?? 48, 72)) : Math.max(40, c.width);
     return Math.max(fit[j] ?? 0, Math.min(c.width, 60));
   });
   const colWidths = [...pakai];
   const sumPakai = pakai.reduce((s, w) => s + w, 0) || 1;
   if (vw > 0 && sumPakai < vw) {
-    // Ruang lebih dibagi ke kolom data menurut lebar asli VB; kolom "No." tetap ramping seperti row header Excel.
+    // Ruang lebih dibagi ke kolom data menurut lebar asli VB; kolom "No." / centang tetap ramping seperti row header Excel.
     const sisa = vw - sumPakai;
-    const startIdx = hasRowNo && cols.length > 1 ? 1 : 0;
+    const startIdx = hasFixedFirst && cols.length > 1 ? 1 : 0;
     const bobot = cols.slice(startIdx).reduce((s, c) => s + c.width, 0) || 1;
     for (let j = startIdx; j < cols.length; j++) {
       colWidths[j] += Math.floor((sisa * cols[j].width) / bobot);
