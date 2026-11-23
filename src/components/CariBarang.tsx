@@ -120,7 +120,7 @@ export function CariBarang(props: { initial?: string; onPick: (b: Row) => void; 
         <div className="relative min-h-0 flex-1" data-vb="lsData">
           <VbGrid cols={cols} rows={list} rowKey={(r) => r.kodebarang} selected={sel} onSelect={setSel} onOpen={ambil} />
           {selesai && list.length === 0 && (
-            <div className="pointer-events-none absolute inset-x-0 top-[30px] bottom-0 grid place-items-center px-6 text-center text-sm text-muted-foreground">
+            <div className="pointer-events-none absolute inset-x-0 top-8 bottom-0 grid place-items-center px-6 text-center text-sm text-muted-foreground">
               Barang tidak ditemukan. Coba kata lain.
             </div>
           )}

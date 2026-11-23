@@ -58,6 +58,7 @@ export function PoinMember(props: { kode?: string; onClose?: () => void }) {
   };
 
   const cols: GridCol<Row>[] = [
+    { title: "No", width: 42, align: "right", render: (_r, i) => i + 1 },
     { title: "No. Trans", width: 95, render: (r) => r.notukar },
     { title: "Tanggal", width: 85, render: (r) => tglID(r.tgltukar) },
     { title: "Petugas", width: 105, render: (r) => r.namakaryawan },
@@ -73,7 +74,8 @@ export function PoinMember(props: { kode?: string; onClose?: () => void }) {
   );
 
   const isi = (
-    <div className="vb-modern flex size-full min-h-0 flex-col justify-between gap-2.5 bg-background p-3 font-sans text-xs text-foreground" data-form="FrmTransPoin">
+    <div className="vb-modern flex size-full min-h-0 flex-col bg-background font-sans text-xs text-foreground" data-form="FrmTransPoin">
+      <div className="flex min-h-0 flex-1 flex-col gap-2.5 p-3">
       <div className="grid grid-cols-1 gap-2.5 rounded-md border border-border bg-card p-3 sm:grid-cols-3">
         <div className="flex flex-col gap-1" data-vb="tPelangganKode">
           <Label className="text-xs font-medium text-foreground">Kode Pelanggan</Label>
@@ -146,22 +148,23 @@ export function PoinMember(props: { kode?: string; onClose?: () => void }) {
       <div className="min-h-0 flex-1" data-vb="lsData">
         <VbGrid cols={cols} rows={hist} rowKey={(r) => r.notukar} selected={sel} onSelect={setSel} />
       </div>
+      </div>
 
-      <div className="flex items-center justify-between border-t border-border pt-2">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border bg-muted px-3 py-1.5">
         <div className="flex items-center gap-1.5">
-          <Button type="button" variant="outline" size="default" data-vb="cBatal" className="h-8 bg-background px-3 text-xs font-medium border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={batal}>
+          <Button type="button" variant="outline" size="default" data-vb="cBatal" className="h-8 border-destructive/40 bg-background px-2.5 text-xs font-medium text-destructive shadow-xs hover:bg-destructive/10 hover:text-destructive" onClick={batal}>
             Batal
           </Button>
-          <Button type="button" variant="outline" size="default" data-vb="cKoreksi" className="h-8 px-3 text-xs font-medium" onClick={() => (member ? setKoreksi(true) : msg.alert("Isi dulu kode pelanggannya."))}>
+          <Button type="button" variant="outline" size="default" data-vb="cKoreksi" className="h-8 border-foreground/20 bg-background px-2.5 text-xs font-medium text-foreground shadow-xs" onClick={() => (member ? setKoreksi(true) : msg.alert("Isi dulu kode pelanggannya."))}>
             Koreksi Poin
           </Button>
         </div>
         <div className="flex items-center gap-1.5">
-          <Button type="button" variant="outline" size="default" data-vb="cTutup" className="h-8 gap-1.5 px-2.5 text-xs font-medium" onClick={tutup}>
+          <Button type="button" variant="outline" size="default" data-vb="cTutup" className="h-8 gap-1.5 border-foreground/20 bg-background px-2.5 text-xs font-medium text-foreground shadow-xs" onClick={tutup}>
             <span>Tutup</span>
             <Kbd className="border border-border bg-muted text-foreground">Esc</Kbd>
           </Button>
-          <Button type="button" variant="default" size="default" data-vb="cSimpan" disabled={!member} className="h-8 px-4 text-xs font-semibold" onClick={() => void simpan()}>
+          <Button type="button" variant="default" size="default" data-vb="cSimpan" disabled={!member} className="h-8 px-3.5 text-xs font-semibold shadow-xs" onClick={() => void simpan()}>
             Simpan
           </Button>
         </div>

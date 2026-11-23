@@ -52,7 +52,7 @@ export function Database() {
       <div className="vb-modern flex h-full flex-col justify-between gap-4 bg-background p-4 font-sans text-xs text-foreground" data-form="FrmZDatabase">
         <KunciPusat />
         <div className="flex justify-end border-t border-border pt-3">
-          <Button type="button" variant="outline" size="sm" data-vb="cTutup" className="h-8 gap-1.5 border-foreground/20 bg-background px-2.5 font-medium text-foreground shadow-xs" onClick={() => go("home")}>
+          <Button type="button" variant="outline" size="default" data-vb="cTutup" className="h-8 gap-1.5 border-foreground/20 bg-background px-2.5 text-xs font-medium text-foreground shadow-xs" onClick={() => go("home")}>
             <span>Tutup</span>
             <Kbd className="border border-border bg-muted text-foreground">Esc</Kbd>
           </Button>
@@ -102,19 +102,19 @@ export function Database() {
 
       <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-3">
         <div className="flex items-center gap-1.5">
-          <Button type="button" variant="outline" size="sm" data-vb="cBatal" className="h-8 border-foreground/20 bg-background px-3 font-medium text-destructive shadow-xs" onClick={() => void muat()}>
+          <Button type="button" variant="outline" size="default" data-vb="cBatal" className="h-8 border-destructive/40 bg-background px-2.5 text-xs font-medium text-destructive shadow-xs hover:bg-destructive/10 hover:text-destructive" onClick={() => void muat()}>
             Batal
           </Button>
-          <Button type="button" variant="outline" size="sm" data-vb="cTes" className="h-8 px-3 font-medium" onClick={() => void tesKoneksi()}>
+          <Button type="button" variant="outline" size="default" data-vb="cTes" className="h-8 border-foreground/20 bg-background px-2.5 text-xs font-medium text-foreground shadow-xs" onClick={() => void tesKoneksi()}>
             Tes Koneksi
           </Button>
         </div>
         <div className="flex items-center gap-1.5">
-          <Button type="button" variant="outline" size="sm" data-vb="cTutup" className="h-8 gap-1.5 border-foreground/20 bg-background px-2.5 font-medium text-foreground shadow-xs" onClick={() => go("home")}>
+          <Button type="button" variant="outline" size="default" data-vb="cTutup" className="h-8 gap-1.5 border-foreground/20 bg-background px-2.5 text-xs font-medium text-foreground shadow-xs" onClick={() => go("home")}>
             <span>Tutup</span>
             <Kbd className="border border-border bg-muted text-foreground">Esc</Kbd>
           </Button>
-          <Button type="button" variant="default" size="sm" data-vb="cSimpan" className="h-8 px-3.5 font-semibold" onClick={simpan}>
+          <Button type="button" variant="default" size="default" data-vb="cSimpan" className="h-8 px-3.5 text-xs font-semibold shadow-xs" onClick={simpan}>
             Simpan
           </Button>
         </div>

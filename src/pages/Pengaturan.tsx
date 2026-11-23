@@ -426,7 +426,7 @@ export function Pengaturan() {
 
       <div className="mt-3 flex flex-wrap items-center justify-between gap-2" data-vb="Picture1">
         <div className="flex items-center gap-1.5">
-          <Button type="button" variant="outline" size="default" data-vb="cBatal" className="h-8 border-foreground/20 bg-background px-3 text-xs font-medium text-destructive shadow-xs" onClick={batal}>
+          <Button type="button" variant="outline" size="default" data-vb="cBatal" className="h-8 border-destructive/40 bg-background px-2.5 text-xs font-medium text-destructive shadow-xs hover:bg-destructive/10 hover:text-destructive" onClick={batal}>
             Batal
           </Button>
           <Button type="button" variant="outline" size="default" className="h-8 px-3 text-xs font-medium" onClick={() => setProfil(true)}>

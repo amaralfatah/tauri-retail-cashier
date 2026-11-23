@@ -9,7 +9,7 @@ import { api, errText, Row } from "../api";
 import { inventoriApi } from "../api/inventori";
 import { useApp } from "../appContext";
 import { CariBarang } from "../components/CariBarang";
-import { EntryGrid, type EntryGridCol, GridKodeInput } from "../components/EntryGrid";
+import { EntryGrid, type EntryGridCol, GridKodeInput, useEntryMinRows } from "../components/EntryGrid";
 import { Modal } from "../components/Modal";
 import { qty, rp, today } from "../format";
 import { useMsgBox } from "../vb/VbGrid";
@@ -85,6 +85,7 @@ export function CetakLabel({ mode }: { mode: LabelMode }) {
   const [preview, setPreview] = useState<Item[] | null>(null);
   const scanRef = useRef<HTMLInputElement>(null);
   const gridRef = useRef<HTMLDivElement>(null);
+  const minRows = useEntryMinRows(gridRef);
 
   /** Tambahkan barang beserta harga promonya hari ini. Mengembalikan jumlah barang yang benar-benar masuk. */
   const add = useCallback(async (list: Row[], diam = false): Promise<number> => {
@@ -163,7 +164,7 @@ export function CetakLabel({ mode }: { mode: LabelMode }) {
   }, [ada, go]);
 
   const renderGrid = () => {
-    const total = Math.max(items.length + 1, 16);
+    const total = Math.max(items.length + 1, minRows);
     const idx = items.findIndex((i) => i.kode === selected);
     const onKeyDown = (e: React.KeyboardEvent) => {
       if (e.target !== e.currentTarget) return;
@@ -263,33 +264,33 @@ export function CetakLabel({ mode }: { mode: LabelMode }) {
         {renderGrid()}
       </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border bg-muted px-3 py-2">
-        <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border bg-muted px-3 py-1.5">
+        <div className="flex flex-wrap items-center gap-1.5">
           {!tag && (
-            <div className="flex items-center gap-2" data-vb="cKode">
-              <Label className="text-xs font-semibold text-foreground">Sumber Barcode</Label>
+            <div className="flex items-center gap-1.5 pr-1" data-vb="cKode">
+              <Label className="text-xs font-medium text-foreground">Sumber Barcode</Label>
               <NativeSelect value={kodeJenis} onChange={(e) => setKodeJenis(e.target.value)} className="w-36">
                 <NativeSelectOption value={KODE_BARANG}>{KODE_BARANG}</NativeSelectOption>
                 <NativeSelectOption value={BARCODE}>{BARCODE}</NativeSelectOption>
               </NativeSelect>
             </div>
           )}
-          <Button type="button" variant="outline" size="sm" className="h-8 gap-1.5 border-foreground/20 bg-background font-semibold text-foreground shadow-2xs" onClick={() => setCari(true)}>
+          <Button type="button" variant="outline" size="default" className="h-8 gap-1.5 border-foreground/20 bg-background px-2.5 text-xs font-medium text-foreground shadow-xs" onClick={() => setCari(true)}>
             <SearchIcon className="size-3.5" />
             <span>Cari Barang</span>
             <Kbd className="border border-border bg-muted text-foreground">F10</Kbd>
           </Button>
-          <Button type="button" variant="outline" size="sm" data-vb="cFilter" className="h-8 gap-1.5 border-foreground/20 bg-background font-semibold text-foreground shadow-2xs" onClick={() => setFilter(true)}>
+          <Button type="button" variant="outline" size="default" data-vb="cFilter" className="h-8 gap-1.5 border-foreground/20 bg-background px-2.5 text-xs font-medium text-foreground shadow-xs" onClick={() => setFilter(true)}>
             <FilterIcon className="size-3.5" />
             <span>Filter Barang</span>
           </Button>
         </div>
-        <div className="flex items-center gap-2">
-          <Button type="button" variant="outline" size="sm" data-vb="cTutup" className="h-8 gap-1.5 border-foreground/20 bg-background px-3 font-semibold text-foreground shadow-2xs" onClick={() => go("home")}>
+        <div className="flex items-center gap-1.5">
+          <Button type="button" variant="outline" size="default" data-vb="cTutup" className="h-8 gap-1.5 border-foreground/20 bg-background px-2.5 text-xs font-medium text-foreground shadow-xs" onClick={() => go("home")}>
             <span>Tutup</span>
             <Kbd className="border border-border bg-muted text-foreground">Esc</Kbd>
           </Button>
-          <Button type="button" variant="default" size="sm" data-vb="cCetak" className="h-8 gap-1.5 px-4 font-bold shadow-xs" onClick={() => void cetak()}>
+          <Button type="button" variant="default" size="default" data-vb="cCetak" className="h-8 gap-1.5 px-3.5 text-xs font-semibold shadow-xs" onClick={() => void cetak()}>
             <PrinterIcon className="size-3.5" />
             <span>Cetak</span>
           </Button>

@@ -45,7 +45,7 @@ export function ImporExcel(props: { jenis: string; nama: string; onClose: () => 
   };
 
   const cols: GridCol<string[]>[] = [
-    { title: "No.", width: 42, align: "right", render: (_, i) => i + 1 },
+    { title: "No", width: 42, align: "right", render: (_, i) => i + 1 },
     ...(data?.kolom ?? []).map<GridCol<string[]>>((k, j) => ({ title: k, width: Math.max(90, k.length * 9), render: (r) => r[j] })),
   ];
 

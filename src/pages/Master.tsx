@@ -17,7 +17,7 @@ import { getLocal } from "./localSettings";
 import { GridKosong, KEYS, loadAll, q2, statusText, useList } from "./masterLib";
 
 type Col = GridCol<Row>;
-const no: Col = { title: "No.", width: 42, align: "right", render: (_, i) => i + 1 };
+const no: Col = { title: "No", width: 42, align: "right", render: (_, i) => i + 1 };
 const t = (title: string, width: number, key: string): Col => ({ title, width, render: (r) => r[key] });
 const money = (title: string, width: number, key: string): Col => ({ title, width, align: "right", render: (r) => rp(r[key]) });
 const stok = (title: string, key: string): Col => ({ title, width: 92, align: "right", render: (r) => q2(r[key]) });

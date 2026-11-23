@@ -107,7 +107,7 @@ export function VbGrid<T>(props: {
   const copyTimerRef = useRef<number | null>(null);
 
   const rowH = 28;
-  const headH = 30;
+  const headH = 32;
   const colsKey = cols.map((c) => c.title).join("|");
   const effectiveStorageKey = storageKey ?? `tp:vbgrid:${colsKey}`;
   const [customW, setCustomW] = useState<Record<number, number>>(() => loadStoredWidths(effectiveStorageKey));
@@ -302,7 +302,7 @@ export function VbGrid<T>(props: {
     const col = cols[colIdx];
     if (!col) return;
     const headFont = "600 12px Inter, system-ui, -apple-system, sans-serif";
-    const cellFont = "400 12px Inter, system-ui, -apple-system, sans-serif";
+    const cellFont = "400 13px Inter, system-ui, -apple-system, sans-serif";
     let maxW = measureTextPx(col.title, headFont) + (sortable ? 14 : 0);
     const limit = Math.min(displayRows.length, 200);
     for (let idx = 0; idx < limit; idx++) {
@@ -375,7 +375,7 @@ export function VbGrid<T>(props: {
   };
 
   return (
-    <div className="flex h-full w-full flex-col overflow-hidden rounded-md border border-border bg-card font-sans text-xs text-foreground focus-within:ring-2 focus-within:ring-ring/40">
+    <div className="flex h-full w-full flex-col overflow-hidden rounded-md border border-border bg-card font-sans text-[13px] text-foreground">
       <div
         data-slot="vbg"
         ref={ref}
@@ -387,7 +387,7 @@ export function VbGrid<T>(props: {
         className="vbg tp-scroll-always relative min-h-0 flex-1 overflow-auto outline-none"
       >
         <div
-          className="sticky top-0 z-10 flex min-w-full border-b border-foreground/25 bg-muted select-none"
+          className="sticky top-0 z-20 flex min-w-full bg-muted text-xs select-none"
           style={{ width: total, height: headH }}
         >
           {cols.map((c, i) => {
@@ -398,10 +398,10 @@ export function VbGrid<T>(props: {
               <div
                 key={i}
                 className={cn(
-                  "relative flex flex-none items-center overflow-hidden border-r border-foreground/20 px-2 font-semibold text-foreground last:border-r-0",
+                  "relative flex flex-none items-center overflow-hidden border-r border-foreground/20 px-2 font-semibold tracking-tight text-foreground last:border-r-0",
                   canSort && "cursor-pointer hover:bg-foreground/6",
                   isSorted && "bg-primary/10 text-foreground",
-                  isActiveCol && "bg-primary/15 border-b-2 border-b-primary",
+                  isActiveCol ? "bg-primary/15 border-b-2 border-b-primary" : "border-b border-b-foreground/25",
                   c.align === "right" && "justify-end text-right",
                   c.align === "center" && "justify-center text-center",
                 )}
@@ -442,11 +442,11 @@ export function VbGrid<T>(props: {
                 key={key}
                 data-state={isSel ? "selected" : undefined}
                 className={cn(
-                  "absolute right-0 left-0 flex cursor-default border-b border-foreground/15 transition-colors",
+                  "absolute right-0 left-0 flex cursor-default border-b border-foreground/15 text-foreground transition-colors",
                   isSel
                     ? focused
-                      ? "border-primary/40 bg-primary font-medium text-primary-foreground"
-                      : "border-primary/30 bg-primary/80 font-medium text-primary-foreground"
+                      ? "z-[5] bg-[color-mix(in_oklab,var(--primary)_20%,var(--card))]"
+                      : "z-[5] bg-[color-mix(in_oklab,var(--primary)_12%,var(--card))]"
                     : i % 2 === 1
                       ? "bg-muted/25 hover:bg-muted/60"
                       : "hover:bg-muted/60",
@@ -461,10 +461,14 @@ export function VbGrid<T>(props: {
                     <div
                       key={j}
                       className={cn(
-                        "flex flex-none items-center overflow-hidden border-r border-foreground/15 px-2 tabular-nums last:border-r-0",
-                        isRowNo && !isSel && "bg-muted/40 text-muted-foreground",
-                        isSel && "border-primary-foreground/25",
-                        isActiveCell && "relative bg-primary-foreground/12 ring-2 ring-inset ring-primary-foreground/85 after:pointer-events-none after:absolute after:right-0 after:bottom-0 after:size-1.5 after:bg-primary-foreground",
+                        "flex flex-none items-center border-r border-foreground/15 px-2 tabular-nums last:border-r-0",
+                        isActiveCell ? "overflow-visible" : "overflow-hidden",
+                        isRowNo && !isSel && "bg-muted text-xs font-semibold text-foreground/85",
+                        isRowNo && isSel && "bg-primary text-xs font-semibold text-primary-foreground",
+                        isActiveCell && cn(
+                          "relative z-10 bg-card! text-foreground before:pointer-events-none before:absolute before:-inset-px before:z-10 before:border-2 before:border-ring after:pointer-events-none after:absolute after:-bottom-0.75 after:z-20 after:size-1.5 after:border after:border-card after:bg-ring",
+                          j === cols.length - 1 ? "before:right-0 after:-right-px" : "after:-right-0.75",
+                        ),
                         c.align === "right" && "justify-end text-right",
                         c.align === "center" && "justify-center text-center",
                       )}
@@ -476,7 +480,7 @@ export function VbGrid<T>(props: {
                         setSelCol(isRowNo ? null : j);
                       }}
                     >
-                      <span className="truncate whitespace-nowrap">{c.render(r, i)}</span>
+                      <span className="max-w-full truncate whitespace-nowrap">{c.render(r, i)}</span>
                     </div>
                   );
                 })}

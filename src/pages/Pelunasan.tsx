@@ -122,14 +122,14 @@ export function Pelunasan({ jenis, jatuhTempo }: { jenis: PelunasanJenis; jatuhT
     });
   }, []);
 
-  const nomor: GridCol<Row> = { title: "No.", width: 48, align: "right", render: (_r, i) => i + 1 };
+  const nomor: GridCol<Row> = { title: "No", width: 48, align: "right", render: (_r, i) => i + 1 };
   const kolom = (terbayar: (r: Row, i: number) => number): GridCol<Row>[] => [
     { title: piutang ? "No. Piutang" : "No. Hutang", width: 110, render: (r) => r.nopiutang },
     { title: "No. Trans", width: 110, render: (r) => r.noreftrans },
     { title: "Jth. Tempo", width: 85, render: (r) => tglID(r.jthtempo) },
     { title: piutang ? "Piutang" : "Hutang", width: 100, align: "right", render: (r) => rp(r.jmlpiutang) },
     { title: "Terbayar", width: 100, align: "right", render: (r, i) => rp(n(r.jmlterbayar) + terbayar(r, i)) },
-    { title: "Kekurangan", width: 100, align: "right", render: (r) => rp(r.kekurangan) },
+    { title: "Kekurangan", width: 100, align: "right", render: (r, i) => rp(Math.max(0, n(r.kekurangan) - terbayar(r, i))) },
   ];
   const kolomNominal = [nomor, ...kolom((_r, i) => alokasi[i] ?? 0)];
   const kolomCek: GridCol<Row>[] = [
@@ -172,10 +172,10 @@ export function Pelunasan({ jenis, jatuhTempo }: { jenis: PelunasanJenis; jatuhT
       <div className="grid grid-cols-2 items-end gap-3 border-b bg-background px-3 py-1.5 sm:grid-cols-4">
         <div className="flex flex-col gap-1" data-vb="dtTglTrans">
           <Label className="flex items-center justify-between text-xs font-medium text-foreground">
-            <span>Tgl. Transaksi</span>
+            <span>Tanggal</span>
             <span className="text-[11px] font-normal text-muted-foreground">Alt+1</span>
           </Label>
-          <Input type="date" value={tgl} onChange={(e) => e.target.value && setTgl(e.target.value)} className="border-foreground/20 bg-background pr-1.5 text-foreground tabular-nums" />
+          <Input type="date" value={tgl} onChange={(e) => e.target.value && setTgl(e.target.value)} className="border-foreground/20 bg-background pr-1.5 text-foreground tabular-nums [&::-webkit-calendar-picker-indicator]:ml-0 [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-datetime-edit]:p-0" />
         </div>
         <div className="flex flex-col gap-1" data-vb="tKasirNama">
           <Label className="flex items-center justify-between text-xs font-medium text-foreground">
@@ -263,7 +263,7 @@ export function Pelunasan({ jenis, jatuhTempo }: { jenis: PelunasanJenis; jatuhT
           />
         )}
         {kartu.length === 0 && (
-          <div className="pointer-events-none absolute inset-x-0 top-1/2 px-6 text-center text-sm text-muted-foreground">
+          <div className="pointer-events-none absolute inset-x-0 top-10 bottom-8 grid place-items-center px-6 text-center text-sm text-muted-foreground">
             {kontak
               ? (piutang ? "Pelanggan ini tidak punya piutang yang belum lunas." : "Anda tidak punya hutang yang belum lunas ke supplier ini.")
               : (piutang ? "Pilih pelanggan dulu untuk melihat piutangnya." : "Pilih supplier dulu untuk melihat hutangnya.")}

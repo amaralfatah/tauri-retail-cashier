@@ -72,7 +72,7 @@ export function Keuangan() {
   };
   const sepBefore = new Set(["Filter", "Export", "Tutup"]);
   const cols: GridCol<Row>[] = [
-    { title: "No.", width: 42, align: "right", render: (_, i) => i + 1 },
+    { title: "No", width: 42, align: "right", render: (_, i) => i + 1 },
     { title: "ID", width: 50, align: "right", render: (r) => r.idkas },
     { title: "No. Kas", width: 110, render: (r) => r.nokas },
     { title: "Tanggal", width: 90, render: (r) => tglID(r.tglkas) },

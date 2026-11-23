@@ -162,15 +162,15 @@ const COLS_BELI = [3.5, 11, 29, 6, 6, 12, 12, 9, 11.5];
 const ACT_CELL =
   "relative z-10 overflow-visible bg-card p-0! before:pointer-events-none before:absolute before:-inset-px before:z-10 before:border-2 before:border-ring after:pointer-events-none after:absolute after:-right-0.75 after:-bottom-0.75 after:z-20 after:size-1.5 after:border after:border-card after:bg-ring";
 const GRID_INPUT =
-  "h-full! w-full rounded-none border-0 bg-transparent dark:bg-transparent read-only:bg-transparent dark:read-only:bg-transparent px-1.5! py-0! text-sm text-foreground shadow-none focus-visible:ring-0 md:text-sm";
+  "h-full! w-full rounded-none border-0 bg-transparent dark:bg-transparent read-only:bg-transparent dark:read-only:bg-transparent px-1.5! py-0! text-[13px] text-foreground shadow-none focus-visible:ring-0 md:text-[13px]";
 const GRID_TD =
-  "h-7! truncate border-r border-b border-foreground/15 px-2! py-0! text-sm text-foreground tabular-nums last:border-r-0";
+  "h-7! truncate border-r border-b border-foreground/15 px-2! py-0! text-[13px] text-foreground tabular-nums last:border-r-0";
 const GRID_TD_EMPTY =
-  "h-7! truncate border-r border-b border-foreground/15 px-2! py-0! text-sm tabular-nums last:border-r-0";
+  "h-7! truncate border-r border-b border-foreground/15 px-2! py-0! text-[13px] tabular-nums last:border-r-0";
 const GRID_TD_NO =
-  "h-7! border-r border-b border-foreground/15 bg-muted px-1.5! py-0! text-right text-xs font-medium text-foreground/85 tabular-nums";
+  "h-7! border-r border-b border-foreground/15 bg-muted px-1.5! py-0! text-right text-xs font-semibold text-foreground/85 tabular-nums";
 const GRID_TD_NO_EMPTY =
-  "h-7! border-r border-b border-foreground/15 bg-muted px-1.5! py-0! text-right text-xs text-foreground/75 tabular-nums";
+  "h-7! border-r border-b border-foreground/15 bg-muted px-1.5! py-0! text-right text-xs font-medium text-foreground/75 tabular-nums";
 
 function DetailGrid(props: {
   g?: Geom; jual: boolean; lines: ShownLine[]; selected: number | null;
@@ -411,21 +411,21 @@ function DetailGrid(props: {
             {act("jml") ? (
               <VNum f="jml" right value={l.jml} onChange={(v) => props.onUpdate(l.key, { jml: v })}
                 inputRef={(el) => { if (el) el.setAttribute("data-act", "jml"); }}
-                className={cn("text-sm font-semibold md:text-sm", props.stokKurang(l) && "text-destructive")} />
+                className={cn("text-[13px] font-semibold md:text-[13px]", props.stokKurang(l) && "text-destructive")} />
             ) : qty(l.jml)}
           </TableCell>
           <TableCell className={cn(GRID_TD, "text-right", l.pdp > 0 && "text-success font-medium", act("hrg") && ACT_CELL)} onMouseDown={klik("hrg")}
             title={l.pdp > 0 ? `Potongan promo: −Rp ${rp(l.pdp)}` : undefined}>
             {act("hrg") ? (
               <VNum f="hrg" right value={l.harga} readOnly={props.hargaTerkunci} onChange={(v) => props.onUpdate(l.key, { harga: v, manual: true })}
-                inputRef={(el) => { if (el) el.setAttribute("data-act", "hrg"); }} className="text-sm md:text-sm" />
+                inputRef={(el) => { if (el) el.setAttribute("data-act", "hrg"); }} className="text-[13px] md:text-[13px]" />
             ) : rp(l.harga)}
           </TableCell>
           {!props.jual && (
             <TableCell className={cn(GRID_TD, "text-right", act("hjual") && ACT_CELL)} onMouseDown={klik("hjual")}>
               {act("hjual") ? (
                 <VNum f="hjual" right value={hrgJualBaris(l)} onChange={(v) => props.onUpdate(l.key, { hrgjual: v })}
-                  inputRef={(el) => { if (el) el.setAttribute("data-act", "hjual"); }} className="text-sm md:text-sm" />
+                  inputRef={(el) => { if (el) el.setAttribute("data-act", "hjual"); }} className="text-[13px] md:text-[13px]" />
               ) : rp(hrgJualBaris(l))}
             </TableCell>
           )}
@@ -433,7 +433,7 @@ function DetailGrid(props: {
             <TableCell className={cn(GRID_TD, "text-right", act("margin") && ACT_CELL)} onMouseDown={klik("margin")}>
               {act("margin") ? (
                 <VNum f="margin" right value={hrgJualBaris(l) - l.harga} onChange={(v) => props.onUpdate(l.key, { hrgjual: l.harga + v })}
-                  inputRef={(el) => { if (el) el.setAttribute("data-act", "margin"); }} className="text-sm md:text-sm" />
+                  inputRef={(el) => { if (el) el.setAttribute("data-act", "margin"); }} className="text-[13px] md:text-[13px]" />
               ) : rp(hrgJualBaris(l) - l.harga)}
             </TableCell>
           )}
@@ -447,7 +447,7 @@ function DetailGrid(props: {
     }
 
     const headers: { label: string; align: EntryGridCol["align"] }[] = [
-      { label: "No", align: "center" },
+      { label: "No", align: "right" },
       { label: "Kode / Barcode", align: "left" },
       { label: "Nama Barang", align: "left" },
       { label: "Satuan", align: "center" },
@@ -494,7 +494,7 @@ function BonusGrid({ g, bonus }: { g?: Geom; bonus: PromoHitung["bonus"] }) {
         <colgroup><col className="w-8" /><col /><col className="w-12" /></colgroup>
         <TableHeader>
           <TableRow className="border-0 hover:bg-transparent">
-            <TableHead className={cn(GRID_TH, "px-1! text-center")}>No</TableHead>
+            <TableHead className={cn(GRID_TH, "px-1.5! text-right")}>No</TableHead>
             <TableHead className={cn(GRID_TH, "text-left")}>Nama Barang Bonus</TableHead>
             <TableHead className={cn(GRID_TH, "text-right")}>Jml</TableHead>
           </TableRow>
@@ -505,8 +505,8 @@ function BonusGrid({ g, bonus }: { g?: Geom; bonus: PromoHitung["bonus"] }) {
             return (
               <TableRow key={i} className="border-0 hover:bg-transparent" style={fillRowH ? { height: fillRowH } : undefined}>
                 <TableCell className={b ? GRID_TD_NO : GRID_TD_NO_EMPTY}>{i + 1}</TableCell>
-                <TableCell className="h-7! truncate border-r border-b border-foreground/15 px-2! py-0! text-xs font-medium" title={b ? `${b.namabarang} (${b.kodebarang})` : undefined}>{b?.namabarang}</TableCell>
-                <TableCell className="h-7! truncate border-b border-foreground/15 px-2! py-0! text-right text-xs font-semibold tabular-nums">{b ? qty(b.jml) : ""}</TableCell>
+                <TableCell className="h-7! truncate border-r border-b border-foreground/15 px-2! py-0! text-[13px] font-medium" title={b ? `${b.namabarang} (${b.kodebarang})` : undefined}>{b?.namabarang}</TableCell>
+                <TableCell className="h-7! truncate border-b border-foreground/15 px-2! py-0! text-right text-[13px] font-semibold tabular-nums">{b ? qty(b.jml) : ""}</TableCell>
               </TableRow>
             );
           })}
@@ -598,6 +598,7 @@ function CariDataDialog(props: { jenis: CariJenis; onAmbil: (nomor: string) => v
   };
 
   const cols: GridCol<Row>[] = [
+    { title: "No", width: 42, align: "right", render: (_r, i) => i + 1 },
     { title: props.jenis === "pending" ? "No. Pending" : "No. Order", width: 150, render: (r) => r[nomorKey] },
     {
       title: "Tanggal",
@@ -681,7 +682,7 @@ function CariDataDialog(props: { jenis: CariJenis; onAmbil: (nomor: string) => v
           <div className="relative min-h-0 flex-1" data-vb="lsData">
             <VbGrid cols={cols} rows={list} rowKey={(r) => String(r[nomorKey])} selected={sel} onSelect={setSel} onOpen={ambil} />
             {list.length === 0 && (
-              <div className="pointer-events-none absolute inset-x-0 top-[30px] bottom-0 grid place-items-center px-6 text-center text-sm text-muted-foreground">
+              <div className="pointer-events-none absolute inset-x-0 top-8 bottom-0 grid place-items-center px-6 text-center text-sm text-muted-foreground">
                 {props.jenis === "pending" ? "Belum ada transaksi yang di-pending." : "Belum ada order yang menunggu diambil."}
               </div>
             )}
@@ -747,6 +748,7 @@ function StokMinDialog(props: { onPick: (b: Row) => void; onClose: () => void })
   };
 
   const cols: GridCol<Row>[] = [
+    { title: "No", width: 42, align: "right", render: (_r, i) => i + 1 },
     { title: "Kode", width: 110, render: (b) => b.kodebarang },
     { title: "Nama Barang", width: 260, render: (b) => b.namabarang },
     { title: "Stok", width: 85, align: "right", render: (b) => qty(b.stokakhir), sortValue: (b) => Number(b.stokakhir) || 0 },
@@ -771,12 +773,12 @@ function StokMinDialog(props: { onPick: (b: Row) => void; onClose: () => void })
       <div className="relative h-75">
         <VbGrid cols={cols} rows={daftar ?? []} rowKey={(b) => String(b.kodebarang)} selected={sel} onSelect={setSel} onOpen={pilih} />
         {daftar && daftar.length === 0 && (
-          <div className="pointer-events-none absolute inset-x-0 top-[30px] bottom-0 grid place-items-center px-6 text-center text-sm text-muted-foreground">
+          <div className="pointer-events-none absolute inset-x-0 top-8 bottom-0 grid place-items-center px-6 text-center text-sm text-muted-foreground">
             Tidak ada barang yang stoknya sudah di bawah stok minimal.
           </div>
         )}
         {!daftar && !err && (
-          <div className="pointer-events-none absolute inset-x-0 top-[30px] bottom-0 grid place-items-center px-6 text-center text-sm text-muted-foreground">
+          <div className="pointer-events-none absolute inset-x-0 top-8 bottom-0 grid place-items-center px-6 text-center text-sm text-muted-foreground">
             Mohon tunggu sebentar.
           </div>
         )}

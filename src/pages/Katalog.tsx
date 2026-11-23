@@ -133,7 +133,7 @@ export function Katalog() {
           <div className="h-28 w-full overflow-hidden rounded border border-border bg-muted/30" data-vb="picFoto">
             {typeof renderFoto === "function" ? renderFoto({ left: 0, top: 0, width: 140, height: 112 }, { type: "PictureBox", name: "picFoto", props: {}, children: [] }) : null}
           </div>
-          <Button type="button" variant="outline" size="sm" className="h-8 w-full gap-1.5 font-semibold" data-vb="cTutup" onClick={() => go("home")}>
+          <Button type="button" variant="outline" size="default" className="h-8 w-full gap-1.5 border-foreground/20 bg-background text-xs font-medium text-foreground shadow-xs" data-vb="cTutup" onClick={() => go("home")}>
             <span>Tutup</span>
             <Kbd className="border border-border bg-muted text-foreground">Esc</Kbd>
           </Button>

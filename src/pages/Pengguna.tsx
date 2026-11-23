@@ -21,7 +21,7 @@ const ACTIONS = ["Baru", "Hapus", "Filter", "Refresh", "Export", "Cetak", "Tutup
 const status = (r: Row) => (Number(r.aktif ?? 1) === 0 ? "Non Aktif" : Number(r.belum_ada_password) === 1 ? "Belum ada password" : "Aktif");
 
 const COLS: GridCol<Row>[] = [
-  { title: "No.", width: 42, align: "right", render: (_, i) => i + 1 },
+  { title: "No", width: 42, align: "right", render: (_, i) => i + 1 },
   { title: "Nama Pengguna", width: 130, render: (r) => r.iduser },
   { title: "Level", width: 95, render: (r) => r.level },
   { title: "Karyawan", width: 160, render: (r) => r.namakaryawan ?? "" },

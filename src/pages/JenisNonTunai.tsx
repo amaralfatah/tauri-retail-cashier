@@ -96,7 +96,7 @@ export function JenisNonTunai() {
   }, [modalOpen, openNew, muat]);
 
   const cols = useMemo<GridCol<Row>[]>(() => [
-    { title: "No.", width: 48, align: "right", render: (_r, i) => i + 1 },
+    { title: "No", width: 48, align: "right", render: (_r, i) => i + 1 },
     { title: "Kode Jenis", width: 95, render: (r) => r.kode },
     { title: "Jenis Pembayaran", width: 200, render: (r) => r.namajenis },
     { title: "Nama Item Pembayaran", width: 360, render: (r) => r.namaitem },
@@ -351,7 +351,7 @@ function JenisForm(props: { onClose: () => void }) {
     }, "Hapus jenis pembayaran", undefined, true);
   };
   const cols: GridCol<Row>[] = [
-    { title: "No.", width: 48, align: "right", render: (_r, i) => i + 1 },
+    { title: "No", width: 48, align: "right", render: (_r, i) => i + 1 },
     { title: "Kode", width: 95, render: (r) => r.kode },
     { title: "Nama Jenis", width: 340, render: (r) => r.namajenis },
   ];

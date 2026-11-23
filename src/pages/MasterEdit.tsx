@@ -1029,7 +1029,7 @@ function SimpleBody(props: { table: Simple; onClose?: () => void }) {
   };
 
   const kelName = (k: string) => kel.rows.find((r) => r.kodekelompok === k)?.namakelompok ?? k;
-  const no: GridCol<Row> = { title: "No.", width: 42, align: "right", render: (_r, i) => i + 1 };
+  const no: GridCol<Row> = { title: "No", width: 42, align: "right", render: (_r, i) => i + 1 };
   const cols: GridCol<Row>[] = table === "mdkategori"
     ? [no, { title: "Kode", width: 95, render: (r) => r.kodekategori }, { title: "Kelompok", width: 145, render: (r) => kelName(r.kodekelompok) },
       { title: "Nama", width: 220, render: (r) => r.namakategori }]

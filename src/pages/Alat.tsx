@@ -52,6 +52,8 @@ export function Alat() {
   const [tgl2, setTgl2] = useState(today());
   const [trans, setTrans] = useState<Row[]>([]);
   const [transPick, setTransPick] = useState<Set<string>>(new Set());
+  const [transSel, setTransSel] = useState<string | null>(null);
+  const [backupSel, setBackupSel] = useState<string | null>(null);
   const [sibuk, setSibuk] = useState(false);
   const [pindahLama, setPindahLama] = useState(false);
   const kunci = useKunciPusat();
@@ -405,7 +407,14 @@ export function Alat() {
               </div>
 
               <div className="min-h-0 flex-1" data-vb="lsData">
-                <VbGrid cols={kolTrans} rows={trans} rowKey={kunciTrans} selected={null} onSelect={() => undefined} />
+                <VbGrid
+                  cols={kolTrans}
+                  rows={trans}
+                  rowKey={kunciTrans}
+                  selected={transSel}
+                  onSelect={setTransSel}
+                  onOpen={(r) => setTransPick((p) => { const n = new Set(p); const k = kunciTrans(r); n.has(k) ? n.delete(k) : n.add(k); return n; })}
+                />
               </div>
 
               <div className="flex items-center justify-between pt-1">
@@ -464,10 +473,11 @@ export function Alat() {
             {daftarBackup.length === 0
               ? <p className="p-3 text-sm text-muted-foreground">Belum ada file backup di folder ini. Anda juga bisa mengetik lokasi file backup langsung.</p>
               : <VbGrid cols={[
+                { title: "No", width: 42, align: "right", render: (_r: FileBackup, i: number) => i + 1 },
                 { title: "Nama File", width: 260, render: (r: FileBackup) => r.nama },
                 { title: "Waktu", width: 120, render: (r: FileBackup) => r.waktu },
                 { title: "Ukuran", width: 80, align: "right", render: (r: FileBackup) => kb(r.ukuran) },
-              ]} rows={daftarBackup} rowKey={(r) => r.path} selected={null} onSelect={() => undefined}
+              ]} rows={daftarBackup} rowKey={(r) => r.path} selected={backupSel} onSelect={setBackupSel}
                 onOpen={(r) => { setFileRestore(r.path); setDaftarBackup(null); }} />}
           </div>
         </ModalFrame>

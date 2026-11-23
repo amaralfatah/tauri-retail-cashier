@@ -10,7 +10,7 @@ import { api, errText, Row } from "../api";
 import { returApi, ReturSumber } from "../api/retur";
 import { useApp } from "../appContext";
 import { CariBarang } from "../components/CariBarang";
-import { EntryGrid, type EntryGridCol, GridKodeInput } from "../components/EntryGrid";
+import { EntryGrid, type EntryGridCol, GridKodeInput, useEntryMinRows } from "../components/EntryGrid";
 import { CariTransaksi } from "../components/CariTransaksi";
 import { toast } from "sonner";
 import { buktiReturTeks, cetakStruk } from "../components/Struk";
@@ -49,6 +49,8 @@ export function Retur({ mode }: { mode: ReturMode }) {
   const [scan, setScan] = useState("");
   const [selected, setSelected] = useState<string | null>(null);
   const scanRef = useRef<HTMLInputElement>(null);
+  const gridRef = useRef<HTMLDivElement>(null);
+  const minRows = useEntryMinRows(gridRef);
   const brg = mode === "brg";
 
   const kosong = !sumber && barisan.length === 0;
@@ -180,7 +182,7 @@ export function Retur({ mode }: { mode: ReturMode }) {
   const renderGrid = () => {
     const detail = sumber?.detail ?? [];
     const n = brg ? barisan.length : detail.length;
-    const lengkap = Math.max(n + 1, 16);
+    const lengkap = Math.max(n + 1, minRows);
     const rows: ReactNode[] = [];
     for (let i = 0; i < lengkap; i++) {
       if (brg) {
@@ -247,10 +249,10 @@ export function Retur({ mode }: { mode: ReturMode }) {
     }
     const kolom = brg ? [5, 14, 39, 8, 10, 12, 12] : mode === "beli" ? [5, 14, 37, 8, 10, 10, 8, 8] : [5, 12, 31, 7, 9, 10, 10, 8, 8];
     const judul = brg
-      ? ["No.", "Kode / Barcode", "Nama Barang", "Satuan", "Jml. Retur", "Harga", "Subtotal"]
+      ? ["No", "Kode / Barcode", "Nama Barang", "Satuan", "Jml. Retur", "Harga", "Subtotal"]
       : mode === "beli"
-        ? ["No.", "Kode / Barcode", "Nama Barang", "Satuan", "Jumlah", "Jml. Retur", "Hrg. Beli", "Subtotal"]
-        : ["No.", "Kode", "Nama Barang", "Satuan", "Jml. Jual", "Sudah Diretur", "Jml. Retur", "Harga", "Subtotal"];
+        ? ["No", "Kode / Barcode", "Nama Barang", "Satuan", "Jumlah", "Jml. Retur", "Hrg. Beli", "Subtotal"]
+        : ["No", "Kode", "Nama Barang", "Satuan", "Jml. Jual", "Sudah Diretur", "Jml. Retur", "Harga", "Subtotal"];
     const kanan = brg ? [4, 5, 6] : mode === "beli" ? [4, 5, 6, 7] : [4, 5, 6, 7, 8];
     const gridCols: EntryGridCol[] = judul.map((label, i) => ({
       label,
@@ -261,6 +263,7 @@ export function Retur({ mode }: { mode: ReturMode }) {
       <EntryGrid
         cols={gridCols}
         colKey={mode}
+        gridRef={gridRef}
         onKeyDown={(e) => {
           if (e.key === "Delete" && brg && e.target === e.currentTarget) {
             setBarisan((xs) => xs.filter((x) => x.b.kodebarang !== selected));
@@ -306,7 +309,7 @@ export function Retur({ mode }: { mode: ReturMode }) {
             <span>Tanggal</span>
             <span className="text-[11px] font-normal text-muted-foreground">Alt+1</span>
           </Label>
-          <Input type="date" value={tgl} onChange={(e) => e.target.value && setTgl(e.target.value)} className="border-foreground/20 bg-background pr-1.5 text-foreground tabular-nums" />
+          <Input type="date" value={tgl} onChange={(e) => e.target.value && setTgl(e.target.value)} className="border-foreground/20 bg-background pr-1.5 text-foreground tabular-nums [&::-webkit-calendar-picker-indicator]:ml-0 [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-datetime-edit]:p-0" />
         </div>
         <div className="flex flex-col gap-1" data-vb="tKasirNama">
           <Label className="flex items-center justify-between text-xs font-medium text-foreground">
@@ -462,6 +465,7 @@ function PilihPemasok(props: { onPick: (p: Row) => void; onClose: () => void }) 
   };
 
   const cols: GridCol<Row>[] = [
+    { title: "No", width: 42, align: "right", render: (_r, i) => i + 1 },
     { title: "Kode", width: 120, render: (r) => <span className="font-mono">{r.kodepemasok}</span>, sortValue: (r) => String(r.kodepemasok ?? "") },
     { title: "Nama Supplier", width: 280, render: (r) => r.namapemasok },
   ];
@@ -494,7 +498,7 @@ function PilihPemasok(props: { onPick: (p: Row) => void; onClose: () => void }) 
         <div className="relative h-75">
           <VbGrid cols={cols} rows={rows} rowKey={(r) => String(r.kodepemasok)} selected={sel} onSelect={setSel} onOpen={ambil} />
           {rows.length === 0 && (
-            <div className="pointer-events-none absolute inset-x-0 top-[30px] bottom-0 grid place-items-center px-6 text-center text-sm text-muted-foreground">
+            <div className="pointer-events-none absolute inset-x-0 top-8 bottom-0 grid place-items-center px-6 text-center text-sm text-muted-foreground">
               Supplier yang Anda cari tidak ditemukan.
             </div>
           )}

@@ -180,22 +180,22 @@ export function Dashboard(props: { onTutup: () => void }) {
             <h2 className="text-xs font-semibold text-foreground">Daftar Piutang Pelanggan</h2>
             <span className="text-[11px] text-muted-foreground">Klik ganda untuk pelunasan</span>
           </div>
-          <div className="tp-scroll-always max-h-48 min-h-36 flex-1 rounded-sm border border-border bg-background text-xs" data-vb="lstPiutang">
+          <div className="tp-scroll-always max-h-48 min-h-36 flex-1 rounded-md border border-border bg-card text-[13px]" data-vb="lstPiutang">
             <table className="w-full border-collapse">
               <thead>
-                <tr className="sticky top-0 border-b border-border bg-muted text-left font-semibold text-foreground">
-                  <th className="px-2.5 py-1.5">Pelanggan</th>
-                  <th className="px-2.5 py-1.5 text-right">Piutang</th>
+                <tr className="sticky top-0 h-8 border-b border-foreground/25 bg-muted text-left text-xs font-semibold tracking-tight text-foreground">
+                  <th className="border-r border-foreground/20 px-2">Pelanggan</th>
+                  <th className="px-2 text-right">Piutang</th>
                 </tr>
               </thead>
               <tbody>
                 {piutang.map((p, i) => (
-                  <tr key={i} title="Klik dua kali untuk membuka Pelunasan Piutang" className="cursor-pointer border-b border-border/60 hover:bg-muted/60" onDoubleClick={() => go("piutang")}>
-                    <td className="px-2.5 py-1.5 font-medium">{p.nama}</td>
-                    <td className="px-2.5 py-1.5 text-right font-semibold text-destructive tabular-nums">{uang(p.piutang)}</td>
+                  <tr key={i} title="Klik dua kali untuk membuka Pelunasan Piutang" className="h-7 cursor-pointer border-b border-foreground/15 odd:bg-card even:bg-muted/25 hover:bg-[color-mix(in_oklab,var(--primary)_12%,var(--card))]" onDoubleClick={() => go("piutang")}>
+                    <td className="border-r border-foreground/15 px-2 font-medium">{p.nama}</td>
+                    <td className="px-2 text-right font-semibold text-destructive tabular-nums">{uang(p.piutang)}</td>
                   </tr>
                 ))}
-                {d && piutang.length === 0 && <tr><td colSpan={2} className="px-2.5 py-6 text-center text-muted-foreground">Tidak ada piutang yang belum lunas.</td></tr>}
+                {d && piutang.length === 0 && <tr><td colSpan={2} className="px-2.5 py-6 text-center text-xs text-muted-foreground">Tidak ada piutang yang belum lunas.</td></tr>}
               </tbody>
             </table>
           </div>

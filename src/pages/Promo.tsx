@@ -7,7 +7,7 @@ import { api, errText, Row } from "../api";
 import { inventoriApi, PromoJenis } from "../api/inventori";
 import { useApp } from "../appContext";
 import { CariBarang } from "../components/CariBarang";
-import { EntryGrid, type EntryGridCol, GridKodeInput } from "../components/EntryGrid";
+import { EntryGrid, type EntryGridCol, GridKodeInput, useEntryMinRows } from "../components/EntryGrid";
 import { rp, today } from "../format";
 import { useMsgBox } from "../vb/VbGrid";
 import { tglId2Iso, tglIso2Id } from "./inventoriLib";
@@ -67,6 +67,7 @@ export function Promo({ jenis }: { jenis: PromoJenis }) {
   const [tgl2, setTgl2] = useState(today());
   const [minTrans, setMinTrans] = useState("0");
   const gridRef = useRef<HTMLDivElement>(null);
+  const minRows = useEntryMinRows(gridRef);
   const bisaUbah = user.level !== "Kasir";
   const hari = today();
 
@@ -232,7 +233,7 @@ export function Promo({ jenis }: { jenis: PromoJenis }) {
   ];
 
   const renderGrid = () => {
-    const total = Math.max(rows.length, 16);
+    const total = Math.max(rows.length, minRows);
     const trs: ReactNode[] = [];
     for (let i = 0; i < total; i++) {
       const x = rows[i];

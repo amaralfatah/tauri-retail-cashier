@@ -40,6 +40,7 @@ export function CariTransaksi(props: { kode: "TJ" | "TB"; onPick: (notrans: stri
   };
 
   const cols: GridCol<Row>[] = [
+    { title: "No", width: 42, align: "right", render: (_r, i) => i + 1 },
     { title: "No. Transaksi", width: 150, render: (r) => r.notrans },
     { title: "Tanggal", width: 100, render: (r) => tglID(r.tgltrans), sortValue: (r) => String(r.tgltrans ?? "") },
     { title: jual ? "Pelanggan" : "Supplier", width: 220, render: (r) => r.kontak },
@@ -84,7 +85,7 @@ export function CariTransaksi(props: { kode: "TJ" | "TB"; onPick: (notrans: stri
         <div className="relative min-h-0 flex-1" data-vb="lsData">
           <VbGrid cols={cols} rows={rows} rowKey={(r) => String(r.notrans)} selected={sel} onSelect={setSel} onOpen={ambil} />
           {rows.length === 0 && (
-            <div className="pointer-events-none absolute inset-x-0 top-[30px] bottom-0 grid place-items-center px-6 text-center text-sm text-muted-foreground">
+            <div className="pointer-events-none absolute inset-x-0 top-8 bottom-0 grid place-items-center px-6 text-center text-sm text-muted-foreground">
               {jual ? "Transaksi tidak ditemukan. Ubah tanggal atau coba kata lain." : "Pembelian tidak ditemukan. Ubah tanggal atau coba kata lain."}
             </div>
           )}

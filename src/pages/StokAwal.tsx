@@ -9,7 +9,7 @@ import { api, errText, Row } from "../api";
 import { inventoriApi } from "../api/inventori";
 import { useApp } from "../appContext";
 import { CariBarang } from "../components/CariBarang";
-import { EntryGrid, type EntryGridCol, GridKodeInput } from "../components/EntryGrid";
+import { EntryGrid, type EntryGridCol, GridKodeInput, useEntryMinRows } from "../components/EntryGrid";
 import { qty, today } from "../format";
 import { useMsgBox } from "../vb/VbGrid";
 import { CariMaster } from "./keuanganLib";
@@ -50,6 +50,7 @@ export function StokAwal() {
   const [scan, setScan] = useState("");
   const scanRef = useRef<HTMLInputElement>(null);
   const gridRef = useRef<HTMLDivElement>(null);
+  const minRows = useEntryMinRows(gridRef);
 
   useEffect(() => {
     api.previewNotrans("SA", tgl).then(setNotrans).catch(() => setNotrans(""));
@@ -111,7 +112,7 @@ export function StokAwal() {
   }, [cari, cariKasir, filter, ada, simpan, batal, go]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const renderGrid = () => {
-    const total = Math.max(items.length + 1, 16);
+    const total = Math.max(items.length + 1, minRows);
     const idx = items.findIndex((i) => i.uid === selected);
     const onKeyDown = (e: React.KeyboardEvent) => {
       if (e.target !== e.currentTarget) return;
@@ -197,7 +198,7 @@ export function StokAwal() {
             <span>Tanggal</span>
             <span className="text-[11px] font-normal text-muted-foreground">Alt+1</span>
           </Label>
-          <Input type="date" value={tgl} onChange={(e) => e.target.value && setTgl(e.target.value)} className="border-foreground/20 bg-background pr-1.5 text-foreground tabular-nums" />
+          <Input type="date" value={tgl} onChange={(e) => e.target.value && setTgl(e.target.value)} className="border-foreground/20 bg-background pr-1.5 text-foreground tabular-nums [&::-webkit-calendar-picker-indicator]:ml-0 [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-datetime-edit]:p-0" />
         </div>
         <div className="flex flex-col gap-1" data-vb="tKasirNama">
           <Label className="flex items-center justify-between text-xs font-medium text-foreground">

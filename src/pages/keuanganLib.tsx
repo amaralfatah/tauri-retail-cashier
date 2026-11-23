@@ -49,7 +49,7 @@ export function CariMaster(props: { table: Extract<MasterTable, "mdpelanggan" | 
     return () => clearTimeout(t);
   }, [q, props.table, key, jth]);
   const cols: GridCol<Row>[] = [
-    { title: "No.", width: 42, align: "right", render: (_r, i) => i + 1 },
+    { title: "No", width: 42, align: "right", render: (_r, i) => i + 1 },
     { title: "Kode", width: 110, render: (r) => r[key] },
     { title: "Nama", width: 220, render: (r) => r[name] },
     { title: "Alamat", width: 200, render: (r) => r.alamat },

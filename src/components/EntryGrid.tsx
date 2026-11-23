@@ -11,7 +11,30 @@ export interface EntryGridCol {
 }
 
 export const GRID_TH =
-  "sticky top-0 z-20 h-8! truncate border-r border-b border-foreground/20 bg-muted px-2! py-0! text-[13px] font-semibold tracking-tight text-foreground select-none last:border-r-0";
+  "sticky top-0 z-20 h-8! truncate border-r border-b border-foreground/20 border-b-foreground/25 bg-muted px-2! py-0! text-xs font-semibold tracking-tight text-foreground select-none last:border-r-0";
+
+/** Hitung jumlah baris kosong pengisi agar tabel entry selalu memenuhi tinggi kontainer dengan rapi. */
+export function useEntryMinRows(
+  gridRef: React.RefObject<HTMLDivElement | null>,
+  rowH = 28,
+  headH = 32,
+  fallback = 16,
+) {
+  const [minRows, setMinRows] = useState(fallback);
+  useEffect(() => {
+    const el = gridRef.current;
+    if (!el) return;
+    const update = () => {
+      const avail = el.clientHeight - 2 - headH;
+      if (avail > 0) setMinRows(Math.max(1, Math.floor(avail / rowH)));
+    };
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [gridRef, rowH, headH]);
+  return minRows;
+}
 
 /** Tombol ikon kaca pembesar di dalam sel tabel (untuk membuka dialog cari barang/satuan). */
 export function GridSearchButton({ onClick, title }: { onClick?: () => void; title: string }) {
@@ -58,7 +81,7 @@ export function GridKodeInput({
         autoComplete="off"
         {...rest}
         className={cn(
-          "h-full w-full border-0 bg-transparent px-1.5 py-0 text-sm text-foreground outline-none",
+          "h-full w-full border-0 bg-transparent px-1.5 py-0 text-[13px] text-foreground outline-none",
           tampilCari && "pr-6!",
           className,
         )}
@@ -404,7 +427,7 @@ export function EntryGrid({
       onMouseDownCapture={handleMouseDownCapture}
       onBlurCapture={handleBlurCapture}
       className={cn(
-        "tp-scroll-always relative size-full rounded-md border border-border bg-card font-sans text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring/40 [&>[data-slot=table-container]]:overflow-visible [&_td]:py-0! [&_th]:py-0!",
+        "tp-scroll-always relative size-full rounded-md border border-border bg-card font-sans text-foreground outline-none [&>[data-slot=table-container]]:overflow-visible [&_td]:py-0! [&_th]:py-0!",
         cellStyles && "tj-grid vb-modern",
         className,
       )}
@@ -423,7 +446,7 @@ export function EntryGrid({
                 className={cn(
                   GRID_TH,
                   h.align === "right" ? "text-right" : h.align === "center" ? "text-center" : "text-left",
-                  activeCol === i && "bg-primary/12! border-b-primary! text-foreground",
+                  activeCol === i && "bg-primary/15! border-b-2! border-b-primary! text-foreground",
                 )}
               >
                 {h.label}
