@@ -1,0 +1,138 @@
+name: Build & Release Desktop Installers
+
+# Cara rilis:
+#   1. npm run versi 1.2.3        (menyamakan versi di package.json, tauri.conf.json, dan Cargo.toml)
+#   2. commit, lalu: git tag v1.2.3 && git push origin main v1.2.3
+#   3. Periksa draft release di GitHub, lalu terbitkan.
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  periksa:
+    name: Cek versi & tes
+    # Windows, supaya kode khusus Windows (pemindahan data dari Toko Pro lama) ikut dikompilasi dan diuji.
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Cek versi sama dengan tag
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          PKG=$(node -p "require('./package.json').version")
+          CONF=$(node -p "require('./src-tauri/tauri.conf.json').version")
+          CARGO=$(grep -m1 '^version' src-tauri/Cargo.toml | sed -E 's/.*"(.*)".*/\1/')
+          echo "tag=$TAG package.json=$PKG tauri.conf.json=$CONF Cargo.toml=$CARGO"
+          if [ "$TAG" != "$PKG" ] || [ "$TAG" != "$CONF" ] || [ "$TAG" != "$CARGO" ]; then
+            echo "::error::Versi tidak sama dengan tag v$TAG. Jalankan 'npm run versi $TAG', commit, lalu buat ulang tag-nya."
+            exit 1
+          fi
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 'lts/*'
+          cache: 'npm'
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: './src-tauri -> target'
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Cek tipe & build tampilan
+        run: npm run build
+
+      - name: Tes backend
+        working-directory: src-tauri
+        run: cargo test
+
+  publish-tauri:
+    needs: periksa
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: 'macos-latest'
+            name: 'macOS (Apple Silicon)'
+            args: '--target aarch64-apple-darwin'
+            rust_targets: 'aarch64-apple-darwin,x86_64-apple-darwin'
+          - platform: 'macos-latest'
+            name: 'macOS (Intel)'
+            args: '--target x86_64-apple-darwin'
+            rust_targets: 'aarch64-apple-darwin,x86_64-apple-darwin'
+          - platform: 'windows-latest'
+            name: 'Windows (64-bit)'
+            args: ''
+            rust_targets: ''
+          - platform: 'windows-latest'
+            name: 'Windows (32-bit)'
+            args: '--target i686-pc-windows-msvc'
+            rust_targets: 'i686-pc-windows-msvc'
+
+    name: Build ${{ matrix.name }}
+    runs-on: ${{ matrix.platform }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 'lts/*'
+          cache: 'npm'
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.rust_targets }}
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: './src-tauri -> target'
+          key: ${{ matrix.args }}
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Build Tauri app & upload release assets
+        uses: tauri-apps/tauri-action@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: v__VERSION__
+          releaseName: 'Toko Pro v__VERSION__'
+          releaseBody: |
+            Installer aplikasi desktop **Toko Pro v__VERSION__** untuk Windows dan macOS.
+
+            ### Pilih file yang sesuai
+            - **Windows 64-bit:** `Toko.Pro_..._x64-setup.exe`
+            - **Windows 32-bit:** `Toko.Pro_..._x86-setup.exe`
+            - **macOS (Apple Silicon, M1 ke atas):** `..._aarch64.dmg`
+            - **macOS (Intel):** `..._x64.dmg`
+
+            Butuh Windows 10 atau lebih baru. Windows 7 dan 8 tidak bisa menjalankan aplikasi ini.
+
+            Kalau Windows menampilkan "Windows protected your PC", klik **More info**, lalu **Run anyway**.
+
+            ### Pindah dari Toko Pro lama
+            Pasang aplikasi ini di komputer yang dulu memakai Toko Pro lama, tutup aplikasi lamanya,
+            lalu buka **Alat Bantu → Restore Data → Ambil dari Toko Pro Lama**.
+          releaseDraft: true
+          prerelease: false
+          args: ${{ matrix.args }}

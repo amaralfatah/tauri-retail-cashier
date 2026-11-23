@@ -66,3 +66,22 @@ jadi semua user hasil impor masuk dengan password sementara `admin` lalu membuat
 ```bash
 cd src-tauri && cargo test
 ```
+
+## Rilis
+
+Installer Windows (64-bit dan 32-bit) dan macOS (Apple Silicon dan Intel) dibuat oleh GitHub Actions
+(`.github/workflows/release.yml`) setiap kali tag `v*` di-push.
+
+```bash
+npm run versi 1.2.3
+git commit -am "Rilis v1.2.3"
+git tag v1.2.3
+git push origin main v1.2.3
+```
+
+`npm run versi` menyamakan versi di `package.json`, `package-lock.json`, `tauri.conf.json`, `Cargo.toml`, dan `Cargo.lock`.
+Workflow menolak tag yang versinya berbeda, lalu menjalankan build tampilan dan `cargo test` di Windows sebelum membuat installer.
+Hasilnya berupa draft release, jadi periksa dulu lalu terbitkan dari halaman Releases.
+
+Installer belum ditandatangani, jadi Windows menampilkan peringatan SmartScreen dan macOS bisa menolak membuka `.dmg`.
+Aplikasi butuh Windows 10 atau lebih baru (WebView2).
