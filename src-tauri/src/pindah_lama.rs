@@ -396,6 +396,8 @@ pub fn bangun_sqlite(sumber: &dyn Sumber, tujuan: &Path, progres: &mut dyn FnMut
     let _ = std::fs::remove_file(tujuan);
     let mut conn = Connection::open(tujuan).map_err(e)?;
     conn.execute_batch(crate::db::SCHEMA).map_err(e)?;
+    // Tabel di atas sudah susunan terbaru, jadi tandai sebagai versi terbaru supaya `db::open` tidak menjalankan langkah lama.
+    crate::migrasi::tandai_terbaru(&conn)?;
     conn.pragma_update(None, "foreign_keys", "OFF").map_err(e)?;
     let mut hasil = vec![];
     let mut peringatan = vec![];

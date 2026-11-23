@@ -316,12 +316,20 @@ fn pending_tulis(tx: &Transaction, kasir: &str, nomor: Option<&str>, tgl: &str, 
 }
 
 /// Pindahkan isi tabel pendingjual versi sebelumnya menjadi transaksi TP, lalu kosongkan tabel itu.
+#[cfg(test)]
 pub fn migrasi_pending(conn: &mut Connection) -> Res<()> {
-    let ada: i64 = conn.query_row("SELECT COUNT(*) FROM pendingjual", [], |r| r.get(0)).unwrap_or(0);
+    let tx = conn.transaction().map_err(e)?;
+    migrasi_pending_tx(&tx)?;
+    tx.commit().map_err(e)
+}
+
+/// Isi `migrasi_pending` di dalam transaksi milik pemanggil. Aman dijalankan berulang (tabel kosong = tidak berbuat apa-apa).
+/// Dipakai sebagai langkah 1 di `migrasi.rs`.
+pub fn migrasi_pending_tx(tx: &Transaction) -> Res<()> {
+    let ada: i64 = tx.query_row("SELECT COUNT(*) FROM pendingjual", [], |r| r.get(0)).unwrap_or(0);
     if ada == 0 {
         return Ok(());
     }
-    let tx = conn.transaction().map_err(e)?;
     let daftar: Vec<(String, String, String, String, String, String)> = {
         let mut st = tx
             .prepare("SELECT nopending, COALESCE(tgltrans,date('now','localtime')), COALESCE(kodekaryawan,''), COALESCE(kodepelanggan,''), COALESCE(kodesales,''), COALESCE(catatan,'') FROM pendingjual ORDER BY nopending")
@@ -353,12 +361,12 @@ pub fn migrasi_pending(conn: &mut Connection) -> Res<()> {
             v
         };
         if !items.is_empty() {
-            pending_tulis(&tx, &kasir, None, &tgl, &pelanggan, &sales, &catatan, &items)?;
+            pending_tulis(tx, &kasir, None, &tgl, &pelanggan, &sales, &catatan, &items)?;
         }
     }
     tx.execute("DELETE FROM pendingjualdetil", []).map_err(e)?;
     tx.execute("DELETE FROM pendingjual", []).map_err(e)?;
-    tx.commit().map_err(e)
+    Ok(())
 }
 
 #[tauri::command]

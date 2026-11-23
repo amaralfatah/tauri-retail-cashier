@@ -12,6 +12,7 @@ mod nontunai;
 mod poin;
 mod pindah_lama;
 mod promo;
+mod migrasi;
 mod order;
 mod pelunasan;
 mod retur;
@@ -43,6 +44,8 @@ mod tests_laporan;
 mod tests_e2e;
 #[cfg(test)]
 mod tests_pindah_lama;
+#[cfg(test)]
+mod tests_migrasi;
 
 use std::sync::Mutex;
 use tauri::Manager;

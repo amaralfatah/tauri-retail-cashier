@@ -138,6 +138,33 @@ Ambil bentuk shadcn (sudut membulat, Inter, garis rapi), tetapi pertahankan keku
 - **Nama layar** tampil di kiri status bar (`child.caption`), pengganti `[Nama Layar]` di judul jendela VB.
 - Setting per komputer dari VB tetap dihormati, mis. `autoLoad` (cari sambil mengetik di Cari Barang dan Data Barang).
 
+## Mengubah susunan database
+
+Versi susunan disimpan di `PRAGMA user_version`; daftar langkahnya ada di `src-tauri/src/migrasi.rs` (`MIGRASI`).
+Versi N berarti database sudah menjalani langkah 1 sampai N. `schema.sql` selalu berisi susunan terbaru yang lengkap.
+
+Untuk mengubah tabel, kolom, indeks, atau trigger:
+
+1. Ubah `schema.sql` supaya instalasi baru langsung mendapat susunan terbaru.
+2. Tambahkan langkah baru di akhir `MIGRASI` dengan nomor berikutnya (SQL, atau fungsi Rust untuk yang rumit). Pakai pembantu yang aman diulang, mis. `tambah_kolom`.
+3. Jangan pernah mengubah atau menghapus langkah yang sudah dirilis. Salah di langkah lama dibetulkan lewat langkah baru.
+4. Langkah harus jalan di atas data toko yang sudah ada (isi tabel tidak boleh hilang) dan aman kalau terpanggil dua kali. Trigger yang berubah harus `DROP TRIGGER IF EXISTS` lalu dibuat ulang, karena `CREATE ... IF NOT EXISTS` tidak menimpa yang lama.
+5. Tambahkan tes di `src-tauri/src/tests_migrasi.rs`: database di versi sebelumnya berisi data naik ke versi baru, datanya utuh.
+
+Cara database dari berbagai asal sampai ke versi terbaru:
+
+| Asal | Perlakuan |
+|---|---|
+| Instalasi baru (file belum punya tabel) | `schema.sql` dijalankan, versi langsung diset ke terbaru. Langkah tidak dijalankan, karena `schema.sql` sudah terbaru. |
+| Database toko yang ada (versi 0 sebelum fitur ini, atau lebih rendah dari terbaru) | Cadangan `sebelum-update-*.db` dibuat di folder backup bila ada datanya. Langkah yang belum jalan dijalankan berurutan, tiap langkah satu transaksi bersama kenaikan versi. Setelah itu `schema.sql` dijalankan sebagai pelengkap (hanya `IF NOT EXISTS`). |
+| Restore backup lama | `pulihkan` memanggil `db::open`, jadi diperlakukan sebagai database yang ada. |
+| Restore backup yang lebih baru dari aplikasi | Ditolak di `cek_file_backup`, sebelum file diganti. |
+| Impor dari aplikasi lama (`pindah_lama.rs`) | Dibangun dari `schema.sql` lalu langsung ditandai versi terbaru (`migrasi::tandai_terbaru`), jadi tidak ada langkah yang jalan. |
+| Database dengan versi lebih tinggi dari aplikasi | `db::open` menolak dengan pesan "Data ini dibuat oleh Toko Pro versi yang lebih baru". |
+
+Karena `schema.sql` dijalankan setelah langkah pada database yang ada, indeks atau trigger di `schema.sql` boleh memakai kolom baru.
+Langkah 1 adalah titik awal: ia hanya menyusul `migrasi_pending` (pending lama dipindah ke transaksi).
+
 ## Teks untuk pengguna
 
 Teks yang dilihat kasir dan pemilik toko memakai sapaan "Anda", kalimat aktif, dan kata sehari-hari di toko

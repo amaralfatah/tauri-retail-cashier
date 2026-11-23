@@ -116,6 +116,7 @@ pub fn cek_file_backup(file: &Path) -> Res<()> {
             return Err(salah());
         }
     }
+    crate::migrasi::tolak_jika_terlalu_baru(crate::migrasi::versi(&c)?)?;
     Ok(())
 }
 

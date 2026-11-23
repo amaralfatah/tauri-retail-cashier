@@ -27,10 +27,10 @@ pub(crate) const SCHEMA: &str = include_str!("schema.sql");
 pub fn open(path: &Path) -> Res<Connection> {
     let conn = Connection::open(path).map_err(e)?;
     conn.pragma_update(None, "journal_mode", "WAL").map_err(e)?;
-    conn.execute_batch(SCHEMA).map_err(e)?;
-    seed(&conn)?;
     let mut conn = conn;
-    crate::order::migrasi_pending(&mut conn)?;
+    // Susunan tabel (baru atau diperbarui) harus beres sebelum data awal ditulis.
+    crate::migrasi::siapkan(&mut conn)?;
+    seed(&conn)?;
     Ok(conn)
 }
 
