@@ -36,7 +36,7 @@ import { Modal } from "./components/Modal";
 import { formSize, useTinggiJudul } from "./vb/VbForm";
 import { ModalFrame } from "./vb/VbGrid";
 import {
-  allowedFor, DEFAULT_CAPTION, DIALOG_FORM, isDialog, MENU, MenuNode, Page, TARGETS, TOOLBAR, ToolBtn,
+  allowedFor, DEFAULT_CAPTION, DIALOG_FORM, isDialog, MENU, MenuNode, Page, SEP_BEFORE, TARGETS, TOOLBAR, ToolBtn,
 } from "./vb/shell";
 import "./vb/vb.css";
 import { cadanganSaatKeluar } from "./api/cadangan";
@@ -119,8 +119,9 @@ function PopupItems(props: { nodes: MenuNode[]; kasir: boolean; ditolak: Readonl
     <ul data-slot="menu"
       className={cn("m-0 min-w-52 list-none rounded-md border bg-popover p-1 text-sm text-popover-foreground shadow-lg",
         props.sub ? "absolute top-[-5px] left-full ml-1" : "relative")}>
-      {props.nodes.filter((n) => allowedFor(props.kasir, n, props.ditolak)).map((n) => (
+      {props.nodes.filter((n) => allowedFor(props.kasir, n, props.ditolak)).map((n, i) => (
         <li key={n.id} className="relative" onMouseEnter={() => setOpen(n.children.length ? n.id : null)}>
+          {i > 0 && SEP_BEFORE.has(n.nama) && <div role="separator" data-slot="menu-separator" className="-mx-1 my-1 h-px bg-border" />}
           <button type="button" data-slot="menu-item"
             className={cn("flex w-full cursor-default items-center justify-between gap-4 rounded-sm px-2 py-1.5 text-left outline-none",
               "hover:bg-accent hover:text-accent-foreground focus-visible:bg-accent", open === n.id && "bg-accent text-accent-foreground")}

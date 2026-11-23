@@ -13,6 +13,11 @@ export const MENU = menuData as MenuNode[];
 
 export interface Target { page: Page; tab?: MasterTable | Tab }
 
+/** Menu yang diawali garis pemisah, seperti di menu aplikasi lama. */
+export const SEP_BEFORE: ReadonlySet<string> = new Set([
+  "mnMDDataSupplier", "mnTRReturJual", "mnTRReturBeliPerTrans", "mnTRPelunasanHutang", "mnInvCetakBarcode", "mnInvPromoJual",
+]);
+
 /** Menu asli (kolom namamenu) ke halaman yang sudah ada. */
 export const TARGETS: Record<string, Target> = {
   mnMDDataBarang: { page: "master", tab: "mdbarang" },
@@ -22,6 +27,7 @@ export const TARGETS: Record<string, Target> = {
   mnMDDataSupplier: { page: "master", tab: "mdpemasok" },
   mnMDDataPelanggan: { page: "master", tab: "mdpelanggan" },
   mnMDDataKaryawan: { page: "master", tab: "mdkaryawan" },
+  mnMDDataJenisNonTunai: { page: "nontunai" },
   mnTRTrPenjualan: { page: "jual" },
   mnTRPelunasanPiutang: { page: "piutang" },
   mnTRReturJual: { page: "returjual" },

@@ -29,6 +29,12 @@
     "children": []
    },
    {
+    "id": "M071",
+    "nama": "mnMDDataJenisNonTunai",
+    "caption": "Data Jenis Non Tunai",
+    "children": []
+   },
+   {
     "id": "M006",
     "nama": "mnMDDataSupplier",
     "caption": "Data Supplier",
