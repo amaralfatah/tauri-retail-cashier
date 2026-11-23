@@ -17,7 +17,10 @@ pub enum Golongan {
 }
 
 /// Perintah yang selalu jalan di komputer sendiri.
-pub const LOKAL: &[&str] = &["cetak", "ekspor_nama", "simpan_file", "simpan_xlsx", "simpan_laporan", "baca_gambar", "lama_pengaturan", "lama_foto_daftar"];
+pub const LOKAL: &[&str] = &[
+    "cetak", "daftar_printer", "cetak_langsung", "buka_laci", "ekspor_nama", "simpan_file", "simpan_xlsx",
+    "simpan_laporan", "baca_gambar", "lama_pengaturan", "lama_foto_daftar",
+];
 
 /// Dikerjakan sebagian di kasir, sebagian di Pusat (`foto_simpan`: Kasir membaca file gambarnya lalu mengirim isinya
 /// ke `foto_simpan_data` di Pusat).

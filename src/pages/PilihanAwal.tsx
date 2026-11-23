@@ -83,17 +83,13 @@ const Daftar = (props: { butir: string[] }) => (
   <ul className="flex list-disc flex-col gap-1.5 pl-5 text-xs text-foreground">{props.butir.map((b) => <li key={b}>{b}</li>)}</ul>
 );
 
-/** Yang tetap perlu dikerjakan pengguna setelah pindah (rancangan 8.7), hanya yang berlaku untuk komputer ini. */
-function daftarSisa(kv: Record<string, string>, tidakCocok: number, gagal: number, pusatNyala: boolean, izinGagal = false, nasib?: NasibPengaturan): string[] {
+/** Hal yang benar-benar perlu ditindaklanjuti pengguna setelah pindah (foto, izin Windows, atau pilihan lama yang diganti). */
+function daftarSisa(tidakCocok: number, gagal: number, izinGagal = false, nasib?: NasibPengaturan): string[] {
   const s: string[] = [];
   for (const d of nasib?.diganti ?? []) s.push(`${d.charAt(0).toUpperCase()}${d.slice(1)}, karena pilihan lamanya tidak ada lagi di Toko Pro baru.`);
   if (izinGagal) s.push("Komputer kasir belum bisa tersambung karena Windows belum mengizinkannya. Buka Pengaturan, Alat Bantu, Komputer Pusat, tekan Beri izin, lalu pilih Ya. Kalau Windows meminta kata sandi administrator, minta bantuan orang yang memasang komputer ini.");
   if (tidakCocok > 0) s.push(`Ada ${angka(tidakCocok)} foto yang namanya tidak sama dengan kode barang mana pun, jadi tidak ikut pindah. Foto itu tetap ada di folder Toko Pro lama.`);
   if (gagal > 0) s.push(`${angka(gagal)} foto tidak bisa disalin karena rusak atau lebih dari 10 MB.`);
-  s.push("Saat pertama mencetak struk, pilih printer struk Anda di jendela cetak. Windows akan mengingatnya untuk cetakan berikutnya.");
-  if (["1", "-1", "true", "yes"].includes((kv.pakaidrawer ?? "").trim().toLowerCase())) s.push("Toko Pro baru belum bisa membuka laci kasir sendiri. Buka laci dengan kunci atau tombolnya dulu.");
-  if ((kv.lokasireport ?? "").trim()) s.push("Laporan yang dibuat khusus di Toko Pro lama tidak ikut pindah. Semua laporan bawaan ada di menu Laporan.");
-  if (pusatNyala) s.push("Biarkan komputer ini menyala dan Toko Pro tetap terbuka selama toko buka.");
   return s;
 }
 
@@ -183,10 +179,10 @@ export function PilihanAwal(props: { namaUsaha?: string; onSelesai: () => void }
     setLayar({ jenis: "pindah" });
     try {
       const hasil = await lama.pusatMulai(paksa);
-      const { kv, nasib } = await pakaiPengaturanLama("pusat");
+      const { nasib } = await pakaiPengaturanLama("pusat");
       await muatStatusPusat();
       if (g !== giliran.current) return;
-      setLayar({ jenis: "ringkasan-pusat", hasil, pengaturan: nasib, sisa: daftarSisa(kv, hasil.foto.tidakCocok, hasil.foto.gagal, true, !!hasil.izinWindows, nasib) });
+      setLayar({ jenis: "ringkasan-pusat", hasil, pengaturan: nasib, sisa: daftarSisa(hasil.foto.tidakCocok, hasil.foto.gagal, !!hasil.izinWindows, nasib) });
     } catch (e) {
       if (g !== giliran.current) return;
       setErr(errText(e));
@@ -199,13 +195,11 @@ export function PilihanAwal(props: { namaUsaha?: string; onSelesai: () => void }
     const g = ++giliran.current;
     setErr("");
     setSibuk(true);
-    let kv: Record<string, string> = {};
     let nasib: NasibPengaturan = { status: "gagal", diganti: [] };
     try {
       await pusat.awalPilih("kasir", namaPusat);
       simpanTanda(true);
       const baca = await pakaiPengaturanLama("kasir");
-      kv = baca.kv;
       nasib = baca.nasib;
       if (baca.fotoFolder) tandaiFotoLama();
     } catch (e) {
@@ -224,7 +218,7 @@ export function PilihanAwal(props: { namaUsaha?: string; onSelesai: () => void }
         simpanTanda(false);
         await muatStatusPusat();
         if (g !== giliran.current) return;
-        setLayar({ jenis: "ringkasan-kasir", pusat: namaPusat, pengaturan: nasib, sisa: daftarSisa(kv, 0, 0, false, false, nasib) });
+        setLayar({ jenis: "ringkasan-kasir", pusat: namaPusat, pengaturan: nasib, sisa: daftarSisa(0, 0, false, nasib) });
         return;
       }
       if (h.status === "perlu-kode") {
@@ -344,10 +338,12 @@ export function PilihanAwal(props: { namaUsaha?: string; onSelesai: () => void }
         <p>{kalimatPengaturan(pengaturan)}</p>
         <p className="text-xs text-muted-foreground">Komputer kasir lain bisa tersambung sendiri, tanpa kode, sampai pukul 23.59 hari ini, atau sampai {MAKS_OTOMATIS} komputer sudah tersambung. Setelah itu, Manager membuat kode sambung di menu Komputer Pusat. Di menu itu, Manager juga bisa menutup masa ini lebih awal dan memutuskan komputer yang tidak dikenal.</p>
         {hasil.galatServer && <Alert>{hasil.galatServer}</Alert>}
-        <div className="flex flex-col gap-2">
-          <h2 className="text-xs font-semibold">Yang perlu Anda tahu</h2>
-          <Daftar butir={sisa} />
-        </div>
+        {sisa.length > 0 && (
+          <div className="flex flex-col gap-2">
+            <h2 className="text-xs font-semibold">Yang perlu Anda tahu</h2>
+            <Daftar butir={sisa} />
+          </div>
+        )}
       </Kartu>
     );
   }
@@ -386,10 +382,12 @@ export function PilihanAwal(props: { namaUsaha?: string; onSelesai: () => void }
       <Kartu judul={`Komputer ini sudah tersambung ke ${namaPusat}.`} atas={props.namaUsaha}
         kaki={<Button type="button" autoFocus className="h-8 min-w-28 text-xs font-semibold" onClick={props.onSelesai}><span>Mulai pakai</span><Kbd className="bg-primary-foreground/20 text-primary-foreground">Enter</Kbd></Button>}>
         <p>{kalimatPengaturan(pengaturan)}</p>
-        <div className="flex flex-col gap-2">
-          <h2 className="text-xs font-semibold">Yang perlu Anda tahu</h2>
-          <Daftar butir={sisa} />
-        </div>
+        {sisa.length > 0 && (
+          <div className="flex flex-col gap-2">
+            <h2 className="text-xs font-semibold">Yang perlu Anda tahu</h2>
+            <Daftar butir={sisa} />
+          </div>
+        )}
       </Kartu>
     );
   }

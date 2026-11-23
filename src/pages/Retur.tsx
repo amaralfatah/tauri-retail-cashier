@@ -12,7 +12,8 @@ import { useApp } from "../appContext";
 import { CariBarang } from "../components/CariBarang";
 import { EntryGrid, type EntryGridCol, GridKodeInput } from "../components/EntryGrid";
 import { CariTransaksi } from "../components/CariTransaksi";
-import { cetakStruk } from "../components/Struk";
+import { toast } from "sonner";
+import { buktiReturTeks, cetakStruk } from "../components/Struk";
 import { Modal } from "../components/Modal";
 import { qty, rp, tglID, today } from "../format";
 import { GridCol, useMsgBox, VbGrid } from "../vb/VbGrid";
@@ -507,7 +508,7 @@ function PilihPemasok(props: { onPick: (p: Row) => void; onClose: () => void }) 
 function BuktiRetur({ data, setting, onSelesai }: { data: { header: Row; detail: Row[] }; setting: Row; onSelesai: () => void }) {
   const h = data.header;
   useEffect(() => {
-    cetakStruk().catch(() => undefined).finally(onSelesai);
+    cetakStruk(buktiReturTeks(data, setting)).catch((e) => toast.error(errText(e))).finally(onSelesai);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
   return createPortal(
     <div className="struk">

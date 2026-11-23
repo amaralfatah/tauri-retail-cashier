@@ -14,7 +14,8 @@ import { CariTransaksi } from "../components/CariTransaksi";
 import { EntryGrid, type EntryGridCol, GRID_TH, GridSearchButton } from "../components/EntryGrid";
 import { Alert, Modal } from "../components/Modal";
 import { Otentikasi } from "../components/Otentikasi";
-import { cetakStruk, Struk } from "../components/Struk";
+import { toast } from "sonner";
+import { bukaLaciOtomatis, cetakStruk, Struk, strukOrderTeks, strukTeks } from "../components/Struk";
 import { StrukPenjualan } from "../components/StrukPenjualan";
 import { addDays, hargaJual, num, qty, rp, tglID, today, Unit, unitsOf } from "../format";
 import { Geom, formCaption } from "../vb/VbForm";
@@ -1155,7 +1156,7 @@ function TransaksiIsi({ mode, order = false }: { mode: Mode; order?: boolean }) 
   };
   useEffect(() => {
     if (!ulangOrder) return;
-    cetakStruk().catch((e) => setMsg(errText(e))).finally(() => setUlangOrder(null));
+    cetakStruk(strukOrderTeks(ulangOrder, setting)).catch((e) => setMsg(errText(e))).finally(() => setUlangOrder(null));
   }, [ulangOrder]);
 
   const cekPoin = () => {
@@ -1235,7 +1236,7 @@ function TransaksiIsi({ mode, order = false }: { mode: Mode; order?: boolean }) 
   };
   useEffect(() => {
     if (!ulang) return;
-    cetakStruk().catch((e) => setMsg(errText(e))).finally(() => setUlang(null));
+    cetakStruk(strukTeks(ulang, setting)).catch((e) => setMsg(errText(e))).finally(() => setUlang(null));
   }, [ulang]);
 
   const fokusCtl = (name: string) => document.querySelector<HTMLElement>(`[data-vb="${name}"] input, [data-vb="${name}"] textarea`)?.focus();
@@ -2017,6 +2018,7 @@ function BayarDialog(props: { mode: Mode; tgl: string; kontak: string; sales: st
     try {
       if (jual) {
         const r = props.noorder ? await orderApi.savePenjualanOrder(input, props.noorder) : await kasirApi.savePenjualan(input);
+        void bukaLaciOtomatis().catch((e) => toast.error(errText(e)));
         const trans = await api.getTransaksi(r.notrans);
         const poin = Number((r as { poin?: number }).poin) || 0;
         kembaliRef.current = caraKirim === "Tunai" ? Number(r.kembali) || 0 : undefined;
@@ -2092,7 +2094,7 @@ function BayarDialog(props: { mode: Mode; tgl: string; kontak: string; sales: st
     return (
       <Modal title="Transaksi tersimpan" onClose={() => selesai(hasil.notrans)}
         footer={<>
-          {hasil.trans && <Button variant="outline" onClick={() => cetakStruk().catch((e) => setErr(errText(e)))}>Cetak Struk</Button>}
+          {hasil.trans && <Button variant="outline" onClick={() => cetakStruk(strukTeks(hasil.trans!, setting)).catch((e) => setErr(errText(e)))}>Cetak Struk</Button>}
           <Button autoFocus onClick={() => selesai(hasil.notrans)}>Transaksi Baru [Enter]</Button>
         </>}>
         <div>

@@ -139,8 +139,9 @@ jobs:
             Kalau Windows menampilkan "Windows protected your PC", klik **More info**, lalu **Run anyway**.
 
             ### Pindah dari Toko Pro lama
-            Pasang aplikasi ini di komputer yang dulu memakai Toko Pro lama, tutup aplikasi lamanya,
-            lalu buka **Alat Bantu → Restore Data → Ambil dari Toko Pro Lama**.
+            Tutup Toko Pro lama di semua komputer toko, pasang aplikasi ini, lalu buka.
+            Toko Pro baru akan otomatis mendeteksi Toko Pro lama di komputer Pusat maupun komputer kasir dan memindahkan data serta pengaturannya.
+            Jika ingin mengambil ulang data di lain waktu, buka **Alat Bantu → Restore Data → Ambil dari Toko Pro Lama**.
           releaseDraft: true
           prerelease: false
           # Pembaruan otomatis Windows memakai installer NSIS (setup.exe), bukan msi.

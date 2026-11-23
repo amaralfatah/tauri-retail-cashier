@@ -2,6 +2,7 @@ import { createPortal } from "react-dom";
 import { api, Row } from "../api";
 import { tglID } from "../format";
 import { fmtHrgStruk as rp, fmtQtyStruk as qty, kertasStruk } from "../pages/kasirSettings";
+import { getLocal, KODE_DRAWER_BAWAAN } from "../pages/localSettings";
 
 /** Struk 58/80 mm. Hanya tampil saat dicetak (lihat CSS body[data-print="struk"]). */
 export function Struk({ trans, setting }: { trans: { header: Row; detail: Row[] } | null; setting: Row | null }) {
@@ -67,15 +68,41 @@ async function cetakMode(mode: "struk" | "laporan") {
   await api.cetak();
 }
 
-export const cetakStruk = () => cetakMode("struk");
+/**
+ * Apakah struk dikirim langsung ke printer kasir (ESC/POS / RAW) tanpa dialog cetak Windows.
+ * Aktif bila Jenis Printer bukan Custom, ukuran kertas Mini Printer, dan Nama / Port Printer sudah diisi.
+ */
+export function pakaiCetakLangsung(): boolean {
+  const jenis = getLocal("jnsPrinter");
+  const kertas = getLocal("ukuranKertas");
+  const port = getLocal("portPrinter").trim();
+  return jenis !== "Custom" && !/A4|A5/i.test(kertas) && port.length > 0;
+}
+
+/**
+ * Cetak struk. Bila printer struk Direct sudah diisi di Pengaturan dan kertasnya Mini Printer,
+ * kirim langsung ke printer tanpa dialog cetak Windows; selain itu buka dialog cetak sistem.
+ */
+export async function cetakStruk(teks?: string) {
+  if (teks && pakaiCetakLangsung()) {
+    await api.cetakLangsung(getLocal("jnsPort"), getLocal("portPrinter").trim(), teks, true);
+    return;
+  }
+  await cetakMode("struk");
+}
+
+/** Buka laci kasir (cash drawer) bila diaktifkan di Pengaturan → Peralatan. */
+export async function bukaLaciOtomatis() {
+  if (getLocal("drawer") !== "1") return;
+  const jenisPort = getLocal("jnsPort");
+  const tujuan = getLocal("portDrawer").trim() || getLocal("portPrinter").trim();
+  const kode = getLocal("kodeDrawer").trim() || KODE_DRAWER_BAWAAN;
+  await api.bukaLaci(jenisPort, tujuan, kode);
+}
+
 export const cetakLaporan = () => cetakMode("laporan");
 
-/** Isi struk sebagai teks monospasi (kotak "tStruk" pada jendela Struk Penjualan). */
-export function strukTeks(trans: { header: Row; detail: Row[] }, setting: Row | null): string {
-  const h = trans.header;
-  const s = setting ?? {};
-  const W = kertasStruk().kolom;
-  // Teks lebih panjang dari lebar kertas dibungkus per kata, tiap baris diratakan tengah.
+function pembantuTeks(W: number) {
   const bungkus = (x: string): string[] => {
     const out: string[] = [];
     let baris = "";
@@ -96,7 +123,14 @@ export function strukTeks(trans: { header: Row; detail: Row[] }, setting: Row | 
     const kiri = String(a ?? ""), kanan = String(b ?? "");
     return kiri.length + kanan.length + 1 > W ? `${kiri}\n${kanan.padStart(W)}` : kiri + kanan.padStart(W - kiri.length);
   };
-  const garis = "-".repeat(W);
+  return { tengah, dua, garis: "-".repeat(W) };
+}
+
+/** Isi struk sebagai teks monospasi (kotak "tStruk" pada jendela Struk Penjualan dan cetak langsung ESC/POS). */
+export function strukTeks(trans: { header: Row; detail: Row[] }, setting: Row | null): string {
+  const h = trans.header;
+  const s = setting ?? {};
+  const { tengah, dua, garis } = pembantuTeks(kertasStruk().kolom);
   const bayar = h.carabayar === "Non Tunai" ? Number(h.bayarlain1) : Number(h.jmlbayar);
   const L: string[] = [];
   const tambah = (t: unknown) => { if (t) L.push(tengah(t)); };
@@ -126,5 +160,47 @@ export function strukTeks(trans: { header: Row; detail: Row[] }, setting: Row | 
   L.push(garis);
   tambah(s.footer1);
   tambah(s.footer2);
+  return L.join("\n");
+}
+
+/** Isi struk order penjualan / pembelian sebagai teks monospasi untuk cetak langsung. */
+export function strukOrderTeks(order: { header: Row; detail: Row[] }, setting: Row | null): string {
+  const h = order.header;
+  const s = setting ?? {};
+  const jual = h.kode === "SO";
+  const { tengah, dua, garis } = pembantuTeks(kertasStruk().kolom);
+  const L: string[] = [];
+  if (s.namausaha) L.push(tengah(s.namausaha));
+  if (s.alamat) L.push(tengah(`${s.alamat}${s.kota ? `, ${s.kota}` : ""}`));
+  L.push(tengah(jual ? "ORDER PENJUALAN" : "ORDER PEMBELIAN"));
+  L.push(garis, dua(h.notrans, tglID(h.tglorder)),
+    dua(jual ? "Pelanggan" : "Supplier", jual ? h.namapelanggan : h.namapemasok),
+    dua("Petugas", h.namakasir), garis);
+  for (const d of order.detail) {
+    L.push(String(d.namabarang ?? ""));
+    L.push(dua(`${qty(d.jmljual)} ${d.satuanjual} x ${rp(d.hrgterjual)}`, rp(Number(d.jmljual) * Number(d.hrgterjual) - Number(d.disknilai || 0))));
+  }
+  L.push(garis, dua("TOTAL", rp(h.jmltrans)));
+  if (jual && Number(h.jmlbayar) > 0) L.push(dua("Uang muka", rp(h.jmlbayar)));
+  if (h.catatan) L.push(String(h.catatan));
+  return L.join("\n");
+}
+
+/** Isi bukti retur penjualan / pembelian sebagai teks monospasi untuk cetak langsung. */
+export function buktiReturTeks(data: { header: Row; detail: Row[] }, setting: Row | null): string {
+  const h = data.header;
+  const s = setting ?? {};
+  const { tengah, dua, garis } = pembantuTeks(kertasStruk().kolom);
+  const L: string[] = [];
+  if (s.namausaha) L.push(tengah(s.namausaha));
+  L.push(tengah(h.kode === "RJ" ? "BUKTI RETUR PENJUALAN" : "BUKTI RETUR PEMBELIAN"));
+  L.push(garis, dua(h.notrans, tglID(h.tgltrans)),
+    dua(h.kode === "RJ" ? "Pelanggan" : "Supplier", h.kode === "RJ" ? h.namapelanggan : h.namapemasok),
+    dua("Petugas", h.namakasir), garis);
+  for (const d of data.detail) {
+    L.push(String(d.namabarang ?? ""));
+    L.push(dua(`${qty(d.jmljual)} ${d.satuanjual} x ${rp(d.hrgterjual)}`, rp(Number(d.jmljual) * Number(d.hrgterjual))));
+  }
+  L.push(garis, dua("TOTAL", rp(h.totaltrans ?? h.jmltrans)));
   return L.join("\n");
 }

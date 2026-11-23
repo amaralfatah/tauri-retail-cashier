@@ -65,6 +65,11 @@ export const api = {
   deleteUser: (iduser: string) => invoke<void>("delete_user", { iduser }),
   dbPath: () => invoke<string>("db_path"),
   cetak: () => invoke<void>("cetak"),
+  daftarPrinter: () => invoke<string[]>("daftar_printer"),
+  cetakLangsung: (jenisPort: string, tujuan: string, isi: string, potong = true) =>
+    invoke<void>("cetak_langsung", { jenisPort, tujuan, isi, potong }),
+  bukaLaci: (jenisPort: string, tujuan: string, kode: string) =>
+    invoke<void>("buka_laci", { jenisPort, tujuan, kode }),
 
   masterList: (tableName: MasterTable, opts: { search?: string; limit?: number; offset?: number; onlyActive?: boolean; kelompok?: string; kategori?: string; sort?: string; hanyaKodeNama?: boolean } = {}) =>
     invoke<{ rows: Row[]; total: number }>("master_list", { tableName, ...opts }),

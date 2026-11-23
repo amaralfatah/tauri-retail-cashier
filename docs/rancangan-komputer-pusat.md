@@ -835,12 +835,12 @@ dan `Settings.ini` tetap didahulukan.
 | `AktifBackup` | `tokopro.autoBackup` | `"1"` bila aktif | Pusat (diabaikan di Kasir, 6.1) |
 | `LokasiBackup` (bawaan `\_file\`) | `tokopro.folderBackup` | Hanya bila berisi folder sendiri yang ada dan bisa ditulis (mis. `D:\Backup`). Nilai bawaan `\_file\` di folder lama tidak dipakai: cadangan baru berformat `.db`, dan folder lama bisa ikut terhapus saat Toko Pro lama dicopot. | Pusat |
 | `UkuranKertas` | `ukuranKertas` | langsung, lalu `rapikan()` | semua |
-| `JnsPrinter` | `jnsPrinter` | langsung, lalu `rapikan()`. Tersimpan, tetapi aplikasi baru mencetak lewat dialog cetak Windows (8.7). | semua |
-| `JnsPortPrinter` | `jnsPort` | langsung, lalu `rapikan()` (`USB`/`LPT`). Tersimpan, belum berefek. | semua |
-| `PortPrinter` | `portPrinter` | langsung. Tersimpan, belum berefek. | semua |
-| `PakaiDrawer` | `drawer` | kotak centang. Tersimpan, laci kasir belum dibuka oleh aplikasi baru (8.7). | semua |
-| `KodeDrawer` (bawaan `27,112,0,64,240`) | `kodeDrawer` | langsung | semua |
-| `PortDrawer` | `portDrawer` | langsung | semua |
+| `JnsPrinter` | `jnsPrinter` | langsung, lalu `rapikan()`. `Direct`/`Direct-Custom` mencetak langsung ke printer mini (ESC/POS); `Custom` memakai dialog cetak sistem. | semua |
+| `JnsPortPrinter` | `jnsPort` | langsung, lalu `rapikan()` (`USB`/`LPT`). Dipakai untuk cetak langsung dan buka laci (`peralatan.rs`). | semua |
+| `PortPrinter` | `portPrinter` | langsung. Nama printer Windows (USB) atau port (`LPT1`/`COM1`). | semua |
+| `PakaiDrawer` | `drawer` | kotak centang. Dipakai untuk membuka laci kasir otomatis saat penjualan tersimpan (`peralatan.rs`). | semua |
+| `KodeDrawer` (bawaan `27,112,0,64,240`) | `kodeDrawer` | langsung. Dikirim sebagai byte ESC/POS ke laci kasir. | semua |
+| `PortDrawer` | `portDrawer` | langsung. Bila kosong, mengikuti `portPrinter` (atau printer bawaan Windows di mode USB). | semua |
 | `modeScan` | `modeScan` | indeks pilihan lama dipakai apa adanya (`0` = Grid, `1` = TextBox, sama dengan `MODE_SCAN`) | semua |
 | `KonfirmasiCetakStrukJual` | `konfirmasiCetak` | kotak centang | semua |
 | `FormatQtyStruk` | `formatQty` | langsung, lalu `rapikan()` | semua |
@@ -1026,15 +1026,14 @@ Butir ini muncul di ringkasan setelah pindah (8.2 langkah 6) atau sebagai pesan 
 | Toko Pro lama masih terbuka di komputer ini | Database sedang dipakai | Toko Pro lama masih terbuka di komputer ini. Tutup Toko Pro lama, lalu Toko Pro baru akan melanjutkan sendiri. |
 | Izin Windows di Pusat | Butuh persetujuan administrator (UAC) | Windows akan bertanya apakah Toko Pro boleh menerima komputer kasir. Pilih **Ya**. |
 | Izin Windows ditolak atau gagal | Pengguna memilih Tidak, atau akun bukan administrator | Komputer kasir belum bisa tersambung karena Windows belum mengizinkannya. Tekan **Beri izin**, lalu pilih **Ya**. Kalau Windows meminta kata sandi administrator, minta bantuan orang yang memasang komputer ini. |
-| Printer struk | Aplikasi baru mencetak lewat dialog cetak Windows; pengaturan printer lama (jenis printer, port USB/LPT) belum dipakai | Saat pertama mencetak struk, pilih printer struk Anda di jendela cetak. Windows akan mengingatnya untuk cetakan berikutnya. |
-| Laci kasir | Aplikasi baru belum membuka laci kasir; setelan lama disimpan untuk nanti | Toko Pro baru belum bisa membuka laci kasir sendiri. Buka laci dengan kunci atau tombolnya dulu. |
-| Laporan buatan sendiri (`LokasiReport`) | Format `.rpx` aplikasi lama tidak dipakai | Laporan yang dibuat khusus di Toko Pro lama tidak ikut pindah. Semua laporan bawaan ada di menu Laporan. |
+| Printer struk & laci kasir | Sudah didukung otomatis lewat pengaturan yang ikut pindah (`peralatan.rs`: WinSpool RAW untuk USB dan tulis port untuk LPT/COM) | (tidak muncul di daftar sisa; hanya muncul bila ada pilihan lama yang tidak dikenal dan diganti) |
+| Laporan buatan sendiri (`LokasiReport`) | Format `.rpx` aplikasi lama tidak dipakai; bawaan `\_report\` selalu terisi walau tanpa laporan kustom | (tidak ditampilkan di ringkasan pindah; semua laporan bawaan ada di menu Laporan) |
 | Tampilan Office 2007 (`AKTIFSKIN`) | Tidak ada di aplikasi baru | (tidak ditampilkan; perubahan tampilan sudah jelas) |
 | Password yang tidak terbaca | Hasil baca gagal diperiksa (bukan enam ulangan, atau ada huruf di luar ASCII) (8.6) | 2 pengguna dari Toko Pro lama belum bisa memakai password lamanya. Mereka masuk dengan password sementara **admin**, lalu Toko Pro meminta membuat password baru. |
 | Nama Pusat tidak ditemukan dari Kasir | Nama di `Settings.ini` lama mungkin sudah tidak dipakai, atau komputer Pusat berganti nama | Komputer Pusat "SERVER" tidak ditemukan. Pastikan komputer itu menyala dan Toko Pro baru sudah dibuka di sana. Kalau nama komputer Pusat sudah berubah, ketik nama barunya di sini. |
 | Peran tidak jelas | `NamaKomputer` berisi `localhost` tetapi tidak ada `DATAPOS.FDB` | (pertanyaan tiga pilihan biasa, 7.1) |
 | Foto yang namanya bukan kode barang | Tidak ada cara mengetahui barangnya | Ada 12 foto yang namanya tidak sama dengan kode barang mana pun, jadi tidak ikut pindah. Foto itu tetap ada di folder Toko Pro lama. |
-| Komputer Pusat harus menyala | Sama dengan aplikasi lama (server Firebird) | (di layar Komputer Pusat) Biarkan komputer ini menyala dan Toko Pro tetap terbuka selama toko buka. |
+| Komputer Pusat harus menyala | Sama dengan aplikasi lama (server Firebird) | (hanya di layar Komputer Pusat dan Panduan, bukan di daftar sisa pindah) |
 
 ## 9. Rencana tahapan
 

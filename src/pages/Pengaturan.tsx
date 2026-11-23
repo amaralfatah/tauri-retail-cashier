@@ -1,6 +1,7 @@
 import { pilihFolder, pilihGambar } from "../api/dialog";
 import { CircleHelpIcon } from "lucide-react";
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -12,7 +13,8 @@ import { useApp } from "../appContext";
 import { Theme, useTheme } from "../lib/theme";
 import { terapkanUkuran, UKURAN_TAMPILAN } from "../lib/ukuranTampilan";
 import { ModalFrame, useMsgBox } from "../vb/VbGrid";
-import { FORMAT_HRG, FORMAT_QTY, HOME, JENIS_PORT, JENIS_PRINTER, LocalKey, LocalSettings, MODE_SCAN, UKURAN_KERTAS, loadLocal, rapikan, saveLocal } from "./localSettings";
+import { kertasStruk } from "./kasirSettings";
+import { FORMAT_HRG, FORMAT_QTY, HOME, JENIS_PORT, JENIS_PRINTER, KODE_DRAWER_BAWAAN, LocalKey, LocalSettings, MODE_SCAN, UKURAN_KERTAS, loadLocal, rapikan, saveLocal } from "./localSettings";
 
 export { Pengguna } from "./Pengguna";
 
@@ -44,9 +46,14 @@ export function Pengaturan() {
   const [mulaiUlang, setMulaiUlang] = useState(false);
   const [exQty, setExQty] = useState("1234567,891");
   const [exHrg, setExHrg] = useState("1234567");
+  const [printers, setPrinters] = useState<string[]>([]);
+  const [sibukUji, setSibukUji] = useState<"cetak" | "laci" | null>(null);
   const bisaUbah = user.level !== "Kasir";
 
   useEffect(() => setV(setting), [setting]);
+  useEffect(() => {
+    void api.daftarPrinter().then(setPrinters).catch(() => undefined);
+  }, []);
 
   // Esc menutup layar ini. Dialog yang sedang terbuka menangkap Esc lebih dulu.
   useEffect(() => {
@@ -77,6 +84,43 @@ export function Pengaturan() {
   const batal = () => { setV(setting); setL(muatLokal()); setTema(theme); };
   const pilihGbr = (k: LocalKey) => async () => { const p = await pilihGambar(); if (p) setLocalVal(k, p); };
   const pilihFolderFoto = async () => { const p = await pilihFolder(); if (p) setLocalVal("lokasiFoto", p); };
+
+  const tesCetak = async () => {
+    if (sibukUji) return;
+    const tujuan = l.portPrinter.trim();
+    if (!tujuan) {
+      msg.alert("Nama atau port printer belum diisi. Pilih nama printer Windows atau ketik nama port (mis. LPT1) dulu.");
+      return;
+    }
+    setSibukUji("cetak");
+    try {
+      const w = kertasStruk(l.ukuranKertas).kolom;
+      const garis = "-".repeat(w);
+      const nama = String(v.namausaha || "TOKO PRO");
+      const isi = [nama, garis, "TES CETAK STRUK", `Printer: ${tujuan}`, `Port: ${l.jnsPort} (${l.jnsPrinter})`, garis, "Printer struk siap dipakai."].join("\n");
+      await api.cetakLangsung(l.jnsPort, tujuan, isi, true);
+      toast.success(`Tes cetak sudah dikirim ke "${tujuan}".`);
+    } catch (e) {
+      msg.alert(errText(e));
+    } finally {
+      setSibukUji(null);
+    }
+  };
+
+  const tesBukaLaci = async () => {
+    if (sibukUji) return;
+    setSibukUji("laci");
+    try {
+      const tujuan = l.portDrawer.trim() || l.portPrinter.trim();
+      const kode = l.kodeDrawer.trim() || KODE_DRAWER_BAWAAN;
+      await api.bukaLaci(l.jnsPort, tujuan, kode);
+      toast.success("Perintah buka laci sudah dikirim.");
+    } catch (e) {
+      msg.alert(errText(e));
+    } finally {
+      setSibukUji(null);
+    }
+  };
 
   const bitChecked = (col: string, mask: number) => (Number(v[col]) & mask) !== 0;
   const setBit = (col: string, mask: number, on: boolean) =>
@@ -309,9 +353,12 @@ export function Pengaturan() {
                 </div>
                 <div className="flex flex-col gap-1" data-vb="tPortPrinter">
                   <Label className="text-xs font-medium text-foreground">Nama / Port Printer</Label>
-                  <Input value={l.portPrinter} onChange={(e) => setLocalVal("portPrinter", e.target.value)} className="h-8 text-xs" />
+                  <Input value={l.portPrinter} list="daftar-printer-sistem" placeholder="Nama printer Windows / LPT1" onChange={(e) => setLocalVal("portPrinter", e.target.value)} className="h-8 text-xs" />
                 </div>
               </div>
+              <datalist id="daftar-printer-sistem">
+                {printers.map((p) => <option key={p} value={p} />)}
+              </datalist>
 
               <div className="grid grid-cols-1 gap-3 border-t border-border pt-2.5 sm:grid-cols-2">
                 <div className="flex flex-col gap-2 rounded-md border border-border bg-muted/30 p-2.5">
@@ -320,12 +367,20 @@ export function Pengaturan() {
                   <div className="grid grid-cols-2 gap-2">
                     <div className="flex flex-col gap-1" data-vb="tPortDrawer">
                       <Label className="text-[11px] text-muted-foreground">Port Drawer</Label>
-                      <Input value={l.portDrawer} onChange={(e) => setLocalVal("portDrawer", e.target.value)} className="h-8 text-xs" />
+                      <Input value={l.portDrawer} list="daftar-printer-sistem" placeholder="Kosong = ikut printer struk" onChange={(e) => setLocalVal("portDrawer", e.target.value)} className="h-8 text-xs" />
                     </div>
                     <div className="flex flex-col gap-1" data-vb="tKodeDrawer">
                       <Label className="text-[11px] text-muted-foreground">Kode Drawer</Label>
-                      <Input value={l.kodeDrawer} onChange={(e) => setLocalVal("kodeDrawer", e.target.value)} className="h-8 text-xs" />
+                      <Input value={l.kodeDrawer} placeholder={KODE_DRAWER_BAWAAN} onChange={(e) => setLocalVal("kodeDrawer", e.target.value)} className="h-8 text-xs" />
                     </div>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                    <Button type="button" variant="outline" size="sm" className="h-7 bg-background px-2.5 text-xs" disabled={sibukUji !== null} onClick={() => void tesCetak()}>
+                      {sibukUji === "cetak" ? "Mengirim..." : "Tes Cetak"}
+                    </Button>
+                    <Button type="button" variant="outline" size="sm" className="h-7 bg-background px-2.5 text-xs" disabled={sibukUji !== null} onClick={() => void tesBukaLaci()}>
+                      {sibukUji === "laci" ? "Membuka..." : "Tes Buka Laci"}
+                    </Button>
                   </div>
                 </div>
 

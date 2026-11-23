@@ -13,6 +13,7 @@ mod master;
 mod nontunai;
 mod poin;
 mod pembaruan_pusat;
+mod peralatan;
 mod pindah_lama;
 mod pindah_otomatis;
 mod promo;
@@ -69,6 +70,8 @@ mod tests_pindah_otomatis;
 mod tests_firewall;
 #[cfg(test)]
 mod tests_perbaikan;
+#[cfg(test)]
+mod tests_peralatan;
 
 use konteks::Konteks;
 use perintah_macro::{daftar_perintah, perintah};
@@ -99,6 +102,9 @@ fn database_path(app: &tauri::AppHandle) -> Result<std::path::PathBuf, String> {
 // Daftar semua perintah aplikasi. Menghasilkan `dispatch` dan `NAMA_PERINTAH`.
 daftar_perintah![
     cetak,
+    peralatan::daftar_printer,
+    peralatan::cetak_langsung,
+    peralatan::buka_laci,
     db_path,
     auth::login,
     auth::login_bawaan,

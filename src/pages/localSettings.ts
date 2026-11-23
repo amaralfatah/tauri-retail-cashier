@@ -4,6 +4,9 @@
  */
 const PREFIX = "tokopro.";
 
+/** Kode ESC/POS bawaan Toko Pro lama untuk membuka laci kasir (ESC p 0 64 240). */
+export const KODE_DRAWER_BAWAAN = "27,112,0,64,240";
+
 export const LOCAL_DEFAULTS = {
   modeScan: "0",
   /** Ukuran tampilan seluruh jendela dalam persen: "100", "115", atau "125". */
@@ -17,7 +20,7 @@ export const LOCAL_DEFAULTS = {
   portPrinter: "",
   drawer: "0",
   portDrawer: "",
-  kodeDrawer: "",
+  kodeDrawer: KODE_DRAWER_BAWAAN,
   defaultJmlByr: "0",
   updateHargaJual: "0",
   autoLoad: "0",

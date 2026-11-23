@@ -1,7 +1,8 @@
 import { useEffect } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Kbd } from "@/components/ui/kbd";
-import { Row } from "../api";
+import { errText, Row } from "../api";
 import { ModalFrame } from "../vb/VbGrid";
 import { Struk, cetakStruk, strukTeks } from "./Struk";
 
@@ -10,7 +11,11 @@ import { Struk, cetakStruk, strukTeks } from "./Struk";
  * kalau kotak "Preview Struk" dicentang. Cetak mencetak struk lalu menutup jendela; Tutup menutup tanpa mencetak.
  */
 export function StrukPenjualan(props: { trans: { header: Row; detail: Row[] }; setting: Row; onSelesai: () => void }) {
-  const cetak = () => { cetakStruk().catch(() => undefined).finally(props.onSelesai); };
+  const cetak = () => {
+    cetakStruk(strukTeks(props.trans, props.setting))
+      .catch((e) => toast.error(errText(e)))
+      .finally(props.onSelesai);
+  };
 
   useEffect(() => {
     const onKey = (ev: KeyboardEvent) => {

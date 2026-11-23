@@ -257,7 +257,7 @@ mockIPC((cmdAsli, argsAsli) => {
       pusatKomputer.mode = "pusat"; pusatKomputer.berjalan = true; pusatKomputer.perluPilihan = false;
       return { barang: 1284, transaksi: 5632, pelanggan: 47, pengguna: 4, foto: { tersalin: 118, tidakCocok: 12, gagal: 1 }, cadangan: "C:\\Backup\\sebelum-restore.db", peringatan: [], galatServer: null, izinWindows: new URLSearchParams(window.location.search).has("izinTolak") ? "Izin dari Windows belum diberikan." : null };
     })();
-    case "lama_pengaturan": return { ada: true, nilai: { pakaidrawer: "-1", lokasireport: "\\_report\\", ukurankertas: "Kertas A4", pilihanhome: "1", jnsportprinter: "COM", jnsprinter: "Mini Printer", aktifbackup: "-1", lokasibackup: "D:\\Backup" }, fotoFolder: "C:\\Toko Pro\\_foto" };
+    case "lama_pengaturan": return { ada: true, nilai: { pakaidrawer: "-1", kodedrawer: "27,112,0,64,240", portdrawer: "EPSON TM-T82", lokasireport: "\\_report\\", ukurankertas: "Mini Printer 75mm-80mm", pilihanhome: "1", jnsportprinter: "USB", jnsprinter: "Direct", portprinter: "EPSON TM-T82", aktifbackup: "-1", lokasibackup: "D:\\Backup" }, fotoFolder: "C:\\Toko Pro\\_foto" };
     case "kasir_tunggu_pusat": {
       lamaTunggu += 1;
       if (new URLSearchParams(window.location.search).has("pusatMati")) return { status: "menunggu" };
@@ -288,6 +288,8 @@ mockIPC((cmdAsli, argsAsli) => {
     case "pembaruan_pusat_cek": return null;
     /* ---- Sesi & Pengguna ---- */
     case "current_user": case "login_bawaan": case "restore_session": case "login": return user;
+    case "daftar_printer": return ["EPSON TM-T82", "POS-58", "Microsoft Print to PDF"];
+    case "cetak_langsung": case "buka_laci": return null;
     case "logout": case "change_password": case "cetak": return null;
     case "verifikasi_admin": return "MOCK-TOKEN-ADMIN";
     case "get_settings": return settings;
