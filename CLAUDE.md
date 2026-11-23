@@ -171,3 +171,10 @@ Teks yang dilihat kasir dan pemilik toko memakai sapaan "Anda", kalimat aktif, d
 (barang, pelanggan, bayar, struk), bukan istilah teknis. Pesan error menyebut apa yang terjadi dan apa yang bisa dilakukan.
 Istilah baku: "Supplier" (bukan Pemasok), "Pengguna" untuk akun (layar Login tetap "Nama User"). Label kolom kepala transaksi
 mengikuti caption form VB-nya (Kasir/Petugas). Uang ditulis `Rp 4.500` (tanpa titik setelah Rp, tanpa ",-").
+
+## Pembaruan otomatis
+
+Plugin updater Tauri (`src/lib/pembaruan.ts`, dialog `src/components/PembaruanDialog.tsx`). Cek diam-diam 8 detik setelah dibuka,
+hanya di aplikasi terpasang (bukan `tauri dev`); gagal hanya dicatat di console. Indikator di header, pemberitahuan di Home, tombol Cek Update di Panduan.
+Hanya Manager yang bisa memasang. Di browser dev, buka `http://localhost:1420/?simulasiUpdate=1` (atau `=gagal`) untuk melihat tampilannya.
+Kunci penanda tangan ada di `~/.tauri/` (di luar repo); cara setup secret dan rilis ada di README, bagian Rilis. Jangan ganti `pubkey` tanpa memahami akibatnya: instalasi lama tidak bisa menerima pembaruan lagi.

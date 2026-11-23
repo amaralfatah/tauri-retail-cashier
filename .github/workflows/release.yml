@@ -114,10 +114,18 @@ jobs:
         uses: tauri-apps/tauri-action@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Kunci penanda tangan pembaruan otomatis (lihat README, bagian Rilis).
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           tagName: v__VERSION__
           releaseName: 'Toko Pro v__VERSION__'
+          # Bagian "Yang baru" tampil sebagai catatan di dialog pembaruan di aplikasi (latest.json memakai isi ini).
           releaseBody: |
+            ### Yang baru
+            Perbaikan dan peningkatan di Toko Pro v__VERSION__.
+
+            ### Pasang manual
             Installer aplikasi desktop **Toko Pro v__VERSION__** untuk Windows dan macOS.
 
             ### Pilih file yang sesuai
@@ -135,4 +143,34 @@ jobs:
             lalu buka **Alat Bantu → Restore Data → Ambil dari Toko Pro Lama**.
           releaseDraft: true
           prerelease: false
+          # Pembaruan otomatis Windows memakai installer NSIS (setup.exe), bukan msi.
+          updaterJsonPreferNsis: true
+          uploadUpdaterJson: true
           args: ${{ matrix.args }}
+
+  cek-latest-json:
+    name: Cek latest.json
+    needs: publish-tauri
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      # Empat build berjalan bersamaan dan menggabungkan hasilnya ke satu latest.json. Kalau ada yang tertimpa,
+      # pembaruan otomatis gagal untuk platform itu, jadi dicek di sini sebelum Anda menerbitkan rilisnya.
+      - name: Pastikan latest.json memuat semua platform
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          # Release masih draft, jadi dicari lewat daftar release (gh release download tidak menemukan draft).
+          ID=$(gh api "repos/$GITHUB_REPOSITORY/releases" --paginate --jq ".[] | select(.tag_name==\"$GITHUB_REF_NAME\") | .assets[] | select(.name==\"latest.json\") | .id" | head -1)
+          if [ -z "$ID" ]; then echo "::error::latest.json tidak ada di release $GITHUB_REF_NAME."; exit 1; fi
+          gh api -H "Accept: application/octet-stream" "repos/$GITHUB_REPOSITORY/releases/assets/$ID" > latest.json
+          cat latest.json
+          for p in darwin-aarch64 darwin-x86_64 windows-x86_64 windows-i686; do
+            if ! node -e "process.exit(require('./latest.json').platforms['$p'] ? 0 : 1)"; then
+              echo "::error::latest.json belum memuat platform $p. Jalankan ulang job build yang gagal (Re-run failed jobs), lalu cek lagi."
+              exit 1
+            fi
+          done

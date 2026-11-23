@@ -11,6 +11,7 @@ import { getLocal } from "./localSettings";
 import { Dashboard } from "./Dashboard";
 import { PindahLama, pindahLamaDitutup, tutupPindahLama } from "./PindahLama";
 import { lamaApi } from "../api/keuangan";
+import { bukaPembaruan, tutupNotice, usePembaruan } from "../lib/pembaruan";
 
 type Ringkasan = { jual: number | null; struk: number | null; pending: number | null; menipis: number | null; piutang: number | null };
 const KOSONG: Ringkasan = { jual: null, struk: null, pending: null, menipis: null, piutang: null };
@@ -55,6 +56,7 @@ export function Home() {
   const { setting, user, go } = useApp();
   const [ajakPindah, setAjakPindah] = useState(false);
   const [bukaPindah, setBukaPindah] = useState(false);
+  const { baru: versiBaru, noticeDitutup } = usePembaruan();
   useEffect(() => {
     if (user.level !== "Manager" || pindahLamaDitutup()) return;
     lamaApi.cari().then((r) => { if (r.data_sekarang.barang === 0 && r.data_sekarang.transaksi === 0) setAjakPindah(true); }).catch(() => undefined);
@@ -109,6 +111,15 @@ export function Home() {
   return (
     <div className="tp-scroll-always flex h-full min-h-0 flex-col justify-between gap-4 bg-background p-4 font-sans text-foreground" data-form="FrmZHome">
       <div className="flex w-full flex-col gap-4">
+        {versiBaru && noticeDitutup !== versiBaru.versi && (
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-muted px-4 py-3" data-slot="ajak-perbarui">
+            <p className="text-sm font-medium text-foreground">Versi baru {versiBaru.versi} tersedia.</p>
+            <div className="flex items-center gap-2">
+              <Button type="button" variant="outline" size="default" className="h-8 bg-background px-3 text-xs font-medium" onClick={tutupNotice}>Nanti saja</Button>
+              <Button type="button" variant="default" size="default" className="h-8 px-3.5 text-xs font-semibold" onClick={bukaPembaruan}>Perbarui Sekarang</Button>
+            </div>
+          </div>
+        )}
         {ajakPindah && (
           <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-muted px-4 py-3" data-slot="ajak-pindah">
             <p className="text-sm font-medium text-foreground">Anda sebelumnya memakai Toko Pro versi lama? Pindahkan data Anda ke sini.</p>

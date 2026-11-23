@@ -80,6 +80,11 @@ pub fn run() {
             let conn = db::open(&path)?;
             app.manage(db::Db(Mutex::new(conn)));
             app.manage(auth::Session::default());
+            #[cfg(desktop)]
+            {
+                app.handle().plugin(tauri_plugin_updater::Builder::new().build())?;
+                app.handle().plugin(tauri_plugin_process::init())?;
+            }
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![

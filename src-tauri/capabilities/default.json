@@ -12,6 +12,8 @@
     "core:window:allow-close",
     "dialog:allow-open",
     "dialog:allow-save",
-    "core:webview:allow-set-webview-zoom"
+    "core:webview:allow-set-webview-zoom",
+    "updater:default",
+    "process:allow-restart"
   ]
 }

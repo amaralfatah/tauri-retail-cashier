@@ -83,5 +83,23 @@ git push origin main v1.2.3
 Workflow menolak tag yang versinya berbeda, lalu menjalankan build tampilan dan `cargo test` di Windows sebelum membuat installer.
 Hasilnya berupa draft release, jadi periksa dulu lalu terbitkan dari halaman Releases.
 
+### Pembaruan otomatis (sekali setup)
+
+Aplikasi yang sudah terpasang memeriksa versi baru sendiri (ikon panah di bilah atas dan pemberitahuan di layar utama,
+tombol Cek Update di Bantuan, Panduan Penggunaan). Pembaruan memakai file `latest.json` di release terbaru dan harus ditandatangani.
+
+1. Kunci penanda tangan sudah dibuat di komputer pengembang: `~/.tauri/tokopro-updater.key` (privat) dan `.key.pub` (publik, sudah ada di `src-tauri/tauri.conf.json`). Kunci privat tidak boleh masuk repo.
+2. Di GitHub: Settings, Secrets and variables, Actions, New repository secret. Buat dua secret:
+   - `TAURI_SIGNING_PRIVATE_KEY`: tempel seluruh isi file `~/.tauri/tokopro-updater.key`.
+   - `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`: tidak perlu dibuat. Kunci ini dibuat tanpa kata sandi (GitHub tidak menerima secret kosong), dan secret yang tidak ada dibaca workflow sebagai kosong. Buat secret ini hanya kalau suatu hari Anda membuat kunci baru dengan kata sandi.
+3. Simpan cadangan file kunci privat di tempat aman (mis. pengelola kata sandi). **Kalau kunci hilang atau diganti, aplikasi yang sudah terpasang tidak bisa menerima pembaruan lagi**, dan pelanggan harus memasang ulang installer secara manual.
+4. Pembaruan baru sampai ke pelanggan setelah draft release **diterbitkan (Publish release)**. Selama masih draft, `releases/latest` belum menunjuk ke versi itu.
+5. Repo GitHub harus **publik**, karena aplikasi mengunduh `https://github.com/amaralfatah/tauri-retail-cashier/releases/latest/download/latest.json` tanpa login. Kalau repo privat, pembaruan tidak akan ditemukan. Cek status repo di Settings.
+
+Catatan rilis di dialog pembaruan diambil dari bagian "Yang baru" pada `releaseBody` di `release.yml`. Ubah kalimatnya sebelum membuat tag.
+Setelah build selesai, job "Cek latest.json" memastikan keempat platform (macOS Apple Silicon dan Intel, Windows 64-bit dan 32-bit) ada di `latest.json`; kalau gagal, jalankan ulang job build yang bermasalah.
+Pembaruan Windows memakai installer `-setup.exe` (NSIS) dengan mode `passive` (ada bilah kemajuan, tanpa pertanyaan). Saat pembaruan terpasang, database lama otomatis naik versi dan dicadangkan lebih dulu (`sebelum-update`).
+Versi pertama yang membawa fitur ini harus dipasang manual; pembaruan otomatis baru berlaku dari versi berikutnya.
+
 Installer belum ditandatangani, jadi Windows menampilkan peringatan SmartScreen dan macOS bisa menolak membuka `.dmg`.
 Aplikasi butuh Windows 10 atau lebih baru (WebView2).

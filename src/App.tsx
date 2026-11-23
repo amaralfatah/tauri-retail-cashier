@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ChevronDownIcon, ChevronRight, MoonIcon, SunIcon, XIcon } from "lucide-react";
+import { ChevronDownIcon, ChevronRight, CircleArrowDownIcon, MoonIcon, SunIcon, XIcon } from "lucide-react";
 import { cn } from "cn";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -41,6 +41,8 @@ import {
 } from "./vb/shell";
 import "./vb/vb.css";
 import { cadanganSaatKeluar } from "./api/cadangan";
+import { PembaruanDialog } from "./components/PembaruanDialog";
+import { bukaPembaruan, mulaiCekOtomatis, usePembaruan } from "./lib/pembaruan";
 
 const SESSION_KEY = "tokopro.sesi";
 const SPLASH_KEY = "tokopro.splash";
@@ -158,6 +160,9 @@ export default function App() {
   dialogsRef.current = dialogs;
   const [ready, setReady] = useState(false);
   const tinggiJudul = useTinggiJudul();
+  const { baru: versiBaru } = usePembaruan();
+  // Cek versi baru diam-diam di latar belakang; gagal (mis. tidak ada internet) tidak mengganggu siapa pun.
+  useEffect(() => mulaiCekOtomatis(), []);
   // Layar pembuka hanya saat program baru dibuka, tidak saat halaman dimuat ulang.
   const [splash, setSplash] = useState(() => {
     try { return !sessionStorage.getItem(SPLASH_KEY); } catch { return true; }
@@ -377,6 +382,23 @@ export default function App() {
         <nav className="mdi-toolbar no-print @container/nav flex h-11 items-center gap-0.5 overflow-x-auto border-b border-border bg-muted px-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" aria-label="Menu utama" ref={toolbarRef}>
           {mainButtons.map((b, i) => renderToolBtn(b, i > 0 && !!b.sepBefore))}
           <span className="flex-1" />
+          {versiBaru && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              data-slot="tombol-versi-baru"
+              aria-label={`Versi baru ${versiBaru.versi} tersedia. Klik untuk memperbarui.`}
+              title={`Versi baru ${versiBaru.versi} tersedia`}
+              className="relative h-8 gap-1.5 px-2 text-[13px] font-medium text-primary hover:bg-foreground/6 hover:text-primary"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={bukaPembaruan}
+            >
+              <CircleArrowDownIcon className="size-4" />
+              <span className="hidden @min-[1300px]/nav:inline">Versi Baru</span>
+              <span aria-hidden className="absolute top-1 right-1 size-2 rounded-full bg-primary ring-2 ring-muted" />
+            </Button>
+          )}
           <Button
             type="button"
             variant="ghost"
@@ -488,6 +510,7 @@ export default function App() {
           </ModalFrame>
         );
       })}
+      <PembaruanDialog />
       <Notifikasi aktif diKasir={adaKasir(page)} onBuka={() => open("piutang", undefined, "jatuhtempo" as Tab)} />
       {info && (
         <Modal title="Informasi" onClose={() => setInfo("")} footer={<Button autoFocus onClick={() => setInfo("")}>OK</Button>}>

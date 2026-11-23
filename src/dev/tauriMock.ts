@@ -141,6 +141,8 @@ const cari = (q: string, stokMin = false) =>
     (!stokMin || (Number(b.stokmin) > 0 && Number(b.stokakhir) <= Number(b.stokmin))),
   );
 
+// Penanda untuk kode lain: mockIPC juga membuat __TAURI_INTERNALS__, jadi itu saja tidak cukup untuk mengenali jendela Tauri asli.
+(window as unknown as Record<string, unknown>).__TOKOPRO_MOCK__ = true;
 mockWindows("main");
 mockIPC((cmd, args) => {
   const a = (args ?? {}) as Record<string, any>;
@@ -148,6 +150,7 @@ mockIPC((cmd, args) => {
     /* ---- Jendela ---- */
     // Pratinjau browser: tiru zoom webview Tauri dengan CSS zoom supaya Ukuran tampilan bisa dicek.
     // Seperti zoom webview asli, area tampil ikut mengecil (lebar dan tinggi dibagi faktor zoom).
+    case "plugin:app|version": return "0.1.0";
     case "plugin:webview|set_webview_zoom": {
       const st = document.documentElement.style, z = Number(a.value) || 1;
       st.zoom = z === 1 ? "" : String(z);

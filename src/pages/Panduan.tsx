@@ -1,4 +1,6 @@
-import { ReactNode, useRef, useState } from "react";
+import { ReactNode, useEffect, useRef, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { bacaVersi, bukaPembaruan, cekPembaruan, usePembaruan } from "../lib/pembaruan";
 
 /** Isi panduan. Semua tombol dan kunci di sini diambil dari layar yang sudah ada di program. */
 type Blok =
@@ -231,6 +233,15 @@ const BAGIAN: Bagian[] = [
       { p: "Tab Hapus Data, SQL Editor, dan Hapus Transaksi di Alat Bantu Program tertulis merah dan ada di ujung kanan, karena ketiganya mengubah atau menghapus data secara langsung. Tab Perbaiki Data dan Import Data juga mengubah data. Pakai hanya kalau Anda paham akibatnya, dan lakukan backup dulu. Impor dari Excel ada di Impor Data Excel dan juga sebaiknya didahului backup." },
     ],
   },
+  {
+    id: "versi", judul: "Versi baru aplikasi",
+    isi: [
+      { p: "Kalau komputer tersambung ke internet, program memeriksa versi baru sendiri beberapa detik setelah dibuka. Kalau ada, ikon panah ke bawah muncul di bilah atas dan pemberitahuan muncul di layar utama." },
+      { p: "Klik Perbarui Sekarang untuk memasangnya. Hanya akun Manager yang bisa memperbarui. Selesaikan dulu transaksi yang sedang berjalan, karena program akan tertutup sebentar lalu terbuka lagi sendiri." },
+      { p: "Data toko Anda aman. Program menyimpan salinannya otomatis sebelum memperbarui." },
+      { p: "Untuk memeriksa sendiri kapan saja, klik Cek Update di bagian atas panduan ini." },
+    ],
+  },
 ];
 
 function Isi({ b }: { b: Blok }): ReactNode {
@@ -255,6 +266,34 @@ function Isi({ b }: { b: Blok }): ReactNode {
           ))}
         </tbody>
       </table>
+    </div>
+  );
+}
+
+/** Versi aplikasi dan tombol cek versi baru. */
+function VersiAplikasi() {
+  const { versi, baru, mengecek } = usePembaruan();
+  const [pesan, setPesan] = useState("");
+  useEffect(() => { void bacaVersi(); }, []);
+  const cek = async () => {
+    setPesan("");
+    const h = await cekPembaruan();
+    if (h === "ada") bukaPembaruan();
+    else if (h === "terbaru") setPesan(`Aplikasi Anda sudah versi terbaru${versi ? ` (${versi})` : ""}.`);
+    else setPesan("Belum bisa memeriksa versi baru. Periksa koneksi internet Anda, lalu coba lagi.");
+  };
+  return (
+    <div className="mt-3 flex max-w-3xl flex-wrap items-center justify-between gap-3 rounded-md border border-border bg-muted px-4 py-3" data-slot="versi-aplikasi">
+      <div>
+        <div className="text-xs font-semibold text-foreground">Toko Pro{versi ? ` versi ${versi}` : ""}</div>
+        <div className="mt-0.5 text-xs text-muted-foreground" aria-live="polite">
+          {baru ? `Versi baru ${baru.versi} tersedia.` : pesan || "Anda bisa memeriksa apakah ada versi yang lebih baru."}
+        </div>
+      </div>
+      <Button type="button" variant={baru ? "default" : "outline"} size="default" className="h-8 px-3.5 text-xs font-medium" disabled={mengecek}
+        onClick={() => (baru ? bukaPembaruan() : void cek())}>
+        {baru ? "Perbarui Sekarang" : mengecek ? "Memeriksa…" : "Cek Update"}
+      </Button>
     </div>
   );
 }
@@ -293,6 +332,7 @@ export function Panduan() {
       <div className="pnd-area min-w-0 flex-1 overflow-auto rounded-md border border-border bg-card px-6 pt-4 pb-12 text-[13px] leading-relaxed" ref={area}>
         <h1 className="text-lg font-bold text-foreground">Panduan Penggunaan</h1>
         <p className="pnd-awal mt-1 text-xs text-muted-foreground">Panduan ini untuk pemilik toko dan kasir. Klik judul di daftar isi untuk membuka bagian yang Anda perlukan.</p>
+        <VersiAplikasi />
         {BAGIAN.map((b, i) => (
           <section key={b.id} id={`pnd-${b.id}`}>
             <h2 className="mt-6 mb-2 border-b border-border pb-1 text-sm font-semibold text-foreground">{i + 1}. {b.judul}</h2>
