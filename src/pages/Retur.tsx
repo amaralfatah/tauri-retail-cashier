@@ -1,5 +1,12 @@
-import { ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { SearchIcon } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "@/components/ui/input-group";
+import { Kbd } from "@/components/ui/kbd";
+import { Label } from "@/components/ui/label";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { api, errText, Row } from "../api";
 import { returApi, ReturSumber } from "../api/retur";
 import { useApp } from "../appContext";
@@ -8,22 +15,15 @@ import { CariTransaksi } from "../components/CariTransaksi";
 import { cetakStruk } from "../components/Struk";
 import { Modal } from "../components/Modal";
 import { qty, rp, tglID, today } from "../format";
-import { Geom, VbForm } from "../vb/VbForm";
 import { useMsgBox } from "../vb/VbGrid";
 import { CariMaster } from "./keuanganLib";
 import { NumInput } from "./Transaksi";
-import "./transaksi.css";
 
 /** jual = Retur Penjualan, beli = Retur Pembelian per Transaksi, brg = Retur Pembelian per Barang. */
 export type ReturMode = "jual" | "beli" | "brg";
 
 const FORM: Record<ReturMode, string> = { jual: "FrmTransJualRetur", beli: "FrmTransBeliRetur", brg: "FrmTransBeliReturBrg" };
 const KODE: Record<ReturMode, string> = { jual: "RJ", beli: "RB", brg: "RB" };
-const ROW_H = 23;
-const HEAD_H = 40;
-const FULL = { left: true, right: true, top: true, bottom: true };
-const ANCHOR = { dtDetil: FULL, lblTotal: { right: true } };
-const HIDE = ["tTotal", "tTotalBeli", "tNoOrder", "tKasirKode", "Picture1", "tPelangganKode", "tPemasokKode", "tSalesKode"];
 
 interface Baris { b: Row; jml: number; harga: number }
 
@@ -51,6 +51,8 @@ export function Retur({ mode }: { mode: ReturMode }) {
   const brg = mode === "brg";
 
   const kosong = !sumber && barisan.length === 0;
+  // Belum ada yang diretur: aksi berikutnya mencari transaksi (atau barang), jadi tombol itu yang biru.
+  const cariUtama = brg ? barisan.length === 0 : !sumber;
   useEffect(() => { api.previewNotrans(KODE[mode], tgl).then(setNotrans).catch(() => setNotrans("")); }, [tgl, mode, kosong]);
 
   const reset = () => {
@@ -94,7 +96,7 @@ export function Retur({ mode }: { mode: ReturMode }) {
   const selesai = useCallback((h: { notrans: string; dipotong: number; kas: number }) => {
     const bagian = [`Retur ${h.notrans} tersimpan.`];
     if (h.dipotong > 0) bagian.push(`${mode === "jual" ? "Piutang" : "Hutang"} berkurang Rp ${rp(h.dipotong)}.`);
-    if (h.kas > 0) bagian.push(mode === "jual" ? `Uang Rp ${rp(h.kas)} dikembalikan ke pelanggan.` : `Uang Rp ${rp(h.kas)} diterima dari pemasok.`);
+    if (h.kas > 0) bagian.push(mode === "jual" ? `Uang Rp ${rp(h.kas)} dikembalikan ke pelanggan.` : `Uang Rp ${rp(h.kas)} diterima dari supplier.`);
     bagian.push("Apakah akan cetak bukti retur?");
     reset();
     msg.confirm(bagian.join(" "), () => { api.getTransaksi(h.notrans).then(setBukti).catch((e) => msg.alert(errText(e))); });
@@ -129,7 +131,7 @@ export function Retur({ mode }: { mode: ReturMode }) {
 
   const simpan = useCallback(async () => {
     if (brg) {
-      if (!pemasok) return msg.alert("Silakan pilih pemasok dulu.");
+      if (!pemasok) return msg.alert("Silakan pilih supplier dulu.");
       if (barisan.length === 0) return msg.alert("Belum ada barang yang diretur. Silakan tambahkan barang dulu.");
       return void kirim(false);
     }
@@ -156,6 +158,7 @@ export function Retur({ mode }: { mode: ReturMode }) {
     const onKey = (e: KeyboardEvent) => {
       if (cariTrans || cariBarang || cariPemasok || cariLain || ada || bukti) return;
       if (e.altKey) {
+        if (e.code === "Digit1") { e.preventDefault(); document.querySelector<HTMLElement>('[data-vb="dtTglTrans"] input')?.focus(); return; }
         const k = e.code === "Digit2" ? (kasirBisaDiganti ? "kasir" : null) : e.code === "Digit3" ? (brg || mode === "beli" ? "pemasok" : "pelanggan") : e.code === "Digit4" ? "sales" : null;
         if (k === "pemasok") { e.preventDefault(); setCariPemasok(true); }
         else if (k) { e.preventDefault(); setCariLain(k as "kasir" | "pelanggan" | "sales"); }
@@ -172,10 +175,10 @@ export function Retur({ mode }: { mode: ReturMode }) {
     return () => window.removeEventListener("keydown", onKey);
   }, [cariTrans, cariBarang, cariPemasok, cariLain, bukti, ada, brg, mode, kasirBisaDiganti, simpan, batal, go]);
 
-  const grid = (g: Geom) => {
+  const renderGrid = () => {
     const detail = sumber?.detail ?? [];
     const n = brg ? barisan.length : detail.length;
-    const lengkap = Math.max(n + 1, Math.floor((g.height - 2 - HEAD_H) / ROW_H));
+    const lengkap = Math.max(n + 1, 16);
     const rows: ReactNode[] = [];
     for (let i = 0; i < lengkap; i++) {
       if (brg) {
@@ -185,7 +188,7 @@ export function Retur({ mode }: { mode: ReturMode }) {
             <tr key={`e${i}`}>
               <td className="no">{i + 1}</td>
               <td className="kd">{i === n && (
-                <input ref={scanRef} value={scan} autoComplete="off" autoFocus onChange={(e) => setScan(e.target.value)}
+                <input ref={scanRef} data-slot="grid-input" value={scan} autoComplete="off" autoFocus onChange={(e) => setScan(e.target.value)}
                   onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void onScan(); } }} />
               )}</td>
               <td /><td /><td /><td /><td />
@@ -227,7 +230,6 @@ export function Retur({ mode }: { mode: ReturMode }) {
         );
       }
     }
-    // Retur pembelian per transaksi: No, Kode / Barcode, Nama Barang, Satuan, Jumlah, Jml. Retur, Hrg. Beli, Subtotal (FrmTransBeliRetur).
     const kolom = brg ? [4, 14, 40, 8, 10, 12, 12] : mode === "beli" ? [4, 14, 38, 8, 10, 10, 8, 8] : [4, 12, 32, 7, 9, 10, 10, 8, 8];
     const judul = brg
       ? ["No", "Kode / Barcode", "Nama Barang", "Satuan", "Jml. Retur", "Harga", "Subtotal"]
@@ -236,7 +238,7 @@ export function Retur({ mode }: { mode: ReturMode }) {
         : ["No", "Kode", "Nama Barang", "Satuan", "Jml. Jual", "Sudah Diretur", "Jml. Retur", "Harga", "Subtotal"];
     const kanan = brg ? [4, 5, 6] : mode === "beli" ? [4, 5, 6, 7] : [4, 5, 6, 7, 8];
     return (
-      <div className="tj-grid" tabIndex={0} onKeyDown={(e) => {
+      <div className="tj-grid vb-modern" tabIndex={0} onKeyDown={(e) => {
         if (e.key === "Delete" && brg && e.target === e.currentTarget) {
           setBarisan((xs) => xs.filter((x) => x.b.kodebarang !== selected));
           setSelected(null);
@@ -244,7 +246,7 @@ export function Retur({ mode }: { mode: ReturMode }) {
       }}>
         <table>
           <colgroup>{kolom.map((c, i) => <col key={i} style={{ width: `${c}%` }} />)}</colgroup>
-          <thead><tr>{judul.map((j, i) => <th key={i} className={i === 0 || kanan.includes(i) ? "r" : ""}>{j}</th>)}</tr></thead>
+          <thead><tr>{judul.map((j, i) => <th key={i} className={i === 0 || kanan.includes(i) ? "r" : "text-left"}>{j}</th>)}</tr></thead>
           <tbody>{rows}</tbody>
         </table>
       </div>
@@ -252,31 +254,15 @@ export function Retur({ mode }: { mode: ReturMode }) {
   };
 
   const h = sumber?.header;
-  const bind = useMemo(() => ({
-    tNoTrans: { value: notrans },
-    dtTglTrans: { value: tgl, onChange: (v: string) => v && setTgl(v) },
-    tKasirNama: { value: kasir.nama },
-    cCariKasir: { onClick: () => setCariLain("kasir"), disabled: !kasirBisaDiganti },
-    tPelangganNama: { value: h?.namakontak ?? manual.kontak?.namapelanggan ?? "" },
-    tPemasokNama: { value: brg ? (pemasok?.namapemasok ?? "") : (h?.namakontak ?? manual.kontak?.namapemasok ?? "") },
-    cCariPemasok: { onClick: () => setCariPemasok(true) },
-    cCariPelanggan: { onClick: () => setCariLain("pelanggan") },
-    cCariSales: { onClick: () => setCariLain("sales") },
-    tSalesNama: { value: h?.namasales ?? manual.sales?.namakaryawan ?? "" },
-    tCatatan: { value: catatan, onChange: setCatatan },
-    Label2: { text: sumber ? `Transaksi asal: ${sumber.header.notrans} (${tglID(sumber.header.tgltrans)}). Tekan [Alt] + T untuk mengarahkan kursor ke tabel` : undefined },
-    lblInfo: { text: brg && selected ? `Stok ${qty(barisan.find((x) => x.b.kodebarang === selected)?.b.stokakhir)}` : "" },
-    lblJmlItem: { text: `Jml. Jenis : ${jenisItem}` },
-    lblTotal: { text: `${rp(total)},-` },
-    dtDetil: grid,
-    cAmbilOrder: { onClick: () => setCariTrans(true) },
-    cSimpan: { onClick: () => void simpan() },
-    cBatal: { onClick: batal },
-    cTutup: { onClick: () => go("home") },
-  }), [notrans, tgl, user, kasir, manual, kasirBisaDiganti, h, brg, pemasok, catatan, sumber, selected, barisan, jmlRetur, scan, jenisItem, total, simpan, batal]); // eslint-disable-line react-hooks/exhaustive-deps
+  const kontakKey = mode === "jual" ? "tPelangganNama" : "tPemasokNama";
+  const kontakVal = mode === "jual"
+    ? (h?.namakontak ?? manual.kontak?.namapelanggan ?? "")
+    : brg
+      ? (pemasok?.namapemasok ?? "")
+      : (h?.namakontak ?? manual.kontak?.namapemasok ?? "");
+  const salesVal = h?.namasales ?? manual.sales?.namakaryawan ?? "";
 
   // Enter pindah antar kolom kepala: Tanggal, Kasir, Pelanggan/Pemasok, Sales, Catatan, lalu tabel.
-  const kontakKey = mode === "jual" ? "tPelangganNama" : "tPemasokNama";
   const rantai = ["dtTglTrans", "tKasirNama", kontakKey, "tSalesNama", "tCatatan"];
   const enterKepala = (e: React.KeyboardEvent) => {
     if (e.key !== "Enter" || ada || cariTrans || cariBarang || cariPemasok || cariLain) return;
@@ -289,8 +275,129 @@ export function Retur({ mode }: { mode: ReturMode }) {
   };
 
   return (
-    <div className="tj-page" onKeyDown={enterKepala}>
-      <VbForm form={FORM[mode]} bind={bind} hide={HIDE} fill anchor={ANCHOR} />
+    <div className="flex size-full flex-col overflow-hidden bg-background font-sans text-foreground" data-form={FORM[mode]} onKeyDown={enterKepala}>
+      <div className="grid grid-cols-2 items-end gap-2 border-b bg-background px-3 py-1.5 sm:grid-cols-3 lg:grid-cols-[9rem_8.5rem_10rem_13.5rem_10rem_minmax(0,1fr)]">
+        <div className="flex flex-col gap-1" data-vb="tNoTrans">
+          <Label className="block truncate text-xs font-medium text-foreground">No. Retur</Label>
+          <Input readOnly tabIndex={-1} value={notrans} className="cursor-default border-transparent bg-muted font-semibold text-foreground tabular-nums shadow-none focus-visible:ring-0" />
+        </div>
+        <div className="flex flex-col gap-1" data-vb="dtTglTrans">
+          <Label className="flex items-center justify-between text-xs font-medium text-foreground">
+            <span>Tanggal</span>
+            <span className="text-[11px] font-normal text-muted-foreground">Alt+1</span>
+          </Label>
+          <Input type="date" value={tgl} onChange={(e) => e.target.value && setTgl(e.target.value)} className="border-foreground/20 bg-background pr-1.5 text-foreground tabular-nums" />
+        </div>
+        <div className="flex flex-col gap-1" data-vb="tKasirNama">
+          <Label className="flex items-center justify-between text-xs font-medium text-foreground">
+            <span>Kasir</span>
+            <span className="text-[11px] font-normal text-muted-foreground">Alt+2</span>
+          </Label>
+          <InputGroup className={kasirBisaDiganti ? "border-foreground/20 bg-background" : "border-transparent bg-muted"}>
+            <InputGroupInput readOnly value={kasir.nama} className="cursor-default font-medium text-foreground" />
+            {kasirBisaDiganti && (
+              <InputGroupAddon align="inline-end">
+                <InputGroupButton size="icon-xs" aria-label="Pilih kasir" onClick={() => setCariLain("kasir")}>
+                  <SearchIcon />
+                </InputGroupButton>
+              </InputGroupAddon>
+            )}
+          </InputGroup>
+        </div>
+        <div className="flex flex-col gap-1" data-vb={kontakKey}>
+          <Label className="flex items-center justify-between text-xs font-medium text-foreground">
+            <span>{mode === "jual" ? "Pelanggan" : "Supplier"}</span>
+            <span className="text-[11px] font-normal text-muted-foreground">Alt+3</span>
+          </Label>
+          <InputGroup className="border-foreground/20 bg-background">
+            <InputGroupInput readOnly value={kontakVal} placeholder={mode === "jual" ? "Pilih pelanggan" : "Pilih supplier"} className="cursor-default font-medium text-foreground" />
+            <InputGroupAddon align="inline-end">
+              <InputGroupButton size="icon-xs" aria-label="Pilih kontak" onClick={() => (mode === "jual" ? setCariLain("pelanggan") : setCariPemasok(true))}>
+                <SearchIcon />
+              </InputGroupButton>
+            </InputGroupAddon>
+          </InputGroup>
+        </div>
+        <div className="flex flex-col gap-1" data-vb="tSalesNama">
+          <Label className="flex items-center justify-between text-xs font-medium text-foreground">
+            <span>Sales</span>
+            <span className="text-[11px] font-normal text-muted-foreground">Alt+4</span>
+          </Label>
+          <InputGroup className="border-foreground/20 bg-background">
+            <InputGroupInput readOnly value={salesVal} placeholder="Tanpa sales" className="cursor-default text-foreground" />
+            <InputGroupAddon align="inline-end">
+              <InputGroupButton size="icon-xs" aria-label="Pilih sales" onClick={() => setCariLain("sales")}>
+                <SearchIcon />
+              </InputGroupButton>
+            </InputGroupAddon>
+          </InputGroup>
+        </div>
+        <div className="flex flex-col gap-1" data-vb="tCatatan">
+          <Label className="text-xs font-medium text-foreground">Catatan</Label>
+          <Input value={catatan} onChange={(e) => setCatatan(e.target.value)} placeholder="Catatan retur (opsional)" className="border-foreground/20 bg-background text-foreground" />
+        </div>
+      </div>
+
+      <div className="flex flex-wrap items-center justify-between gap-4 border-b bg-display px-4 py-2 text-display-foreground">
+        <div className="flex items-center gap-4">
+          <div className="flex flex-col" data-vb="lblJmlItem">
+            <span className="text-[11px] font-medium tracking-wider text-display-foreground/65 uppercase">Jml. Jenis Retur</span>
+            <span className="text-2xl leading-none font-bold tabular-nums">{jenisItem}</span>
+          </div>
+          <div className="h-8 w-px bg-display-foreground/15" />
+          <div className="flex flex-col" data-vb="Label2">
+            <span className="text-[11px] font-medium tracking-wider text-display-foreground/65 uppercase">
+              {brg ? "Retur Pembelian per Barang" : "Transaksi Asal"}
+            </span>
+            <span className="text-sm font-semibold text-display-foreground/90">
+              {sumber
+                ? `${sumber.header.notrans} (${tglID(sumber.header.tgltrans)}) · Tekan Alt+T ke tabel`
+                : brg
+                  ? (selected ? `Stok Akhir: ${qty(barisan.find((x) => x.b.kodebarang === selected)?.b.stokakhir)}` : "Scan barcode atau ketik kode di tabel. F10 untuk mencari barang.")
+                  : "Klik Cari Transaksi [F3] untuk memilih transaksi yang akan diretur"}
+            </span>
+          </div>
+        </div>
+        <div className="flex items-baseline gap-1.5" data-vb="lblTotal">
+          <span className="text-sm font-medium text-display-foreground/70 lg:text-base">Rp</span>
+          <span className="text-3xl leading-none font-bold tracking-tight tabular-nums lg:text-[2.5rem]">{rp(total)}</span>
+        </div>
+      </div>
+
+      <div className="min-h-0 flex-1 bg-muted/20 p-2.5" data-vb="dtDetil">
+        {renderGrid()}
+      </div>
+
+      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border bg-muted px-3 py-1.5">
+        <div className="flex flex-wrap items-center gap-1.5">
+          <Button type="button" variant="outline" size="default" data-vb="cBatal" className="h-8 border-destructive/40 bg-background px-2.5 text-xs font-medium text-destructive shadow-xs hover:bg-destructive/10 hover:text-destructive" onClick={batal}>
+            <span>Batal</span>
+            <Kbd className="border border-destructive/35 bg-destructive/10 text-destructive">F1</Kbd>
+          </Button>
+          {!brg ? (
+            <Button type="button" variant={cariUtama ? "default" : "outline"} size="default" data-vb="cAmbilOrder" className={cariUtama ? "h-8 gap-1.5 px-2.5 text-xs font-semibold shadow-xs" : "h-8 border-foreground/20 bg-background px-2.5 text-xs font-medium text-foreground shadow-xs"} onClick={() => setCariTrans(true)}>
+              <span>Cari Transaksi</span>
+              <Kbd className={cariUtama ? "border border-primary-foreground/30 bg-primary-foreground/20 text-primary-foreground" : "border border-border bg-muted text-foreground"}>F3</Kbd>
+            </Button>
+          ) : (
+            <Button type="button" variant={cariUtama ? "default" : "outline"} size="default" className={cariUtama ? "h-8 gap-1.5 px-2.5 text-xs font-semibold shadow-xs" : "h-8 border-foreground/20 bg-background px-2.5 text-xs font-medium text-foreground shadow-xs"} onClick={() => setCariBarang(true)}>
+              <span>Cari Barang</span>
+              <Kbd className={cariUtama ? "border border-primary-foreground/30 bg-primary-foreground/20 text-primary-foreground" : "border border-border bg-muted text-foreground"}>F10</Kbd>
+            </Button>
+          )}
+        </div>
+        <div className="flex items-center gap-1.5">
+          <Button type="button" variant="outline" size="default" data-vb="cTutup" className="h-8 border-foreground/20 bg-background px-2.5 text-xs font-medium text-foreground shadow-xs" onClick={() => go("home")}>
+            <span>Tutup</span>
+            <Kbd className="border border-border bg-muted text-foreground">Esc</Kbd>
+          </Button>
+          <Button type="button" variant={cariUtama ? "outline" : "default"} size="default" data-vb="cSimpan" className={cariUtama ? "h-8 gap-1.5 border-foreground/20 bg-background px-3.5 text-xs font-medium text-foreground shadow-xs" : "h-8 gap-1.5 px-3.5 text-xs font-semibold shadow-xs"} onClick={() => void simpan()}>
+            <span>Simpan</span>
+            <Kbd className={cariUtama ? "border border-border bg-muted text-foreground" : "border border-primary-foreground/30 bg-primary-foreground/20 text-primary-foreground"}>F4</Kbd>
+          </Button>
+        </div>
+      </div>
+
       {msg.node}
       {cariTrans && <CariTransaksi kode={mode === "jual" ? "TJ" : "TB"} onClose={() => setCariTrans(false)} onPick={(no) => void ambil(no)} />}
       {cariLain === "kasir" && <CariMaster table="mdkaryawan" onClose={() => setCariLain(null)} onPick={(r) => { setKasir({ kode: String(r.kodekaryawan), nama: String(r.namakaryawan) }); setCariLain(null); }} />}
@@ -314,17 +421,32 @@ function PilihPemasok(props: { onPick: (p: Row) => void; onClose: () => void }) 
     return () => clearTimeout(t);
   }, [q]);
   return (
-    <Modal title="Cari Pemasok" onClose={props.onClose}>
-      <input className="input-lg" autoFocus placeholder="Ketik nama atau kode pemasok" value={q} onChange={(e) => setQ(e.target.value)}
+    <Modal title="Cari Supplier" onClose={props.onClose}>
+      <Input autoFocus placeholder="Ketik nama atau kode supplier" value={q} onChange={(e) => setQ(e.target.value)}
         onKeyDown={(e) => { if (e.key === "Enter" && rows[0]) props.onPick(rows[0]); }} />
-      <div className="table-wrap" style={{ height: 300 }}>
-        <table className="grid">
-          <thead><tr><th>Kode</th><th>Nama Pemasok</th></tr></thead>
-          <tbody>
-            {rows.map((r) => <tr key={r.kodepemasok} onClick={() => props.onPick(r)}><td className="mono">{r.kodepemasok}</td><td>{r.namapemasok}</td></tr>)}
-            {rows.length === 0 && <tr><td colSpan={2} className="empty">Pemasok yang Anda cari tidak ditemukan.</td></tr>}
-          </tbody>
-        </table>
+      <div className="tp-scroll-always h-75 rounded-md border border-border bg-card font-sans text-xs text-foreground [&>[data-slot=table-container]]:overflow-visible">
+        <Table className="table-fixed border-separate border-spacing-0">
+          <colgroup><col className="w-[28%]" /><col /></colgroup>
+          <TableHeader>
+            <TableRow className="border-b border-border bg-muted hover:bg-muted">
+              <TableHead className="sticky top-0 z-20 h-7 border-r border-border bg-muted px-2 text-left text-xs font-semibold text-foreground">Kode</TableHead>
+              <TableHead className="sticky top-0 z-20 h-7 bg-muted px-2 text-left text-xs font-semibold text-foreground">Nama Supplier</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {rows.map((r) => (
+              <TableRow key={r.kodepemasok} onClick={() => props.onPick(r)} className="cursor-pointer border-b border-border hover:bg-muted">
+                <TableCell className="h-7 truncate border-r border-border px-2 py-0 font-mono">{r.kodepemasok}</TableCell>
+                <TableCell className="h-7 truncate px-2 py-0">{r.namapemasok}</TableCell>
+              </TableRow>
+            ))}
+            {rows.length === 0 && (
+              <TableRow className="border-0 hover:bg-transparent">
+                <TableCell colSpan={2} className="p-4 text-center text-muted-foreground">Supplier yang Anda cari tidak ditemukan.</TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
       </div>
     </Modal>
   );
@@ -342,7 +464,7 @@ function BuktiRetur({ data, setting, onSelesai }: { data: { header: Row; detail:
       <div className="center bold">{h.kode === "RJ" ? "BUKTI RETUR PENJUALAN" : "BUKTI RETUR PEMBELIAN"}</div>
       <hr />
       <div className="row"><span>{h.notrans}</span><span>{tglID(h.tgltrans)}</span></div>
-      <div className="row"><span>{h.kode === "RJ" ? "Pelanggan" : "Pemasok"}</span><span>{h.kode === "RJ" ? h.namapelanggan : h.namapemasok}</span></div>
+      <div className="row"><span>{h.kode === "RJ" ? "Pelanggan" : "Supplier"}</span><span>{h.kode === "RJ" ? h.namapelanggan : h.namapemasok}</span></div>
       <div className="row"><span>Petugas</span><span>{h.namakasir}</span></div>
       <hr />
       {data.detail.map((d) => (

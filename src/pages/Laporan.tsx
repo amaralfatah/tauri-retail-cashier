@@ -1,4 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
+import { ChevronDownIcon } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Kbd } from "@/components/ui/kbd";
 import { api, errText, Row } from "../api";
 import { useApp } from "../appContext";
 import { Alert, Modal } from "../components/Modal";
@@ -32,6 +35,7 @@ export function Laporan(props: { initial?: Tab }) {
 
   const [filter, setFilter] = useState<LapFilterVal>({ dari: today(), sampai: today() });
   const [tampil, setTampil] = useState(false);
+  const [ubahFilter, setUbahFilter] = useState(false); // dialog filter dibuka lagi dari laporan yang sedang tampil
   const [rows, setRows] = useState<Row[] | null>(null);
   const [err, setErr] = useState("");
   const [barang, setBarang] = useState<Row[]>([]);
@@ -52,6 +56,7 @@ export function Laporan(props: { initial?: Tab }) {
 
   const terapkan = async (f: LapFilterVal) => {
     if (!def) return;
+    setUbahFilter(false);
     setErr("");
     setFilter(f);
     setRows(null);
@@ -68,7 +73,8 @@ export function Laporan(props: { initial?: Tab }) {
         else r.sort((a, b) => String(a.kodekelompok ?? "").localeCompare(String(b.kodekelompok ?? "")) || String(a.kodekategori ?? "").localeCompare(String(b.kodekategori ?? "")) || urut(a, b));
         setRows(r);
       } else {
-        setRows(await api.laporanData(def.jenis!, f));
+        const r = await api.laporanData(def.jenis!, f);
+        setRows(Array.isArray(r) ? r : []);
       }
     } catch (e) {
       setErr(errText(e));
@@ -78,9 +84,21 @@ export function Laporan(props: { initial?: Tab }) {
 
   useEffect(() => { if (tanpaFilter && bolehKasir) void terapkan(filter); /* sekali saat dibuka */ }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Esc menutup laporan yang sedang tampil. Dialog yang terbuka menangkap Esc lebih dulu.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape" || !tampil) return;
+      e.preventDefault();
+      if (menuEkspor) setMenuEkspor(false);
+      else go("home");
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  });
+
   if (!def || !bolehKasir) {
     return (
-      <Modal title="Informasi" onClose={() => go("home")} footer={<button className="btn primary" onClick={() => go("home")}>OK</button>}>
+      <Modal title="Informasi" onClose={() => go("home")} footer={<Button autoFocus onClick={() => go("home")}>OK</Button>}>
         <p>{def ? "Laporan ini hanya bisa dibuka oleh pengguna selain kasir." : "Laporan ini belum tersedia di versi ini."}</p>
       </Modal>
     );
@@ -120,32 +138,52 @@ export function Laporan(props: { initial?: Tab }) {
       {msg.node}
       {dlgText !== null && <OpsiTextDialog nama={dlgText} onClose={() => setDlgText(null)} onSimpan={simpanText} />}
       {tampil && (
-        <div className="lap-wrap">
-          <div className="lap-toolbar no-print">
-            <button type="button" onClick={() => { setMenuEkspor(false); cetakLaporan().catch((e) => setErr(errText(e))); }} disabled={rows === null}>Cetak</button>
-            <button type="button" onClick={() => { setMenuEkspor(false); void terapkan(filter); }} disabled={rows === null}>Refresh</button>
-            <span className="lap-ekspor">
-              <button type="button" onClick={() => setMenuEkspor((x) => !x)} disabled={rows === null}>Ekspor</button>
+        <div className="lap-wrap flex h-full flex-col bg-muted/60">
+          <div className="lap-toolbar no-print flex items-center gap-1.5 border-b border-border bg-muted px-3 py-1.5">
+            <Button type="button" variant="default" size="sm" onClick={() => { setMenuEkspor(false); cetakLaporan().catch((e) => setErr(errText(e))); }} disabled={rows === null}>Cetak</Button>
+            <Button type="button" variant="outline" size="sm" className="bg-background" onClick={() => { setMenuEkspor(false); void terapkan(filter); }} disabled={rows === null}>Refresh</Button>
+            <span className="lap-ekspor relative">
+              <Button type="button" variant="outline" size="sm" className="bg-background" onClick={() => setMenuEkspor((x) => !x)} disabled={rows === null}>
+                <span>Ekspor</span>
+                <ChevronDownIcon className="size-3.5" />
+              </Button>
               {menuEkspor && (
-                <ul className="lap-menu">
-                  {MENU_EKSPOR.map(([k, t]) => <li key={k}><button type="button" onClick={() => void ekspor(k)}>{t}</button></li>)}
+                <ul className="lap-menu absolute top-8 left-0 z-20 m-0 min-w-44 list-none rounded-md border border-border bg-popover p-1 text-xs text-popover-foreground shadow-lg">
+                  {MENU_EKSPOR.map(([k, t]) => (
+                    <li key={k}>
+                      <button
+                        type="button"
+                        data-slot="menu-item"
+                        className="block w-full rounded-sm px-2.5 py-1.5 text-left hover:bg-accent hover:text-accent-foreground"
+                        onClick={() => void ekspor(k)}
+                      >
+                        {t}
+                      </button>
+                    </li>
+                  ))}
                 </ul>
               )}
             </span>
-            <button type="button" onClick={() => go("home")}>Tutup</button>
-            <span className="lap-info">{rows === null ? "Memuat laporan..." : ""}</span>
+            {!tanpaFilter && (
+              <Button type="button" variant="outline" size="sm" className="bg-background" onClick={() => { setMenuEkspor(false); setUbahFilter(true); }}>Ubah Filter</Button>
+            )}
+            <Button type="button" variant="outline" size="sm" className="bg-background" onClick={() => go("home")}>
+              <span>Tutup</span>
+              <Kbd className="border border-border bg-muted text-foreground">Esc</Kbd>
+            </Button>
+            <span className="lap-info ml-auto pr-1 text-xs text-muted-foreground">{rows === null ? "Memuat laporan..." : ""}</span>
           </div>
-          <div className="lap-scroll" onMouseDown={() => setMenuEkspor(false)}>
+          <div className="lap-scroll flex-1 overflow-auto p-4" onMouseDown={() => setMenuEkspor(false)}>
             {err && <Alert>{err}</Alert>}
-            {rows !== null && built && <Kertas kind={def.kind} title={def.title} periode={periode} setting={setting} built={built} kosong={rows.length === 0} />}
+            {rows !== null && built && <Kertas kind={def.kind} title={def.title} periode={periode} setting={setting} built={built} kosong={rows.length === 0} onUbahFilter={tanpaFilter ? undefined : () => setUbahFilter(true)} />}
           </div>
         </div>
       )}
-      {!tampil && stok && (
-        <FilterWindow table="mdbarang" rows={barang} value={filter} onApply={terapkan} onClose={() => go("home")} />
+      {(!tampil || ubahFilter) && stok && (
+        <FilterWindow table="mdbarang" rows={barang} value={filter} onApply={terapkan} onClose={() => (tampil ? setUbahFilter(false) : go("home"))} />
       )}
-      {!tampil && !stok && !tanpaFilter && (
-        <LapFilterDialog form={def.form} value={filter} onApply={terapkan} onClose={() => go("home")} />
+      {(!tampil || ubahFilter) && !stok && !tanpaFilter && (
+        <LapFilterDialog form={def.form} value={filter} onApply={terapkan} onClose={() => (tampil ? setUbahFilter(false) : go("home"))} />
       )}
     </>
   );

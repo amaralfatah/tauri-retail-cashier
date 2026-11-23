@@ -1,16 +1,20 @@
-import { ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { SearchIcon } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "@/components/ui/input-group";
+import { Kbd } from "@/components/ui/kbd";
+import { Label } from "@/components/ui/label";
 import { api, errText, Row } from "../api";
 import { inventoriApi } from "../api/inventori";
 import { useApp } from "../appContext";
 import { CariBarang } from "../components/CariBarang";
 import { qty, tglID, today } from "../format";
-import { Geom, VbForm } from "../vb/VbForm";
 import { useMsgBox } from "../vb/VbGrid";
 import { CariMaster } from "./keuanganLib";
 import { FilterBarang } from "./inventoriLib";
 import { NumInput } from "./Transaksi";
-import "./transaksi.css";
 
 /** Satu baris tabel. Barang yang sama boleh muncul lebih dari sekali, jadi baris dikenali lewat `uid`. */
 interface Item { uid: number; b: Row; fisik: number }
@@ -21,16 +25,8 @@ interface Bukti { notrans: string; tgl: string; catatan: string; kasir: string; 
 let uidSeq = 0;
 const NOT_FOUND = "Data tidak ditemukan, atau barang tidak aktif.";
 
-const ROW_H = 23;
-const HEAD_H = 40;
 /** Lebar kolom (No, Kode, Nama Barang, Satuan, Stok Buku, Stok Fisik, Selisih Stok) dalam persen. */
-const COLS = [4, 14, 38, 8, 12, 12, 12];
-
-const FULL = { left: true, right: true, top: true, bottom: true };
-const ANCHOR = { dtDetil: FULL };
-/** Di aslinya pelanggan dan sales dipakai form transaksi; opname tidak memakainya. */
-const HIDE = ["tTotal", "tKasirKode", "Picture1", "cCariPelanggan", "tPelangganKode", "tPelangganNama", "Label6", "tSalesKode",
-  "cCariSales", "tSalesNama", "Label4", "lblInfo"];
+const COLS = [5, 14, 34, 8, 13, 13, 13];
 
 export function Opname() {
   const { user, go, setting } = useApp();
@@ -117,6 +113,7 @@ export function Opname() {
       if (e.key === "F4") { e.preventDefault(); void simpan(); }
       else if (e.key === "F1") { e.preventDefault(); batal(); }
       else if (e.key === "Escape") go("home");
+      else if (e.altKey && e.code === "Digit1") { e.preventDefault(); document.querySelector<HTMLElement>('[data-vb="dtTglTrans"] input')?.focus(); }
       else if (e.altKey && e.code === "Digit2") { e.preventDefault(); bukaKasir(); }
       else if (e.altKey && e.code === "KeyT") { e.preventDefault(); gridRef.current?.focus(); }
     };
@@ -124,8 +121,8 @@ export function Opname() {
     return () => window.removeEventListener("keydown", onKey);
   }, [cari, cariKasir, filter, ada, simpan, batal, go]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const grid = (g: Geom) => {
-    const total = Math.max(items.length + 1, Math.floor((g.height - 2 - HEAD_H) / ROW_H));
+  const renderGrid = () => {
+    const total = Math.max(items.length + 1, 16);
     const idx = items.findIndex((i) => i.uid === selected);
     const onKeyDown = (e: React.KeyboardEvent) => {
       if (e.target !== e.currentTarget) return;
@@ -148,7 +145,7 @@ export function Opname() {
           <tr key={`e${i}`}>
             <td className="no">{i + 1}</td>
             <td className="kd">{i === items.length && (
-              <input ref={scanRef} value={scan} autoComplete="off" autoFocus onChange={(e) => setScan(e.target.value)}
+              <input ref={scanRef} data-slot="grid-input" value={scan} autoComplete="off" autoFocus onChange={(e) => setScan(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === "Enter") { e.preventDefault(); void onScan(); }
                   else if (e.key === "F10") { e.preventDefault(); setCari(true); }
@@ -177,14 +174,14 @@ export function Opname() {
       );
     }
     return (
-      <div className="tj-grid" tabIndex={0} ref={gridRef} onKeyDown={onKeyDown}
+      <div className="tj-grid vb-modern" tabIndex={0} ref={gridRef} onKeyDown={onKeyDown}
         onKeyDownCapture={(e) => {
           if (e.key === "Enter" && e.target instanceof HTMLInputElement && e.target.dataset.fisik) { e.preventDefault(); scanRef.current?.focus(); }
         }}>
         <table>
           <colgroup>{COLS.map((c, i) => <col key={i} style={{ width: `${c}%` }} />)}</colgroup>
           <thead>
-            <tr><th className="r">No</th><th>Kode / Barcode</th><th>Nama Barang</th><th>Satuan</th><th className="r">Stok Buku</th><th className="r">Stok Fisik</th><th className="r">Selisih Stok</th></tr>
+            <tr><th className="r">No</th><th className="text-left">Kode / Barcode</th><th className="text-left">Nama Barang</th><th className="text-left">Satuan</th><th className="r">Stok Buku</th><th className="r">Stok Fisik</th><th className="r">Selisih Stok</th></tr>
           </thead>
           <tbody>{rows}</tbody>
         </table>
@@ -197,24 +194,89 @@ export function Opname() {
     gridRef.current?.querySelectorAll<HTMLInputElement>("td.r input").forEach((el) => el.setAttribute("data-fisik", "1"));
   });
 
-  const bind = useMemo(() => ({
-    tNoTrans: { value: notrans },
-    dtTglTrans: { value: tgl, onChange: (v: string) => v && setTgl(v) },
-    tKasirNama: { value: kasir.nama },
-    cCariKasir: { onClick: bukaKasir },
-    tCatatan: { value: catatan, onChange: setCatatan },
-    lblJmlItem: { text: `Jml. Jenis : ${items.length}` },
-    lblTotal: { text: "" },
-    dtDetil: grid,
-    cSimpan: { onClick: () => void simpan() },
-    cFilter: { onClick: () => setFilter(true) },
-    cBatal: { onClick: batal },
-    cTutup: { onClick: () => go("home") },
-  }), [notrans, tgl, user, catatan, items, selected, scan, simpan, batal]); // eslint-disable-line react-hooks/exhaustive-deps
+  const selisihCount = items.filter((i) => Math.abs(i.fisik - (Number(i.b.stokakhir) || 0)) >= 0.005).length;
 
   return (
-    <div className="tj-page">
-      <VbForm form="FrmTransStokOpname" bind={bind} hide={HIDE} fill anchor={ANCHOR} />
+    <div className="flex size-full flex-col overflow-hidden bg-background font-sans text-foreground" data-form="FrmTransStokOpname">
+      <div className="grid grid-cols-2 items-end gap-2.5 border-b bg-background px-3 py-1.5 sm:grid-cols-4">
+        <div className="flex flex-col gap-1" data-vb="tNoTrans">
+          <Label className="block truncate text-xs font-medium text-foreground">No. Transaksi</Label>
+          <Input readOnly tabIndex={-1} value={notrans} className="cursor-default border-transparent bg-muted font-semibold text-foreground tabular-nums shadow-none focus-visible:ring-0" />
+        </div>
+        <div className="flex flex-col gap-1" data-vb="dtTglTrans">
+          <Label className="flex items-center justify-between text-xs font-medium text-foreground">
+            <span>Tanggal</span>
+            <span className="text-[11px] font-normal text-muted-foreground">Alt+1</span>
+          </Label>
+          <Input type="date" value={tgl} onChange={(e) => e.target.value && setTgl(e.target.value)} className="border-foreground/20 bg-background pr-1.5 text-foreground tabular-nums" />
+        </div>
+        <div className="flex flex-col gap-1" data-vb="tKasirNama">
+          <Label className="flex items-center justify-between text-xs font-medium text-foreground">
+            <span>Petugas</span>
+            <span className="text-[11px] font-normal text-muted-foreground">Alt+2</span>
+          </Label>
+          <InputGroup className="border-foreground/20 bg-background">
+            <InputGroupInput readOnly value={kasir.nama} className="cursor-default font-medium text-foreground" />
+            <InputGroupAddon align="inline-end">
+              <InputGroupButton size="icon-xs" aria-label="Pilih petugas" onClick={bukaKasir}>
+                <SearchIcon />
+              </InputGroupButton>
+            </InputGroupAddon>
+          </InputGroup>
+        </div>
+        <div className="flex flex-col gap-1" data-vb="tCatatan">
+          <Label className="text-xs font-medium text-foreground">Catatan</Label>
+          <Input value={catatan} onChange={(e) => setCatatan(e.target.value)} placeholder="Catatan stok opname (opsional)" className="border-foreground/20 bg-background text-foreground" />
+        </div>
+      </div>
+
+      <div className="flex flex-wrap items-center justify-between gap-4 border-b bg-display px-4 py-2 text-display-foreground">
+        <div className="flex items-center gap-4">
+          <div className="flex flex-col" data-vb="lblJmlItem">
+            <span className="text-[11px] font-medium tracking-wider text-display-foreground/65 uppercase">Jml. Jenis Barang</span>
+            <span className="text-2xl leading-none font-bold tabular-nums">{items.length}</span>
+          </div>
+          <div className="h-8 w-px bg-display-foreground/15" />
+          <div className="flex flex-col">
+            <span className="text-[11px] font-medium tracking-wider text-display-foreground/65 uppercase">Barang Berselisih</span>
+            <span className="text-2xl leading-none font-bold tabular-nums">{selisihCount}</span>
+          </div>
+        </div>
+        <div className="text-xs font-medium text-display-foreground/80">
+          Scan barcode atau ketik kode di tabel. F10 untuk mencari barang, Alt+T untuk ke tabel.
+        </div>
+      </div>
+
+      <div className="min-h-0 flex-1 bg-muted/20 p-2.5" data-vb="dtDetil">
+        {renderGrid()}
+      </div>
+
+      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border bg-muted px-3 py-1.5">
+        <div className="flex flex-wrap items-center gap-1.5">
+          <Button type="button" variant="outline" size="default" data-vb="cBatal" className="h-8 border-destructive/40 bg-background px-2.5 text-xs font-medium text-destructive shadow-xs hover:bg-destructive/10 hover:text-destructive" onClick={batal}>
+            <span>Batal</span>
+            <Kbd className="border border-destructive/35 bg-destructive/10 text-destructive">F1</Kbd>
+          </Button>
+          <Button type="button" variant="outline" size="default" className="h-8 border-foreground/20 bg-background px-2.5 text-xs font-medium text-foreground shadow-xs" onClick={() => setCari(true)}>
+            <span>Cari Barang</span>
+            <Kbd className="border border-border bg-muted text-foreground">F10</Kbd>
+          </Button>
+          <Button type="button" variant="outline" size="default" data-vb="cFilter" className="h-8 border-foreground/20 bg-background px-2.5 text-xs font-medium text-foreground shadow-xs" onClick={() => setFilter(true)}>
+            <span>Filter Barang</span>
+          </Button>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <Button type="button" variant="outline" size="default" data-vb="cTutup" className="h-8 border-foreground/20 bg-background px-2.5 text-xs font-medium text-foreground shadow-xs" onClick={() => go("home")}>
+            <span>Tutup</span>
+            <Kbd className="border border-border bg-muted text-foreground">Esc</Kbd>
+          </Button>
+          <Button type="button" variant="default" size="default" data-vb="cSimpan" className="h-8 gap-1.5 px-3.5 text-xs font-semibold shadow-xs" onClick={() => void simpan()}>
+            <span>Simpan</span>
+            <Kbd className="border border-primary-foreground/30 bg-primary-foreground/20 text-primary-foreground">F4</Kbd>
+          </Button>
+        </div>
+      </div>
+
       {msg.node}
       {cariKasir && (
         <CariMaster table="mdkaryawan" onClose={() => setCariKasir(false)}

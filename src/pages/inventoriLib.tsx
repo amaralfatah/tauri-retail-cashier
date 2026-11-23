@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Button } from "@/components/ui/button";
 import { errText, Row } from "../api";
 import { Modal } from "../components/Modal";
 import { FilterVal, FilterWindow, matchFilter } from "./MasterFilter";
@@ -38,7 +39,7 @@ export function FilterBarang(props: { onClose: () => void; onAdd: (rows: Row[]) 
   return (
     <>
       <FilterWindow table="mdbarang" rows={[]} value={{}} onApply={(f) => void terapkan(f)} onClose={props.onClose} />
-      {err && <Modal title="Informasi" onClose={() => setErr("")} footer={<button className="btn primary" onClick={() => setErr("")}>OK</button>}><p>{err}</p></Modal>}
+      {err && <Modal title="Informasi" onClose={() => setErr("")} footer={<Button autoFocus onClick={() => setErr("")}>OK</Button>}><p>{err}</p></Modal>}
     </>
   );
 }

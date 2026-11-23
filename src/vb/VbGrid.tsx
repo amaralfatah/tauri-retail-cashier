@@ -1,6 +1,14 @@
 import { ReactNode, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
-import { formSize, useVbForm, VbWindow, Bind } from "./VbForm";
-import "./master.css";
+import { XIcon } from "lucide-react";
+import { cn } from "cn";
+import { Button } from "@/components/ui/button";
+import { Kbd } from "@/components/ui/kbd";
+import { formSize, useTinggiJudul, useVbForm, VbWindow, Bind } from "./VbForm";
+
+/** Teks isi sel untuk tooltip (kalau tetap terpotong, arahkan mouse untuk melihat isi lengkapnya). */
+function isiTeks(n: ReactNode): string | undefined {
+  return typeof n === "string" || typeof n === "number" ? String(n) : undefined;
+}
 
 /* ---- Tabel gaya ListView (report view): garis kisi, pilih satu baris penuh ---- */
 export interface GridCol<T> {
@@ -9,9 +17,6 @@ export interface GridCol<T> {
   align?: "right" | "center";
   render: (row: T, index: number) => ReactNode;
 }
-
-const ROW_H = 18;
-const HEAD_H = 20;
 
 export function VbGrid<T>(props: {
   cols: GridCol<T>[];
@@ -25,19 +30,69 @@ export function VbGrid<T>(props: {
   const ref = useRef<HTMLDivElement>(null);
   const [top, setTop] = useState(0);
   const [vh, setVh] = useState(300);
+  const [vw, setVw] = useState(0);
+  const [focused, setFocused] = useState(false);
+
+  const rowH = 28;
+  const headH = 30;
 
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
-    const ro = new ResizeObserver(() => setVh(el.clientHeight));
+    const measure = () => {
+      setVh(el.clientHeight);
+      setVw(el.clientWidth);
+    };
+    const ro = new ResizeObserver(measure);
     ro.observe(el);
-    setVh(el.clientHeight);
+    measure();
     return () => ro.disconnect();
   }, []);
 
-  const total = cols.reduce((s, c) => s + c.width, 0);
-  const first = Math.max(0, Math.floor(top / ROW_H) - 4);
-  const last = Math.min(rows.length, Math.ceil((top + vh) / ROW_H) + 4);
+  /*
+   * Lebar kolom menyesuaikan isinya (diukur dari baris yang tampil), supaya kode, nomor, tanggal, dan angka
+   * tidak terpotong "KS2611-000…". Lebar VB jadi batas bawah. Kalau tidak muat, yang mengalah hanya kolom
+   * teks lebar (nama, alamat, keterangan); kolom pendek tetap utuh dan tabel bisa digeser ke samping.
+   */
+  const [fit, setFit] = useState<number[]>([]);
+  const colsKey = cols.map((c) => c.title).join("|");
+  useEffect(() => setFit([]), [colsKey]);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const need = cols.map((_, j) => {
+      let w = 0;
+      el.querySelectorAll<HTMLElement>(`[data-c="${j}"] > span`).forEach((sp) => { w = Math.max(w, sp.scrollWidth); });
+      return Math.min(w + 17, 420); // + padding kiri-kanan dan garis
+    });
+    setFit((old) => {
+      const next = need.map((n, j) => Math.max(n, old[j] ?? 0));
+      return next.length === old.length && next.every((n, j) => n === old[j]) ? old : next;
+    });
+  });
+  const pakai = cols.map((c, j) => Math.max(fit[j] ?? 0, Math.min(c.width, 60)));
+  const colWidths = [...pakai];
+  const sumPakai = pakai.reduce((s, w) => s + w, 0) || 1;
+  if (vw > 0 && sumPakai < vw) {
+    // Ruang lebih dibagi menurut lebar asli VB, supaya proporsinya tetap seperti layar lama.
+    const sisa = vw - sumPakai;
+    const bobot = cols.reduce((s, c) => s + c.width, 0) || 1;
+    cols.forEach((c, j) => { colWidths[j] += Math.floor((sisa * c.width) / bobot); });
+    colWidths[colWidths.length - 1] += vw - colWidths.reduce((s, w) => s + w, 0);
+  } else if (vw > 0 && sumPakai > vw) {
+    // Kurang ruang: kecilkan kolom teks lebar (>160px) sampai minimal 140px.
+    const kurang = sumPakai - vw;
+    const lebar = colWidths.map((w, j) => ({ w, j })).filter((x) => x.w > 160).sort((a, b) => b.w - a.w);
+    const ruang = lebar.reduce((s, x) => s + (x.w - 140), 0);
+    if (ruang > 0) lebar.forEach((x) => {
+      const potong = Math.min(x.w - 140, Math.ceil(((x.w - 140) / ruang) * kurang));
+      colWidths[x.j] -= potong;
+    });
+  }
+  const total = Math.max(colWidths.reduce((s, w) => s + w, 0), vw);
+
+  const first = Math.max(0, Math.floor(top / rowH) - 4);
+  const last = Math.min(rows.length, Math.ceil((top + vh) / rowH) + 4);
   const selIdx = selected == null ? -1 : rows.findIndex((r) => rowKey(r) === selected);
 
   const move = (i: number) => {
@@ -46,14 +101,14 @@ export function VbGrid<T>(props: {
     onSelect(rowKey(rows[n]));
     const el = ref.current;
     if (!el) return;
-    const y = n * ROW_H;
-    const view = el.clientHeight - HEAD_H;
+    const y = n * rowH;
+    const view = el.clientHeight - headH;
     if (y < el.scrollTop) el.scrollTop = y;
-    else if (y + ROW_H > el.scrollTop + view) el.scrollTop = y + ROW_H - view;
+    else if (y + rowH > el.scrollTop + view) el.scrollTop = y + rowH - view;
   };
 
   const onKey = (e: React.KeyboardEvent) => {
-    const page = Math.max(1, Math.floor((vh - HEAD_H) / ROW_H) - 1);
+    const page = Math.max(1, Math.floor((vh - headH) / rowH) - 1);
     if (e.key === "ArrowDown") move(selIdx + 1);
     else if (e.key === "ArrowUp") move(selIdx < 0 ? 0 : selIdx - 1);
     else if (e.key === "PageDown") move(selIdx + page);
@@ -66,21 +121,74 @@ export function VbGrid<T>(props: {
   };
 
   return (
-    <div className="vbg" ref={ref} tabIndex={0} onScroll={(e) => setTop(e.currentTarget.scrollTop)} onKeyDown={onKey}>
-      <div className="vbg-head" style={{ width: total, height: HEAD_H }}>
+    <div
+      data-slot="vbg"
+      ref={ref}
+      tabIndex={0}
+      onFocus={() => setFocused(true)}
+      onBlur={() => setFocused(false)}
+      onScroll={(e) => setTop(e.currentTarget.scrollTop)}
+      onKeyDown={onKey}
+      className="vbg tp-scroll-always relative size-full rounded-md border border-foreground/20 bg-card font-sans text-xs text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+    >
+      <div
+        className="sticky top-0 z-10 flex min-w-full border-b border-foreground/25 bg-muted"
+        style={{ width: total, height: headH }}
+      >
         {cols.map((c, i) => (
-          <div key={i} className="vbg-h" style={{ width: c.width, textAlign: c.align }}>{c.title}</div>
+          <div
+            key={i}
+            className={cn(
+              "flex flex-none items-center overflow-hidden border-r border-foreground/15 px-2 font-semibold text-foreground last:border-r-0",
+              c.align === "right" && "justify-end text-right",
+              c.align === "center" && "justify-center text-center",
+            )}
+            style={{ width: colWidths[i] }}
+            title={c.title}
+            data-c={i}
+          >
+            <span className="truncate whitespace-nowrap">{c.title}</span>
+          </div>
         ))}
       </div>
-      <div className="vbg-body" style={{ width: total, height: rows.length * ROW_H }}>
+      <div className="relative min-w-full" style={{ width: total, height: rows.length * rowH }}>
         {rows.slice(first, last).map((r, k) => {
           const i = first + k;
           const key = rowKey(r);
+          const isSel = key === selected;
           return (
-            <div key={key} className={`vbg-row ${key === selected ? "sel" : ""}`} style={{ top: i * ROW_H, height: ROW_H }}
-              onMouseDown={() => onSelect(key)} onDoubleClick={() => onOpen?.(r)}>
+            <div
+              key={key}
+              data-state={isSel ? "selected" : undefined}
+              className={cn(
+                "absolute right-0 left-0 flex cursor-default border-b border-foreground/12 transition-colors",
+                isSel
+                  ? focused
+                    ? "border-transparent bg-primary font-medium text-primary-foreground"
+                    : "border-transparent bg-foreground/10 font-medium text-foreground"
+                  : i % 2 === 1
+                    ? "bg-muted/25 hover:bg-muted/60"
+                    : "hover:bg-muted/60",
+              )}
+              style={{ top: i * rowH, height: rowH }}
+              onMouseDown={() => onSelect(key)}
+              onDoubleClick={() => onOpen?.(r)}
+            >
               {cols.map((c, j) => (
-                <div key={j} className="vbg-c" style={{ width: c.width, textAlign: c.align }}>{c.render(r, i)}</div>
+                <div
+                  key={j}
+                  className={cn(
+                    "flex flex-none items-center overflow-hidden border-r border-foreground/10 px-2 tabular-nums last:border-r-0",
+                    isSel && focused && "border-primary-foreground/20",
+                    c.align === "right" && "justify-end text-right",
+                    c.align === "center" && "justify-center text-center",
+                  )}
+                  style={{ width: colWidths[j] }}
+                  data-c={j}
+                  title={isiTeks(c.render(r, i))}
+                >
+                  <span className="truncate whitespace-nowrap">{c.render(r, i)}</span>
+                </div>
               ))}
             </div>
           );
@@ -90,41 +198,75 @@ export function VbGrid<T>(props: {
   );
 }
 
-/* ---- Bilah alat (Toolbar): tombol datar dengan pemisah ---- */
+/* ---- Bilah alat (Toolbar): tombol tegas dengan pemisah ---- */
 export interface ToolItem { caption: string; onClick: () => void; sepBefore?: boolean }
 
 export function VbToolbar({ items }: { items: ToolItem[] }) {
   return (
-    <div className="vbm-toolbar">
-      {items.map((b) => (
-        <span key={b.caption} className="vbm-tb-item">
-          {b.sepBefore && <span className="vbm-sep" />}
-          <button type="button" className="vbm-tb" onClick={b.onClick}>{b.caption}</button>
-        </span>
-      ))}
+    <div data-slot="vb-toolbar" className="flex w-full flex-wrap items-center gap-1 border-b border-border bg-muted px-2.5 py-1.5">
+      {items.map((b) => {
+        const isPrimary = b.caption === "Baru";
+        const isDanger = b.caption === "Hapus";
+        const isClose = b.caption === "Tutup";
+        return (
+          <span key={b.caption} className={cn("flex items-center", isClose && "ml-auto")}>
+            {b.sepBefore && !isClose && <span className="mx-1 h-4 w-px bg-border" />}
+            <Button
+              type="button"
+              variant={isPrimary ? "default" : "outline"}
+              size="sm"
+              onClick={b.onClick}
+              className={cn(
+                "h-7 px-2.5 text-xs font-medium",
+                !isPrimary && "border-foreground/20 bg-background text-foreground hover:bg-accent hover:text-foreground",
+                isDanger && "hover:border-destructive/40 hover:bg-destructive/10 hover:text-destructive",
+              )}
+            >
+              {b.caption}
+              {isClose && <Kbd className="h-4 min-w-0 border border-border bg-muted px-0.5 text-[0.5625rem] text-foreground">Esc</Kbd>}
+            </Button>
+          </span>
+        );
+      })}
     </div>
   );
 }
 
 /* ---- Kotak pesan (MsgBox) ---- */
-export interface MsgState { text: string; yes?: () => void; title?: string; no?: () => void }
+/** `bahaya`: tombol Ya menghapus sesuatu, jadi tombol Tidak yang terpilih lebih dulu (Enter tidak langsung menghapus). */
+export interface MsgState { text: string; yes?: () => void; title?: string; no?: () => void; bahaya?: boolean | string }
 
+/**
+ * Kotak pesan (pengganti MsgBox VB).
+ * `bahaya`: true atau label tombol (mis. "Ya, batalkan"). Untuk aksi yang menghapus atau membatalkan:
+ * tombol Ya merah dan fokus awal di Tidak, supaya Enter yang tidak sengaja tidak menghapus apa pun.
+ * Seperti MsgBox lama, tombol huruf Y = Ya dan T = Tidak.
+ */
 export function useMsgBox() {
   const [msg, setMsg] = useState<MsgState | null>(null);
   const alert = useCallback((text: string, title?: string) => setMsg({ text, title }), []);
-  const confirm = useCallback((text: string, yes: () => void, title?: string, no?: () => void) => setMsg({ text, yes, title, no }), []);
+  const confirm = useCallback((text: string, yes: () => void, title?: string, no?: () => void, bahaya?: boolean | string) => setMsg({ text, yes, title, no, bahaya }), []);
+  const tidak = () => { const n = msg?.no; setMsg(null); n?.(); };
+  const ya = () => { const y = msg?.yes; setMsg(null); y?.(); };
+  const labelYa = typeof msg?.bahaya === "string" ? msg.bahaya : msg?.bahaya ? "Ya, hapus" : "Ya";
   const node = msg && (
-    <ModalFrame title={msg.title ?? "Software Toko Pro Unlimited"} onClose={() => setMsg(null)} width={360}>
-      <div className="vbm-msg">
-        <p style={{ whiteSpace: "pre-line" }}>{msg.text}</p>
-        <div className="vbm-msg-btns">
+    <ModalFrame title={msg.title ?? (msg.yes ? "Konfirmasi" : "Pemberitahuan")} onClose={() => setMsg(null)} width={400}>
+      <div className="flex flex-col gap-4 p-4 text-sm"
+        onKeyDown={(e) => {
+          if (!msg.yes || e.altKey || e.ctrlKey || e.metaKey) return;
+          const k = e.key.toLowerCase();
+          if (k === "y") { e.preventDefault(); ya(); }
+          else if (k === "t" || k === "n") { e.preventDefault(); tidak(); }
+        }}>
+        <p className="whitespace-pre-line">{msg.text}</p>
+        <div className="flex justify-end gap-2">
           {msg.yes ? (
             <>
-              <button type="button" className="vb-btn" autoFocus onClick={() => { const y = msg.yes!; setMsg(null); y(); }}>Ya</button>
-              <button type="button" className="vb-btn" onClick={() => { const n = msg.no; setMsg(null); n?.(); }}>Tidak</button>
+              <Button type="button" variant="outline" className="min-w-20" autoFocus={!!msg.bahaya} onClick={tidak}><u>T</u>idak</Button>
+              <Button type="button" variant={msg.bahaya ? "destructive" : "default"} className="min-w-20" autoFocus={!msg.bahaya} onClick={ya}><u>Y</u>{labelYa.slice(1)}</Button>
             </>
           ) : (
-            <button type="button" className="vb-btn" autoFocus onClick={() => setMsg(null)}>OK</button>
+            <Button type="button" className="min-w-20" autoFocus onClick={() => setMsg(null)}>OK</Button>
           )}
         </div>
       </div>
@@ -160,13 +302,14 @@ export function useTopEscape(onClose?: () => void) {
 function ModalFrame(props: { title: string; onClose?: () => void; width: number; height?: number; children: ReactNode }) {
   useTopEscape(props.onClose);
   return (
-    <div className="vbm-backdrop no-print">
-      <div className="vb-window vbm-win" style={{ width: props.width, height: props.height }}>
-        <div className="vb-window-title">
-          <span className="vb-window-caption">{props.title}</span>
-          {props.onClose && <button type="button" className="vb-window-x" aria-label="Tutup" onClick={props.onClose}>×</button>}
+    <div className="no-print fixed inset-0 z-50 grid place-items-center bg-black/40 p-2">
+      <div role="dialog" aria-modal="true" aria-label={props.title} style={{ width: props.width, height: props.height }}
+        className="vb-modern flex max-h-[98vh] max-w-[98vw] flex-col overflow-hidden rounded-lg border bg-background text-foreground shadow-2xl">
+        <div className="flex h-9 flex-none items-center gap-2 border-b bg-muted/40 pr-1.5 pl-3 select-none">
+          <span className="flex-1 truncate text-sm font-medium">{props.title}</span>
+          {props.onClose && <Button type="button" variant="ghost" size="icon-sm" aria-label="Tutup" onClick={props.onClose}><XIcon /></Button>}
         </div>
-        <div className="vb-window-body">{props.children}</div>
+        <div className="min-h-0 flex-1 overflow-auto">{props.children}</div>
       </div>
     </div>
   );
@@ -177,9 +320,10 @@ export function VbModal(props: { form: string; title?: string; bind?: Record<str
   const { width, height } = formSize(props.form);
   useTopEscape(props.onClose);
   const ref = useEnterNav(props.form);
+  const tinggiJudul = useTinggiJudul();
   return (
-    <div className="vbm-backdrop no-print">
-      <div className="vbm-win" style={{ width: width + 2, height: height + 22 }} ref={ref}>
+    <div className="no-print fixed inset-0 z-50 grid place-items-center bg-black/40 p-2">
+      <div className="relative flex max-h-[98vh] max-w-[98vw] flex-col" style={{ width: width + 2, height: height + tinggiJudul }} ref={ref}>
         <VbWindow form={props.form} title={props.title} bind={props.bind} hide={props.hide} onClose={props.onClose} />
         {props.children}
       </div>

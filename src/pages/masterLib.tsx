@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useState } from "react";
+import { ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import { api, MasterTable, Row } from "../api";
-import { useVbForm, VbAnchor, VbFormDef, VbPos } from "../vb/VbForm";
+import { Bind, useVbForm, VbAnchor, VbCtrl, VbFormDef, VbPos } from "../vb/VbForm";
 
 /** Kolom kunci dan kolom nama tiap tabel master. */
 export const KEYS: Record<string, { key: string; name: string }> = {
@@ -18,7 +18,7 @@ export function useList(table: MasterTable | null) {
   const [rows, setRows] = useState<Row[]>([]);
   const reload = useCallback(() => {
     if (!table) return;
-    api.masterList(table, { limit: 5000, sort: KEYS[table].key }).then((r) => setRows(r.rows)).catch(() => undefined);
+    api.masterList(table, { limit: 5000, sort: KEYS[table].key }).then((r) => setRows(Array.isArray(r?.rows) ? r.rows : [])).catch(() => undefined);
   }, [table]);
   useEffect(reload, [reload]);
   return { rows, reload };
@@ -87,8 +87,8 @@ export function useListLayout(form: string) {
   return listLayout(useVbForm(form));
 }
 
-const q2Fmt = new Intl.NumberFormat("id-ID", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-/** Jumlah stok dengan dua desimal, mis. 1,00 */
+const q2Fmt = new Intl.NumberFormat("id-ID", { minimumFractionDigits: 0, maximumFractionDigits: 3 });
+/** Jumlah stok: bilangan bulat apa adanya (30), desimal hanya bila memang pecahan (2,5). */
 export const q2 = (n: unknown) => q2Fmt.format(Number(n) || 0);
 
 /** Muat seluruh isi tabel (beberapa halaman kalau lebih dari 5.000 baris). */
@@ -96,7 +96,66 @@ export async function loadAll(table: MasterTable, opts: { kelompok?: string; kat
   const out: Row[] = [];
   for (;;) {
     const r = await api.masterList(table, { ...opts, limit: 5000, offset: out.length });
-    out.push(...r.rows);
-    if (!r.rows.length || out.length >= r.total) return out;
+    const list = Array.isArray(r?.rows) ? r.rows : [];
+    out.push(...list);
+    if (!list.length || out.length >= (r?.total ?? 0)) return out;
   }
+}
+
+/** Gaya tombol Hapus di form VB: tombol outline berteks merah (letaknya tetap, hanya warnanya). */
+export const HAPUS_MERAH = "border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive";
+/** Tombol tutup: tulisan "Tutup" dengan chip Esc. */
+export const TUTUP = "Tutup [Esc]";
+
+/**
+ * Rapikan label form VB tanpa menggeser kontrol: label dibuat selebar jarak ke kotak isian di kanannya,
+ * rata kanan (menempel ke kotaknya dengan jarak 6px), satu baris, huruf 11px, dan dipusatkan vertikal ke kotak.
+ * `teks` mengganti tulisan label (nama kontrol → teks); `wajib` memberi tanda * merah pada label yang disebut.
+ */
+export function labelRapi(def: VbFormDef | undefined, teks: Record<string, string> = {}, wajib: string[] = []): Record<string, Bind> {
+  const out: Record<string, Bind> = {};
+  if (!def) return out;
+  const semua: VbCtrl[] = [];
+  const jalan = (c: VbCtrl) => { for (const k of c.children) { semua.push(k); jalan(k); } };
+  jalan(def);
+  const px = (c: VbCtrl) => { const [l, t, w, h] = c.props.POS as number[]; return { l: l / 15, t: t / 15, w: w / 15, h: h / 15 }; };
+  const kotak = semua.filter((c) => (c.type === "TextBox" || c.type === "ComboBox") && c.props.POS).map(px);
+  for (const lb of semua) {
+    if (lb.type !== "Label" || !lb.props.POS) continue;
+    const a = px(lb);
+    const cy = a.t + a.h / 2;
+    const sebaris = kotak.filter((k) => cy >= k.t - 2 && cy <= k.t + k.h + 2 && k.l >= a.l + 8 && k.l - a.l <= 150);
+    if (!sebaris.length) continue;
+    const k = sebaris.reduce((x, y) => (y.l < x.l ? y : x));
+    const dy = Math.round((k.t + k.h / 2 - cy) * 2) / 2;
+    const isi = teks[lb.name];
+    const bintang = wajib.includes(lb.name);
+    out[lb.name] = {
+      ...(isi !== undefined || bintang
+        ? { text: <>{isi ?? String(lb.props.Caption ?? "").replace(/&(.)/g, "$1")}{bintang && <span className="text-destructive" aria-label="wajib diisi">*</span>}</> }
+        : {}),
+      // Hanya label ~AutoSize yang boleh melebar (kotak pembungkusnya tidak memotong); yang lain cukup dipusatkan.
+      className: lb.props["~AutoSize"] ? "flex items-center justify-end gap-0.5 text-[11px] whitespace-nowrap" : "flex items-center gap-0.5 text-[11px]",
+      style: { ...(lb.props["~AutoSize"] ? { width: Math.max(8, k.l - 6 - a.l) } : {}), position: "relative", top: dy },
+    };
+  }
+  return out;
+}
+
+/** Versi hook dari `labelRapi` untuk komponen halaman. */
+export function useLabelRapi(form: string, teks: Record<string, string> = {}, wajib: string[] = []) {
+  const def = useVbForm(form);
+  return useMemo(() => labelRapi(def, teks, wajib), [def, JSON.stringify(teks), wajib.join("|")]); // eslint-disable-line react-hooks/exhaustive-deps
+}
+
+/** Daftar yang kosong: satu kalimat di tengah, di bawah kepala tabel, tanpa menutupi tabelnya. */
+export function GridKosong(props: { kosong: boolean; teks: string; children: ReactNode }) {
+  return (
+    <div className="relative size-full">
+      {props.children}
+      {props.kosong && (
+        <div className="pointer-events-none absolute inset-x-0 top-20 flex justify-center px-4 text-center text-sm text-muted-foreground">{props.teks}</div>
+      )}
+    </div>
+  );
 }

@@ -1,14 +1,16 @@
-import { ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ReactNode, useCallback, useEffect, useRef, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Kbd } from "@/components/ui/kbd";
+import { Label } from "@/components/ui/label";
 import { api, errText, Row } from "../api";
 import { inventoriApi, PromoJenis } from "../api/inventori";
 import { useApp } from "../appContext";
 import { CariBarang } from "../components/CariBarang";
 import { rp, today } from "../format";
-import { Geom, VbForm } from "../vb/VbForm";
 import { useMsgBox } from "../vb/VbGrid";
 import { tglId2Iso, tglIso2Id } from "./inventoriLib";
 import { NumInput } from "./Transaksi";
-import "./transaksi.css";
 
 interface R {
   uid: number;
@@ -24,17 +26,11 @@ interface R {
 type Kode = "kodebarang" | "kodebonus";
 
 const FORM: Record<PromoJenis, string> = { diskon: "FrmDataBarangDiskon", bonus: "FrmDataBarangBonus", pdp: "FrmDataBarangPDP" };
-const NOTE_F10 = "Tekan tombol F10 pada keyboard atau klik ganda untuk mencari data barang pada kolom kode barang";
 const NOTE: Record<PromoJenis, string> = {
-  diskon: "Keterangan : Gunakan format tanggal DD/MM/YYYY. Isi diskon (%) atau harga diskon, yang satunya akan dihitung sendiri.",
-  bonus: "Keterangan : Gunakan format tanggal DD/MM/YYYY",
-  pdp: "Keterangan : Gunakan format tanggal DD/MM/YYYY. Diskon berlaku kalau total belanja mencapai minimal transaksi.",
+  diskon: "Isi diskon (%) atau harga diskon, yang lain dihitung otomatis. Tanggal: DD/MM/YYYY. F10 untuk mencari barang.",
+  bonus: "Isi barang, minimal beli, dan barang bonusnya. Tanggal: DD/MM/YYYY. F10 untuk mencari barang.",
+  pdp: "Diskon berlaku kalau total belanja mencapai minimal transaksi. Tanggal: DD/MM/YYYY. F10 untuk mencari barang.",
 };
-
-const ROW_H = 23;
-const HEAD_H = 40;
-const FULL = { left: true, right: true, top: true, bottom: true };
-const ANCHOR = { tdBonus: FULL, Picture1: { left: true, right: true, bottom: true }, lblKet: { left: true, right: true } };
 
 let uidSeq = 0;
 const blank = (): R => ({
@@ -134,14 +130,14 @@ export function Promo({ jenis }: { jenis: PromoJenis }) {
   }, [rows, jenis, muat, msg]);
 
   const refresh = useCallback(() => {
-    if (rows.some((r) => r.dirty && r.kodebarang)) msg.confirm("Ada data yang belum disimpan. Muat ulang dan buang perubahan itu?", () => void muat());
+    if (rows.some((r) => r.dirty && r.kodebarang)) msg.confirm("Ada data yang belum Anda simpan. Kalau dimuat ulang, perubahan itu hilang. Lanjutkan?", () => void muat(), "Muat ulang data", undefined, "Ya, muat ulang");
     else void muat();
   }, [rows, muat, msg]);
 
   const hapus = useCallback(() => {
     const r = rows.find((x) => x.uid === sel);
     if (!r || !r.kodebarang) return msg.alert("Pilih dulu baris yang akan dihapus.");
-    msg.confirm(`Hapus data ${r.kodebarang} - ${r.namabarang}? Data yang dihapus tidak bisa dikembalikan.`, async () => {
+    msg.confirm(`Anda akan menghapus ${r.kodebarang} - ${r.namabarang} dari daftar promo. Data yang sudah dihapus tidak bisa dikembalikan.`, async () => {
       try {
         if (r.bid != null) await inventoriApi.promoDelete(jenis, r.bid);
         setRows((xs) => xs.filter((x) => x.uid !== r.uid));
@@ -149,7 +145,7 @@ export function Promo({ jenis }: { jenis: PromoJenis }) {
       } catch (e) {
         msg.alert(errText(e));
       }
-    });
+    }, "Hapus data promo", undefined, true);
   }, [rows, sel, jenis, msg]);
 
   /** Set semua: hanya mengisi kolom Minimal Transaksi di semua baris (kosong berarti 0). */
@@ -173,11 +169,11 @@ export function Promo({ jenis }: { jenis: PromoJenis }) {
 
   /* ---- Tabel ---- */
   const txt = (r: R, key: "tglawal" | "tglakhir", ph = "") => (
-    <input value={r[key]} placeholder={ph} autoComplete="off" onChange={(e) => patch(r.uid, { [key]: e.target.value })}
+    <input data-slot="grid-input" value={r[key]} placeholder={ph} autoComplete="off" onChange={(e) => patch(r.uid, { [key]: e.target.value })}
       onBlur={() => { const iso = tglId2Iso(r[key]); if (iso) patch(r.uid, { [key]: tglIso2Id(iso) } as Partial<R>); }} />
   );
   const kode = (r: R, field: Kode) => (
-    <input value={r[field]} autoComplete="off" onChange={(e) => {
+    <input data-slot="grid-input" value={r[field]} autoComplete="off" onChange={(e) => {
       // Kode berubah: nama dan harga lama dibuang supaya barang baru dicari lagi saat Enter atau pindah kolom.
       const v = e.target.value;
       patch(r.uid, (field === "kodebarang" ? { kodebarang: v, namabarang: "", hrgnormal: 0 } : { kodebonus: v, namabonus: "" }) as Partial<R>);
@@ -189,50 +185,50 @@ export function Promo({ jenis }: { jenis: PromoJenis }) {
       onBlur={() => { if (r[field].trim() && !(field === "kodebarang" ? r.namabarang : r.namabonus)) void cariKode(r.uid, field, r[field]); }}
       onDoubleClick={() => setCari({ uid: r.uid, field })} />
   );
-  const num = (r: R, key: "minbeli" | "jmlbonus" | "minbelanja") => (
+  const num = (r: R, key: "minbeli" | "jmlbonus" | "minbelanja") => !r.kodebarang ? null : (
     <NumInput className="r" value={r[key]} onChange={(v) => patch(r.uid, { [key]: v } as Partial<R>)} />
   );
-  const persen = (r: R) => (
+  const persen = (r: R) => !r.kodebarang ? null : (
     <NumInput className="r" value={r.diskon} onChange={(v) => patch(r.uid, { diskon: v, hrgdiskon: r.hrgnormal > 0 ? hitungHarga(r.hrgnormal, v) : 0 })} />
   );
-  const harga = (r: R) => (
+  const harga = (r: R) => !r.kodebarang ? null : (
     <NumInput className="r" value={r.hrgdiskon} onChange={(v) => patch(r.uid, { hrgdiskon: v, diskon: hitungPersen(r.hrgnormal, v) })} />
   );
 
   type Col = { t: string; w: number; r?: boolean; cell: (x: R) => ReactNode };
   const cols: Col[] = jenis === "diskon" ? [
     { t: "Kode Barang", w: 14, cell: (x) => kode(x, "kodebarang") },
-    { t: "Nama Barang", w: 30, cell: (x) => x.namabarang },
+    { t: "Nama Barang", w: 26, cell: (x) => x.namabarang },
     { t: "Hrg. Normal", w: 11, r: true, cell: (x) => (x.kodebarang ? rp(x.hrgnormal) : "") },
     { t: "Diskon (%)", w: 9, r: true, cell: persen },
     { t: "Hrg. Diskon", w: 11, r: true, cell: harga },
-    { t: "Tgl. Mulai", w: 10, cell: (x) => txt(x, "tglawal", "DD/MM/YYYY") },
-    { t: "Tgl. Berakhir", w: 10, cell: (x) => txt(x, "tglakhir", "DD/MM/YYYY") },
+    { t: "Tgl. Mulai", w: 12, cell: (x) => txt(x, "tglawal", "DD/MM/YYYY") },
+    { t: "Tgl. Berakhir", w: 12, cell: (x) => txt(x, "tglakhir", "DD/MM/YYYY") },
     { t: "Status", w: 8, cell: (x) => (x.kodebarang ? status(x, hari) : "") },
   ] : jenis === "bonus" ? [
     { t: "Kode Barang", w: 12, cell: (x) => kode(x, "kodebarang") },
-    { t: "Nama Barang", w: 22, cell: (x) => x.namabarang },
+    { t: "Nama Barang", w: 19, cell: (x) => x.namabarang },
     { t: "Min. Beli", w: 8, r: true, cell: (x) => num(x, "minbeli") },
     { t: "Kode Bonus", w: 12, cell: (x) => kode(x, "kodebonus") },
-    { t: "Nama Barang Bonus", w: 22, cell: (x) => x.namabonus },
+    { t: "Nama Barang Bonus", w: 19, cell: (x) => x.namabonus },
     { t: "Jml. Bonus", w: 8, r: true, cell: (x) => num(x, "jmlbonus") },
-    { t: "Tgl. Mulai", w: 9, cell: (x) => txt(x, "tglawal", "DD/MM/YYYY") },
-    { t: "Tgl. Berakhir", w: 9, cell: (x) => txt(x, "tglakhir", "DD/MM/YYYY") },
+    { t: "Tgl. Mulai", w: 11, cell: (x) => txt(x, "tglawal", "DD/MM/YYYY") },
+    { t: "Tgl. Berakhir", w: 11, cell: (x) => txt(x, "tglakhir", "DD/MM/YYYY") },
     { t: "Status", w: 8, cell: (x) => (x.kodebarang ? status(x, hari) : "") },
   ] : [
     { t: "Min. Transaksi", w: 11, r: true, cell: (x) => num(x, "minbelanja") },
     { t: "Kode Barang", w: 12, cell: (x) => kode(x, "kodebarang") },
-    { t: "Nama Barang", w: 24, cell: (x) => x.namabarang },
+    { t: "Nama Barang", w: 20, cell: (x) => x.namabarang },
     { t: "Hrg. Normal", w: 10, r: true, cell: (x) => (x.kodebarang ? rp(x.hrgnormal) : "") },
     { t: "Diskon (%)", w: 8, r: true, cell: persen },
     { t: "Hrg. Diskon", w: 10, r: true, cell: harga },
-    { t: "Tgl. Mulai", w: 9, cell: (x) => txt(x, "tglawal", "DD/MM/YYYY") },
-    { t: "Tgl. Berakhir", w: 9, cell: (x) => txt(x, "tglakhir", "DD/MM/YYYY") },
+    { t: "Tgl. Mulai", w: 11, cell: (x) => txt(x, "tglawal", "DD/MM/YYYY") },
+    { t: "Tgl. Berakhir", w: 11, cell: (x) => txt(x, "tglakhir", "DD/MM/YYYY") },
     { t: "Status", w: 7, cell: (x) => (x.kodebarang ? status(x, hari) : "") },
   ];
 
-  const grid = (g: Geom) => {
-    const total = Math.max(rows.length, Math.floor((g.height - 2 - HEAD_H) / ROW_H));
+  const renderGrid = () => {
+    const total = Math.max(rows.length, 16);
     const trs: ReactNode[] = [];
     for (let i = 0; i < total; i++) {
       const x = rows[i];
@@ -245,7 +241,7 @@ export function Promo({ jenis }: { jenis: PromoJenis }) {
       );
     }
     return (
-      <div className="tj-grid" ref={gridRef}
+      <div className="tj-grid vb-modern" ref={gridRef}
         onKeyDown={(e) => {
           if (e.key !== "Enter" || !(e.target instanceof HTMLInputElement)) return;
           const all = [...(gridRef.current?.querySelectorAll<HTMLInputElement>("tbody input") ?? [])];
@@ -254,33 +250,77 @@ export function Promo({ jenis }: { jenis: PromoJenis }) {
         }}>
         <table>
           <colgroup><col style={{ width: "4%" }} />{cols.map((c, i) => <col key={i} style={{ width: `${c.w * 0.96}%` }} />)}</colgroup>
-          <thead><tr><th className="r">No</th>{cols.map((c, i) => <th key={i} className={c.r ? "r" : ""}>{c.t}</th>)}</tr></thead>
+          <thead><tr><th className="r">No</th>{cols.map((c, i) => <th key={i} className={c.r ? "r" : "text-left"}>{c.t}</th>)}</tr></thead>
           <tbody>{trs}</tbody>
         </table>
       </div>
     );
   };
 
-  const bind = useMemo(() => ({
-    tdBonus: grid,
-    lblKet: { text: <>{NOTE[jenis]}<br />{NOTE_F10}</> },
-    cSimpan: { onClick: () => (bisaUbah ? void simpan() : msg.alert("Akun kasir tidak bisa mengubah data promo.")) },
-    cRefresh: { onClick: refresh },
-    cHapus: { onClick: () => (bisaUbah ? hapus() : msg.alert("Akun kasir tidak bisa menghapus data promo.")) },
-    cTutup: { onClick: () => go("home") },
-    dtTgl1: { value: tgl1, onChange: (v: string) => setTgl1(v) },
-    dtTgl2: { value: tgl2, onChange: (v: string) => setTgl2(v) },
-    tMinTrans: { value: minTrans, onChange: setMinTrans },
-    cSetSemua: { onClick: setSemua },
-  }), [rows, sel, jenis, tgl1, tgl2, minTrans, bisaUbah, simpan, refresh, hapus]); // eslint-disable-line react-hooks/exhaustive-deps
-
   return (
-    <div className="tj-page" style={{ position: "relative" }}>
-      <VbForm form={FORM[jenis]} bind={bind} fill anchor={ANCHOR} />
-      {jenis === "diskon" && (
-        <button type="button" className="vb-btn" style={{ position: "absolute", right: 16, bottom: 8, width: 130, height: 27 }}
-          onClick={() => go("promopdp")}>Diskon PDP</button>
+    <div className="flex size-full flex-col overflow-hidden bg-background font-sans text-foreground" data-form={FORM[jenis]}>
+      {jenis === "pdp" && (
+        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border bg-muted/40 px-3 py-2 text-xs">
+          <div className="flex flex-wrap items-center gap-2">
+            <Label className="text-xs font-semibold text-foreground">Filter Tgl. Berakhir</Label>
+            <div data-vb="dtTgl1">
+              <Input type="date" value={tgl1} onChange={(e) => setTgl1(e.target.value)} className="h-7 w-36 border-foreground/20 bg-background text-xs tabular-nums" />
+            </div>
+            <span className="text-muted-foreground">s/d</span>
+            <div data-vb="dtTgl2">
+              <Input type="date" value={tgl2} onChange={(e) => setTgl2(e.target.value)} className="h-7 w-36 border-foreground/20 bg-background text-xs tabular-nums" />
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Label className="text-xs font-semibold text-foreground">Set Minimal Transaksi</Label>
+            <div data-vb="tMinTrans">
+              <Input value={minTrans} onChange={(e) => setMinTrans(e.target.value)} className="h-7 w-32 border-foreground/20 bg-background text-right text-xs tabular-nums" />
+            </div>
+            <Button type="button" variant="outline" size="sm" data-vb="cSetSemua" className="h-7 border-foreground/20 bg-background px-2.5 text-xs font-semibold" onClick={setSemua}>
+              Set Semua
+            </Button>
+          </div>
+        </div>
       )}
+
+      <div className="border-b border-border bg-muted px-3 py-2 text-xs font-medium text-foreground" data-vb="lblKet">
+        {NOTE[jenis]}
+      </div>
+
+      <div className="min-h-0 flex-1 bg-muted/20 p-2.5" data-vb="tdBonus">
+        {renderGrid()}
+      </div>
+
+      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border bg-muted px-3 py-1.5">
+        <div className="flex flex-wrap items-center gap-1.5">
+          <Button type="button" variant="outline" size="default" data-vb="cHapus" className="h-8 border-destructive/40 bg-background px-2.5 text-xs font-medium text-destructive shadow-xs hover:bg-destructive/10 hover:text-destructive"
+            onClick={() => (bisaUbah ? hapus() : msg.alert("Akun kasir tidak bisa menghapus data promo."))}>
+            <span>Hapus</span>
+            <Kbd className="border border-destructive/35 bg-destructive/10 text-destructive">F6</Kbd>
+          </Button>
+          <Button type="button" variant="outline" size="default" data-vb="cRefresh" className="h-8 border-foreground/20 bg-background px-2.5 text-xs font-medium text-foreground shadow-xs" onClick={refresh}>
+            <span>Refresh</span>
+            <Kbd className="border border-border bg-muted text-foreground">F5</Kbd>
+          </Button>
+          {jenis === "diskon" && (
+            <Button type="button" variant="outline" size="default" className="h-8 border-foreground/20 bg-background px-2.5 text-xs font-medium text-foreground shadow-xs" onClick={() => go("promopdp")}>
+              Diskon PDP
+            </Button>
+          )}
+        </div>
+        <div className="flex items-center gap-1.5">
+          <Button type="button" variant="outline" size="default" data-vb="cTutup" className="h-8 border-foreground/20 bg-background px-2.5 text-xs font-medium text-foreground shadow-xs" onClick={() => go("home")}>
+            <span>Tutup</span>
+            <Kbd className="border border-border bg-muted text-foreground">Esc</Kbd>
+          </Button>
+          <Button type="button" variant="default" size="default" data-vb="cSimpan" className="h-8 gap-1.5 px-3.5 text-xs font-semibold shadow-xs"
+            onClick={() => (bisaUbah ? void simpan() : msg.alert("Akun kasir tidak bisa mengubah data promo."))}>
+            <span>Simpan</span>
+            <Kbd className="border border-primary-foreground/30 bg-primary-foreground/20 text-primary-foreground">F4</Kbd>
+          </Button>
+        </div>
+      </div>
+
       {msg.node}
       {cari && <CariBarang onClose={() => setCari(null)} onPick={(b) => { pilih(cari.uid, cari.field, b); setCari(null); }} />}
     </div>

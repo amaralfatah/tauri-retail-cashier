@@ -5,19 +5,19 @@ import { kasApi, KasDaftar } from "../api/keuangan";
 import { Otentikasi } from "../components/Otentikasi";
 import { useApp } from "../appContext";
 import { rp, tglID, today } from "../format";
-import { Bind, VbForm } from "../vb/VbForm";
-import { BELUM_ADA, GridCol, ToolItem, useMsgBox, VbGrid, VbModal, VbToolbar } from "../vb/VbGrid";
+import { Bind, formCaption } from "../vb/VbForm";
+import { BELUM_ADA, GridCol, ToolItem, useMsgBox, useTopEscape, VbGrid, VbModal, VbToolbar } from "../vb/VbGrid";
 import { CariMaster, opsi, s, txt } from "./keuanganLib";
+import { HAPUS_MERAH, TUTUP } from "./masterLib";
 import { useDaftarFile } from "./daftarFile";
-import { useListLayout } from "./masterLib";
-import { formCaption } from "../vb/VbForm";
 
 const num = (v: string) => Number(v.replace(/\./g, "").replace(",", ".")) || 0;
-const uang = (n: unknown) => `Rp. ${rp(n)}`;
+const uang = (n: unknown) => `Rp ${rp(n)}`;
+
+const ACTIONS = ["Baru", "Hapus", "Filter", "Refresh", "Export", "Cetak", "Tutup"];
 
 export function Keuangan() {
   const { go, user } = useApp();
-  const lay = useListLayout("FrmTranskas");
   const [mintaIzin, setMintaIzin] = useState<{ idkas: number } | null>(null);
   const msg = useMsgBox();
   const [data, setData] = useState<KasDaftar>({ rows: [], masuk: 0, keluar: 0, kas: 0 });
@@ -28,7 +28,9 @@ export function Keuangan() {
   const [baru, setBaru] = useState(false);
 
   const load = useCallback((f = filter) => {
-    kasApi.list(f.dari, f.sampai).then(setData).catch((e) => msg.alert(errText(e)));
+    kasApi.list(f.dari, f.sampai)
+      .then((res) => setData(res && Array.isArray(res.rows) ? res : { rows: [], masuk: 0, keluar: 0, kas: 0 }))
+      .catch((e) => msg.alert(errText(e)));
   }, [filter]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { load(); }, [load]);
 
@@ -40,7 +42,7 @@ export function Keuangan() {
     else tanyaHapus(r.idkas);
   };
   const tanyaHapus = (idkas: number, tanda?: string) =>
-    msg.confirm("Apakah data kas terpilih akan dihapus?\nProses ini mungkin akan membutuhkan waktu beberapa saat untuk proses perhitungan ulang kas.", () => void hapusKas(idkas, tanda));
+    msg.confirm("Hapus data kas yang Anda pilih? Data yang sudah dihapus tidak bisa dikembalikan, dan saldo kas dihitung ulang. Ini bisa memakan waktu beberapa saat.", () => void hapusKas(idkas, tanda), "Hapus data kas", undefined, true);
   const hapusKas = async (idkas: number, tanda?: string) => {
     try {
       await kasApi.hapus(idkas, tanda);
@@ -49,6 +51,9 @@ export function Keuangan() {
       msg.alert("Data kas sudah terhapus.");
     } catch (e) { msg.alert(errText(e)); }
   };
+
+  // Esc menutup layar Transaksi Kas (jendela yang terbuka di atasnya menutup lebih dulu).
+  useTopEscape(() => go("home"));
 
   const handlers: Record<string, () => void> = {
     Baru: () => setBaru(true),
@@ -61,32 +66,52 @@ export function Keuangan() {
   };
   const sepBefore = new Set(["Filter", "Export", "Tutup"]);
   const cols: GridCol<Row>[] = [
-    { title: "No.", width: 40, align: "right", render: (_, i) => i + 1 },
-    { title: "ID", width: 45, align: "right", render: (r) => r.idkas },
-    { title: "No.Kas", width: 100, render: (r) => r.nokas },
-    { title: "Tanggal", width: 80, render: (r) => tglID(r.tglkas) },
-    { title: "No.Ref", width: 100, render: (r) => r.noreftrans },
-    { title: "Jenis", width: 70, render: (r) => r.jenis },
-    { title: "Kategori", width: 150, render: (r) => r.kategori },
-    { title: "Karyawan", width: 110, render: (r) => r.namakaryawan },
-    { title: "Kontak", width: 110, render: (r) => r.namakontak },
-    { title: "Keterangan", width: 200, render: (r) => r.keterangan },
-    { title: "Masuk", width: 90, align: "right", render: (r) => rp(r.masuk) },
-    { title: "Keluar", width: 90, align: "right", render: (r) => rp(r.keluar) },
-    { title: "Saldo", width: 100, align: "right", render: (r) => rp(r.saldo) },
+    { title: "No.", width: 42, align: "right", render: (_, i) => i + 1 },
+    { title: "ID", width: 50, align: "right", render: (r) => r.idkas },
+    { title: "No. Kas", width: 110, render: (r) => r.nokas },
+    { title: "Tanggal", width: 90, render: (r) => tglID(r.tglkas) },
+    { title: "No. Ref", width: 105, render: (r) => r.noreftrans },
+    { title: "Jenis", width: 75, render: (r) => r.jenis },
+    { title: "Kategori", width: 160, render: (r) => r.kategori },
+    { title: "Karyawan", width: 120, render: (r) => r.namakaryawan },
+    { title: "Kontak", width: 120, render: (r) => r.namakontak },
+    { title: "Keterangan", width: 210, render: (r) => r.keterangan },
+    { title: "Masuk", width: 105, align: "right", render: (r) => rp(r.masuk) },
+    { title: "Keluar", width: 105, align: "right", render: (r) => rp(r.keluar) },
+    { title: "Saldo", width: 115, align: "right", render: (r) => rp(r.saldo) },
   ];
   const file = useDaftarFile(formCaption("FrmTranskas"), cols, data.rows, msg);
-  const bind: Record<string, Bind> = {
-    tbMenu: (_g, ctrl) => (
-      <VbToolbar items={(ctrl.texts ?? []).map<ToolItem>((c) => ({ caption: c, onClick: handlers[c] ?? (() => msg.alert(BELUM_ADA)), sepBefore: sepBefore.has(c) }))} />
-    ),
-    lsData: () => <VbGrid cols={cols} rows={data.rows} rowKey={(r) => String(r.idkas)} selected={sel} onSelect={setSel} />,
-    lblTotal: { text: `Total Pemasukan : ${uang(data.masuk)}  |  Total Pengeluaran : ${uang(data.keluar)}  |  Total Kas : ${uang(data.kas)}` },
-  };
+  const toolItems: ToolItem[] = ACTIONS.map((c) => ({ caption: c, onClick: handlers[c] ?? (() => msg.alert(BELUM_ADA)), sepBefore: sepBefore.has(c) }));
 
   return (
-    <div className="vbm-fill">
-      <VbForm form="FrmTranskas" bind={bind} fill anchor={lay.anchor} pos={lay.pos} />
+    <div className="vb-modern flex h-full min-h-0 flex-col bg-background font-sans text-foreground" data-form="FrmTranskas">
+      <div data-vb="tbMenu">
+        <VbToolbar items={toolItems} />
+      </div>
+      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border bg-display px-4 py-2 text-display-foreground">
+        <div className="flex flex-wrap items-center gap-5">
+          <div className="flex flex-col">
+            <span className="text-[11px] font-medium text-display-foreground/65">Total Pemasukan</span>
+            <span className="text-base font-bold text-display-foreground tabular-nums">{uang(data.masuk)}</span>
+          </div>
+          <div className="h-7 w-px bg-display-foreground/15" />
+          <div className="flex flex-col">
+            <span className="text-[11px] font-medium text-display-foreground/65">Total Pengeluaran</span>
+            <span className="text-base font-bold text-display-foreground tabular-nums">{uang(data.keluar)}</span>
+          </div>
+        </div>
+        <div className="flex items-baseline gap-2">
+          <span className="text-xs font-medium text-display-foreground/70">Saldo Kas</span>
+          <span className="text-xl font-bold tabular-nums">{uang(data.kas)}</span>
+        </div>
+      </div>
+      <div className="min-h-0 flex-1 p-2.5" data-vb="lsData">
+        <VbGrid cols={cols} rows={data.rows} rowKey={(r) => String(r.idkas)} selected={sel} onSelect={setSel} />
+      </div>
+      <div className="flex items-center justify-between border-t border-border bg-muted/40 px-3 py-1.5 text-xs font-semibold text-foreground" data-vb="lblTotal">
+        <span>Total Pemasukan : {uang(data.masuk)}  |  Total Pengeluaran : {uang(data.keluar)}  |  Total Kas : {uang(data.kas)}</span>
+        <span className="text-muted-foreground tabular-nums">Periode: {tglID(filter.dari)} s/d {tglID(filter.sampai)}</span>
+      </div>
       {msg.node}
       {file.node}
       {mintaIzin && (
@@ -105,8 +130,8 @@ function FilterKas(props: { value: { dari: string; sampai: string }; onApply: (f
   const bind: Record<string, Bind> = {
     dtTgl1: { value: f.dari, onChange: (v) => v && setF((x) => ({ ...x, dari: v })) },
     dtTgl2: { value: f.sampai, onChange: (v) => v && setF((x) => ({ ...x, sampai: v })) },
-    cTampil: { onClick: () => props.onApply(f) },
-    cTutup: { onClick: props.onClose },
+    cTampil: { onClick: () => props.onApply(f), variant: "default" },
+    cTutup: { onClick: props.onClose, text: TUTUP },
   };
   return <VbModal form="FrmFilterKas" bind={bind} onClose={props.onClose} />;
 }
@@ -155,9 +180,10 @@ function KasAdd(props: { onClose: () => void; onSaved: () => void }) {
     tKasMasuk: txt(v.masuk, (x) => set("masuk", x), !masuk),
     tKasKeluar: txt(v.keluar, (x) => set("keluar", x), masuk),
     tKet: txt(v.ket, (x) => set("ket", x)),
-    cSimpan: { onClick: () => void simpan() },
-    cBatal: { onClick: batal },
-    cKeluar: { onClick: props.onClose },
+    cSimpan: { onClick: () => void simpan(), variant: "default" },
+    cBatal: { onClick: batal, className: HAPUS_MERAH },
+    cKeluar: { onClick: props.onClose, text: TUTUP },
+    Label7: { text: "Supplier" },
   };
   return (
     <VbModal form="FrmTransKasAdd" bind={bind} hide={["tPetugasKode", "tPelangganKode", "tPemasokKode"]} onClose={props.onClose}>

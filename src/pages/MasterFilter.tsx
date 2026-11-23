@@ -2,7 +2,7 @@ import { useState } from "react";
 import { MasterTable, Row } from "../api";
 import { Bind } from "../vb/VbForm";
 import { VbModal } from "../vb/VbGrid";
-import { distinct, useList } from "./masterLib";
+import { distinct, TUTUP, useList } from "./masterLib";
 
 export type FilterVal = Record<string, string>;
 
@@ -82,8 +82,9 @@ export function FilterWindow(props: { table: MasterTable; rows: Row[]; value: Fi
     cKota: combo("kota", distinct(props.rows, "kota")),
     cProvinsi: combo("provinsi", distinct(props.rows, "provinsi")),
     cJabatan: combo("jabatan", distinct(props.rows, "jabatan")),
-    cTampil: { onClick: () => props.onApply(f) },
-    cTutup: { onClick: props.onClose },
+    cTampil: { onClick: () => props.onApply(f), variant: "default" },
+    cTutup: { onClick: props.onClose, text: TUTUP },
+    ...(table === "mdbarang" ? { Label9: { text: "Supplier" } } : {}),
   };
   const hide = table === "mdbarang" ? ["picTgl"] : table === "mdpelanggan" ? ["tNamaKontak", "LabelNamaBarang"] : [];
   return <VbModal form={FORM[table]} bind={bind} hide={hide} onClose={props.onClose} />;

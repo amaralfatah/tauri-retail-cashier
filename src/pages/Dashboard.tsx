@@ -1,36 +1,28 @@
-import { ReactNode, useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Kbd } from "@/components/ui/kbd";
+import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
 import { errText, Row } from "../api";
 import { useApp } from "../appContext";
 import { dashApi } from "../api/dashboard";
+import { Alert } from "../components/Modal";
 import { rp, today } from "../format";
-import { Bind, vbColor, VbCtrl, useVbForm, VbForm } from "../vb/VbForm";
-import dash1 from "../vb/icons/dash1.png";
-import dash2 from "../vb/icons/dash2.png";
-import "./dashboard.css";
 
 type Jenis = "Batang" | "Garis" | "Area";
 const JENIS: Jenis[] = ["Batang", "Area", "Garis"];
 const HARI = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
 const BLN = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
-const uang = (n: unknown) => `Rp. ${rp(n)}`;
+const uang = (n: unknown) => `Rp ${rp(n)}`;
 const num = (x: unknown) => Number(x) || 0;
-
-/** Baris pelanggan terbanyak: nama kontrol per baris. */
-const BARIS: { lbl: string[]; lingkaran: string; lintasan: string[] }[] = [
-  { lbl: ["lblPelanggan(0)", "lblTransPelanggan(0)", "shpPelanggan(0)"], lingkaran: "Shape8", lintasan: ["shpMain"] },
-  { lbl: ["lblPelanggan(1)", "lblTransPelanggan(1)", "shpPelanggan(1)"], lingkaran: "Shape11", lintasan: ["Shape12"] },
-  { lbl: ["lblPelanggan(2)", "lblTransPelanggan(2)", "shpPelanggan(2)"], lingkaran: "Shape14", lintasan: ["Shape15"] },
-  { lbl: ["lblPelanggan(3)", "lblTransPelanggan(3)", "shpPelanggan(3)"], lingkaran: "Shape22", lintasan: ["Shape21", "Shape24"] },
-  { lbl: ["lblPelanggan(4)", "lblTransPelanggan(4)", "shpPelanggan(4)"], lingkaran: "Shape19", lintasan: ["Shape18"] },
-];
-const LEBAR_LINTASAN = 4515;
+const WARNA_BARIS = ["var(--chart-1)", "var(--chart-2)", "var(--chart-3)", "var(--chart-4)", "var(--chart-5)"];
 
 interface Titik { label: string; value: number }
 
-/** Grafik sederhana pengganti MSChart: batang, garis, atau area. */
-function Grafik(props: { w: number; h: number; jenis: Jenis; data: Titik[]; warna: string }) {
-  const { w, h, jenis, data, warna } = props;
-  const kiri = 52, bawah = 18, atas = 8, kanan = 8;
+/** Grafik responsif SVG pengganti MSChart: batang, garis, atau area. */
+function Grafik(props: { jenis: Jenis; data: Titik[]; warna: string }) {
+  const { jenis, data, warna } = props;
+  const w = 440, h = 155;
+  const kiri = 54, bawah = 20, atas = 10, kanan = 12;
   const pw = Math.max(10, w - kiri - kanan), ph = Math.max(10, h - atas - bawah);
   const max = Math.max(1, ...data.map((d) => d.value));
   const n = Math.max(1, data.length);
@@ -40,38 +32,32 @@ function Grafik(props: { w: number; h: number; jenis: Jenis; data: Titik[]; warn
   const garis = data.map((d, i) => `${x(i)},${y(d.value)}`).join(" ");
   const ringkas = (v: number) => (v >= 1e6 ? `${(v / 1e6).toFixed(v >= 1e7 ? 0 : 1).replace(".", ",")} jt` : v >= 1e3 ? `${Math.round(v / 1e3)} rb` : String(Math.round(v)));
   return (
-    <svg width={w} height={h} className="dash-chart" role="img" aria-label="Grafik">
+    <svg viewBox={`0 0 ${w} ${h}`} className="dash-chart block h-40 w-full font-sans text-[10px] text-muted-foreground" role="img" aria-label="Grafik">
       {[0, 0.5, 1].map((f) => (
         <g key={f}>
-          <line x1={kiri} x2={w - kanan} y1={y(max * f)} y2={y(max * f)} stroke="#e4e4e4" />
-          <text x={kiri - 4} y={y(max * f) + 3} textAnchor="end">{ringkas(max * f)}</text>
+          <line x1={kiri} x2={w - kanan} y1={y(max * f)} y2={y(max * f)} stroke="var(--border)" strokeDasharray={f < 1 ? "2 2" : undefined} />
+          <text x={kiri - 6} y={y(max * f) + 3} textAnchor="end" fill="currentColor">{ringkas(max * f)}</text>
         </g>
       ))}
       {jenis === "Batang" && data.map((d, i) => (
-        <rect key={i} x={x(i) - Math.max(2, (pw / n) * 0.3)} width={Math.max(4, (pw / n) * 0.6)} y={y(d.value)} height={Math.max(0, atas + ph - y(d.value))} fill={warna}>
+        <rect key={i} x={x(i) - Math.max(2, (pw / n) * 0.3)} width={Math.max(4, (pw / n) * 0.6)} y={y(d.value)} height={Math.max(0, atas + ph - y(d.value))} fill={warna} rx={2}>
           <title>{`${d.label}: ${uang(d.value)}`}</title>
         </rect>
       ))}
-      {jenis === "Area" && data.length > 0 && <polygon points={`${x(0)},${atas + ph} ${garis} ${x(data.length - 1)},${atas + ph}`} fill={warna} fillOpacity={0.25} />}
-      {jenis !== "Batang" && <polyline points={garis} fill="none" stroke={warna} strokeWidth={2} />}
-      {jenis !== "Batang" && data.map((d, i) => <circle key={i} cx={x(i)} cy={y(d.value)} r={2.5} fill={warna}><title>{`${d.label}: ${uang(d.value)}`}</title></circle>)}
-      {data.map((d, i) => i % step === 0 && <text key={i} x={x(i)} y={h - 4} textAnchor="middle">{d.label}</text>)}
+      {jenis === "Area" && data.length > 0 && <polygon points={`${x(0)},${atas + ph} ${garis} ${x(data.length - 1)},${atas + ph}`} fill={warna} fillOpacity={0.22} />}
+      {jenis !== "Batang" && <polyline points={garis} fill="none" stroke={warna} strokeWidth={2.2} />}
+      {jenis !== "Batang" && data.map((d, i) => <circle key={i} cx={x(i)} cy={y(d.value)} r={3} fill={warna}><title>{`${d.label}: ${uang(d.value)}`}</title></circle>)}
+      {data.map((d, i) => i % step === 0 && <text key={i} x={x(i)} y={h - 4} textAnchor="middle" fill="currentColor">{d.label}</text>)}
     </svg>
   );
 }
 
-function walk(n: VbCtrl, out: VbCtrl[] = []): VbCtrl[] {
-  n.children.forEach((c) => { out.push(c); walk(c, out); });
-  return out;
-}
-
-/** Analytic Dashboard (FrmZDashboard): ringkasan penjualan, laba, grafik, pelanggan terbanyak, dan piutang. */
+/** Ringkasan Toko (FrmZDashboard): ringkasan penjualan, laba, grafik, pelanggan terbanyak, dan piutang. */
 export function Dashboard(props: { onTutup: () => void }) {
   const [d, setD] = useState<Row | null>(null);
   const [err, setErr] = useState("");
   const [jenis, setJenis] = useState<Jenis[]>(["Batang", "Batang", "Area", "Area"]);
   const { go } = useApp();
-  const def = useVbForm("FrmZDashboard");
 
   const muat = useCallback(() => {
     setErr("");
@@ -79,84 +65,142 @@ export function Dashboard(props: { onTutup: () => void }) {
   }, []);
   useEffect(muat, [muat]);
 
-  const kontrol = useMemo(() => (def ? walk(def) : []), [def]);
+  // Esc menutup Ringkasan Toko.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") { e.preventDefault(); props.onTutup(); } };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  });
 
-  const t15: Titik[] = (d?.penjualan15 ?? []).map((r: Row) => ({ label: `${String(r.tgl).slice(8, 10)}/${String(r.tgl).slice(5, 7)}`, value: num(r.total) }));
-  const tHari: Titik[] = (d?.per_hari ?? []).map((r: Row) => ({ label: HARI[num(r.hari)], value: num(r.total) }));
-  const tLaba: Titik[] = (d?.laba30 ?? []).map((r: Row) => ({ label: `${String(r.tgl).slice(8, 10)}/${String(r.tgl).slice(5, 7)}`, value: num(r.total) }));
-  const tBulan: Titik[] = (d?.laba_bulan ?? []).map((r: Row) => ({ label: `${BLN[num(String(r.bulan).slice(5, 7)) - 1]} ${String(r.bulan).slice(2, 4)}`, value: num(r.total) }));
-  const pelanggan: Row[] = d?.pelanggan ?? [];
-  const piutang: Row[] = d?.piutang ?? [];
+  const t15: Titik[] = (Array.isArray(d?.penjualan15) ? d.penjualan15 : []).map((r: Row) => ({ label: `${String(r.tgl).slice(8, 10)}/${String(r.tgl).slice(5, 7)}`, value: num(r.total) }));
+  const tHari: Titik[] = (Array.isArray(d?.per_hari) ? d.per_hari : []).map((r: Row) => ({ label: HARI[num(r.hari)] ?? "", value: num(r.total) }));
+  const tLaba: Titik[] = (Array.isArray(d?.laba30) ? d.laba30 : []).map((r: Row) => ({ label: `${String(r.tgl).slice(8, 10)}/${String(r.tgl).slice(5, 7)}`, value: num(r.total) }));
+  const tBulan: Titik[] = (Array.isArray(d?.laba_bulan) ? d.laba_bulan : []).map((r: Row) => ({ label: `${BLN[num(String(r.bulan).slice(5, 7)) - 1] ?? ""} ${String(r.bulan).slice(2, 4)}`, value: num(r.total) }));
+  const pelanggan: Row[] = Array.isArray(d?.pelanggan) ? d.pelanggan : [];
+  const piutang: Row[] = Array.isArray(d?.piutang) ? d.piutang : [];
   const maks = Math.max(1, ...pelanggan.map((p) => num(p.total)));
 
-  const bind: Record<string, Bind> = {
-    lblRata2Penjualan: { text: uang(d?.rata_jual) },
-    lblRata2Profit: { text: uang(d?.rata_laba) },
-    lblPenjualanHariIni: { text: uang(d?.hari_jual) },
-    lblProfitHariIni: { text: uang(d?.hari_laba) },
-    cClose: (_g, c) => <button type="button" className="vb-btn" onClick={props.onTutup}>{c.props.Caption ?? "Tutup"}</button>,
-    cRefresh: (_g, c) => <button type="button" className="vb-btn" onClick={muat}>{c.props.Caption ?? "Reload"}</button>,
-    vkCommand1: (_g, c) => <button type="button" className="vb-btn" onClick={() => window.dispatchEvent(new Event("tokopro:notifikasi"))}>{c.props.Caption ?? "Notification"}</button>,
-    Image1: (_g) => <img className="vb-img" src={dash1} alt="" />,
-    Image2: (_g) => <img className="vb-img" src={dash2} alt="" />,
-    Image3: (_g) => <img className="vb-img" src={dash2} alt="" />,
-    Image4: (_g) => <img className="vb-img" src={dash1} alt="" />,
-    MSChart1: (g) => <Grafik w={g.width} h={g.height} jenis={jenis[0]} data={t15} warna="#2f7ed8" />,
-    MSChart2: (g) => <Grafik w={g.width} h={g.height} jenis={jenis[1]} data={tHari} warna="#8bbc21" />,
-    MSChart3: (g) => <Grafik w={g.width} h={g.height} jenis={jenis[2]} data={tLaba} warna="#f28f43" />,
-    MSChart4: (g) => <Grafik w={g.width} h={g.height} jenis={jenis[3]} data={tBulan} warna="#910000" />,
-    lstPiutang: () => (
-      <div className="dash-list">
-        <table>
-          <thead><tr><th>Pelanggan</th><th className="r">Piutang</th></tr></thead>
-          <tbody>
-            {piutang.map((p, i) => <tr key={i} title="Klik dua kali untuk membuka Pelunasan Piutang" style={{ cursor: "pointer" }} onDoubleClick={() => go("piutang")}><td>{p.nama}</td><td className="r">{uang(p.piutang)}</td></tr>)}
-            {d && piutang.length === 0 && <tr><td colSpan={2}>Tidak ada piutang.</td></tr>}
-          </tbody>
-        </table>
-      </div>
-    ),
-  };
-  [1, 2, 3, 4].forEach((n) => {
-    const i = n - 1;
-    const sama = n === 1 ? "cType1" : n === 2 ? "cType2" : n === 3 ? "cType3" : "cType4";
-    bind[sama] = { value: jenis[i], onChange: (v) => setJenis((o) => o.map((x, k) => (k === i ? (v as Jenis) : x))), children: JENIS.map((j) => <option key={j} value={j}>{j}</option>) as ReactNode };
-  });
-  BARIS.forEach((b, i) => {
-    const p = pelanggan[i];
-    bind[b.lbl[0]] = { text: p?.nama ?? "" };
-    bind[b.lbl[1]] = { text: p ? uang(p.total) : "" };
-  });
+  const setChartType = (idx: number, val: Jenis) => setJenis((o) => o.map((x, k) => (k === idx ? val : x)));
 
-  // Bentuk (kartu putih, lingkaran, batang) digambar dari properti aslinya.
-  const warnaLingkaran = (nama: string) => vbColor(kontrol.find((c) => c.name === nama)?.props.P15) ?? "#888";
-  kontrol.filter((c) => c.type === "Shape").forEach((c) => {
-    const key = c.index != null ? `${c.name}(${c.index})` : c.name;
-    const p = c.props;
-    const baris = BARIS.findIndex((b) => b.lingkaran === c.name);
-    const batang = c.name === "shpPelanggan" && c.index != null;
-    const lintasan = BARIS.some((b) => b.lintasan.includes(c.name));
-    let bg: string | undefined;
-    let z = 0;
-    if (batang) { bg = warnaLingkaran(BARIS[c.index!].lingkaran); z = 2; }
-    else if (lintasan) { bg = "#ececec"; z = 1; }
-    else if (baris >= 0) { bg = warnaLingkaran(c.name); z = 2; }
-    else if (p.BackStyle === 1) bg = vbColor(p.P2) ?? "#fff";
-    const bulat = p.Shape === 3 ? "50%" : p.Shape === 4 ? "6px" : undefined;
-    bind[key] = () => <div className="dash-shape" style={{ background: bg, borderRadius: bulat, zIndex: z }} />;
-  });
-
-  const hide = [
-    "Shape24",
-    ...BARIS.flatMap((b, i) => (pelanggan[i] ? [] : [...b.lbl, b.lingkaran, ...b.lintasan])),
+  const kpis = [
+    { id: "lblRata2Penjualan", label: "Rata-Rata Penjualan", value: uang(d?.rata_jual) },
+    { id: "lblRata2Profit", label: "Rata-Rata Profit", value: uang(d?.rata_laba) },
+    { id: "lblPenjualanHariIni", label: "Penjualan Hari Ini", value: uang(d?.hari_jual), highlight: true },
+    { id: "lblProfitHariIni", label: "Profit Hari Ini", value: uang(d?.hari_laba) },
   ];
-  const pos: Record<string, { width: number }> = {};
-  pelanggan.forEach((p, i) => { pos[`shpPelanggan(${i})`] = { width: Math.max(75, Math.round((LEBAR_LINTASAN * num(p.total)) / maks)) }; });
+
+  const charts = [
+    { id: "MSChart1", selectId: "cType1", title: "Penjualan 15 Hari Terakhir", data: t15, warna: "var(--chart-2)", idx: 0 },
+    { id: "MSChart2", selectId: "cType2", title: "Penjualan Per Hari", data: tHari, warna: "var(--success)", idx: 1 },
+    { id: "MSChart3", selectId: "cType3", title: "Laba Kotor 30 Hari Terakhir", data: tLaba, warna: "var(--warning)", idx: 2 },
+    { id: "MSChart4", selectId: "cType4", title: "Laba Kotor Per Bulan", data: tBulan, warna: "var(--destructive)", idx: 3 },
+  ];
 
   return (
-    <div className="dash">
-      {err && <div className="dash-err" role="alert">{err}</div>}
-      <VbForm form="FrmZDashboard" className="dash-form" bind={bind} hide={hide} pos={pos} fill />
+    <div className="dash tp-scroll-always flex h-full min-h-0 flex-col gap-3 bg-muted/25 p-3 font-sans text-foreground" data-form="FrmZDashboard">
+      {err && <Alert>{err}</Alert>}
+
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border pb-2">
+        <h1 className="text-sm font-bold text-foreground">Ringkasan Toko</h1>
+        <div className="flex items-center gap-1.5">
+          <Button type="button" variant="outline" size="sm" data-vb="vkCommand1" className="h-7 bg-background px-2.5 text-xs font-medium" onClick={() => window.dispatchEvent(new Event("tokopro:notifikasi"))}>
+            Notifikasi
+          </Button>
+          <Button type="button" variant="outline" size="sm" data-vb="cRefresh" className="h-7 bg-background px-2.5 text-xs font-medium" onClick={muat}>
+            Refresh
+          </Button>
+          <Button type="button" variant="outline" size="sm" data-vb="cClose" className="h-7 bg-background px-2.5 text-xs font-medium" onClick={props.onTutup}>
+            <span>Tutup</span>
+            <Kbd className="border border-border bg-muted text-foreground">Esc</Kbd>
+          </Button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-4">
+        {kpis.map((k) => (
+          <div
+            key={k.id}
+            className={`flex flex-col justify-between rounded-md border px-3.5 py-2.5 ${
+              k.highlight ? "border-transparent bg-display text-display-foreground" : "border-border bg-card text-foreground"
+            }`}
+          >
+            <div className={`text-xs font-medium ${k.highlight ? "text-display-foreground/75" : "text-muted-foreground"}`}>{k.label}</div>
+            <div className="mt-1 truncate text-xl font-bold tabular-nums" data-vb={k.id}>{k.value}</div>
+          </div>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-1 gap-2.5 lg:grid-cols-2">
+        {charts.map((c) => (
+          <div key={c.id} className="flex flex-col rounded-md border border-border bg-card p-3">
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <h2 className="text-xs font-semibold text-foreground">{c.title}</h2>
+              <div data-vb={c.selectId}>
+                <NativeSelect size="sm" value={jenis[c.idx]} onChange={(e) => setChartType(c.idx, e.target.value as Jenis)} className="w-24">
+                  {JENIS.map((j) => <NativeSelectOption key={j} value={j}>{j}</NativeSelectOption>)}
+                </NativeSelect>
+              </div>
+            </div>
+            <div className="min-h-0 flex-1" data-vb={c.id}>
+              <Grafik jenis={jenis[c.idx]} data={c.data} warna={c.warna} />
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-1 gap-2.5 lg:grid-cols-2">
+        <div className="flex flex-col rounded-md border border-border bg-card p-3">
+          <h2 className="mb-2.5 text-xs font-semibold text-foreground">5 Pelanggan Terbanyak</h2>
+          <div className="flex flex-col gap-2">
+            {pelanggan.slice(0, 5).map((p, i) => {
+              const pct = Math.max(8, Math.round((num(p.total) / maks) * 100));
+              return (
+                <div key={i} className="flex flex-col gap-1">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="flex items-center gap-2 font-medium text-foreground" data-vb={`lblPelanggan(${i})`}>
+                      <span className="inline-block size-2 rounded-full" style={{ background: WARNA_BARIS[i % WARNA_BARIS.length] }} />
+                      <span>{p.nama}</span>
+                    </span>
+                    <span className="font-semibold text-foreground tabular-nums" data-vb={`lblTransPelanggan(${i})`}>{uang(p.total)}</span>
+                  </div>
+                  <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                    <div className="h-full rounded-full" style={{ width: `${pct}%`, background: WARNA_BARIS[i % WARNA_BARIS.length] }} />
+                  </div>
+                </div>
+              );
+            })}
+            {pelanggan.length === 0 && (
+              <div className="py-6 text-center text-xs text-muted-foreground">Belum ada data transaksi pelanggan.</div>
+            )}
+          </div>
+        </div>
+
+        <div className="flex flex-col rounded-md border border-border bg-card p-3">
+          <div className="mb-2 flex items-center justify-between">
+            <h2 className="text-xs font-semibold text-foreground">Daftar Piutang Pelanggan</h2>
+            <span className="text-[11px] text-muted-foreground">Klik ganda untuk pelunasan</span>
+          </div>
+          <div className="tp-scroll-always max-h-48 min-h-36 flex-1 rounded-sm border border-border bg-background text-xs" data-vb="lstPiutang">
+            <table className="w-full border-collapse">
+              <thead>
+                <tr className="sticky top-0 border-b border-border bg-muted text-left font-semibold text-foreground">
+                  <th className="px-2.5 py-1.5">Pelanggan</th>
+                  <th className="px-2.5 py-1.5 text-right">Piutang</th>
+                </tr>
+              </thead>
+              <tbody>
+                {piutang.map((p, i) => (
+                  <tr key={i} title="Klik dua kali untuk membuka Pelunasan Piutang" className="cursor-pointer border-b border-border/60 hover:bg-muted/60" onDoubleClick={() => go("piutang")}>
+                    <td className="px-2.5 py-1.5 font-medium">{p.nama}</td>
+                    <td className="px-2.5 py-1.5 text-right font-semibold text-destructive tabular-nums">{uang(p.piutang)}</td>
+                  </tr>
+                ))}
+                {d && piutang.length === 0 && <tr><td colSpan={2} className="px-2.5 py-6 text-center text-muted-foreground">Tidak ada piutang yang belum lunas.</td></tr>}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

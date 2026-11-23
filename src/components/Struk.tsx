@@ -75,7 +75,23 @@ export function strukTeks(trans: { header: Row; detail: Row[] }, setting: Row | 
   const h = trans.header;
   const s = setting ?? {};
   const W = kertasStruk().kolom;
-  const tengah = (t: unknown) => { const x = String(t ?? ""); return x.padStart(Math.floor((W + x.length) / 2)).slice(0, W); };
+  // Teks lebih panjang dari lebar kertas dibungkus per kata, tiap baris diratakan tengah.
+  const bungkus = (x: string): string[] => {
+    const out: string[] = [];
+    let baris = "";
+    for (let kata of x.split(/\s+/).filter(Boolean)) {
+      while (kata.length > W) { // satu kata lebih panjang dari kertas: potong
+        if (baris) { out.push(baris); baris = ""; }
+        out.push(kata.slice(0, W)); kata = kata.slice(W);
+      }
+      if (!baris) baris = kata;
+      else if (baris.length + 1 + kata.length <= W) baris += ` ${kata}`;
+      else { out.push(baris); baris = kata; }
+    }
+    if (baris) out.push(baris);
+    return out;
+  };
+  const tengah = (t: unknown) => bungkus(String(t ?? "")).map((x) => x.padStart(Math.floor((W + x.length) / 2))).join("\n");
   const dua = (a: unknown, b: unknown) => {
     const kiri = String(a ?? ""), kanan = String(b ?? "");
     return kiri.length + kanan.length + 1 > W ? `${kiri}\n${kanan.padStart(W)}` : kiri + kanan.padStart(W - kiri.length);

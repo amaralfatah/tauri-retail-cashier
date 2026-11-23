@@ -1,4 +1,5 @@
 import { CSSProperties, ReactNode, useLayoutEffect, useRef, useState } from "react";
+import { Button } from "@/components/ui/button";
 import { Row } from "../../api";
 import { qty, rp, tglID, today } from "../../format";
 import { Kind, kertasLaporan } from "./defs";
@@ -461,7 +462,7 @@ function Tabel(props: { built: Built; baris: number[]; ulang?: number }) {
  * Kertas laporan: kop toko, judul, periode, isi, dan nomor halaman. Isi dibagi ke halaman seukuran kertas
  * (A4, tegak atau mendatar sesuai laporan). Kop dan judul kolom diulang di tiap halaman.
  */
-export function Kertas(props: { kind: Kind; title: string; periode: string; setting: Row; built: Built; kosong: boolean }) {
+export function Kertas(props: { kind: Kind; title: string; periode: string; setting: Row; built: Built; kosong: boolean; onUbahFilter?: () => void }) {
   const { setting: s, built, kind } = props;
   const k = kertasLaporan(kind);
   const lebarIsi = k.lebar - 2 * k.margin;
@@ -508,7 +509,12 @@ export function Kertas(props: { kind: Kind; title: string; periode: string; sett
         <div key={n} className="lap-page">
           {kop}
           {props.kosong
-            ? <div className="lap-kosong">Tidak ada data untuk pilihan ini.</div>
+            ? (
+              <div className="lap-kosong">
+                <p>Tidak ada data untuk pilihan ini. Coba ubah tanggal atau filter.</p>
+                {props.onUbahFilter && <Button type="button" variant="outline" size="sm" className="no-print mt-3 bg-background" onClick={props.onUbahFilter}>Ubah Filter</Button>}
+              </div>
+            )
             : <Tabel built={built} baris={h.baris} ulang={h.ulang} />}
           <div className="lap-hal">Halaman : {n + 1}</div>
         </div>

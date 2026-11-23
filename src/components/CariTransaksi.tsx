@@ -1,4 +1,7 @@
 import { useEffect, useState } from "react";
+import { cn } from "cn";
+import { Input } from "@/components/ui/input";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { api, Row } from "../api";
 import { rp, tglID, today } from "../format";
 import { Geom } from "../vb/VbForm";
@@ -23,46 +26,86 @@ export function CariTransaksi(props: { kode: "TJ" | "TB"; onPick: (notrans: stri
       api.listTransaksi(props.kode, tgl1, tgl2, cari)
         .then((r) => { if (!batal) { setRows(r); setSel(0); } })
         .catch(() => !batal && setRows([]));
-    }, 120);
+    }, 250);
     return () => { batal = true; clearTimeout(t); };
   }, [props.kode, tgl1, tgl2, cari, muat]);
 
   const ambil = () => rows[sel] && props.onPick(rows[sel].notrans);
+  const onListKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "ArrowDown") { e.preventDefault(); setSel((s) => Math.min(s + 1, rows.length - 1)); }
+    else if (e.key === "ArrowUp") { e.preventDefault(); setSel((s) => Math.max(s - 1, 0)); }
+    else if (e.key === "Enter") { e.preventDefault(); ambil(); }
+  };
+
   const bind = {
-    tData: { value: cari, onChange: setCari },
+    LabelData: { text: "Cari" },
+    tData: () => (
+      <Input value={cari} onChange={(e) => setCari(e.target.value)} placeholder={jual ? "Ketik nomor transaksi atau nama pelanggan" : "Ketik nomor transaksi atau nama supplier"}
+        className="h-full w-full rounded-sm bg-background px-1.5 py-0 leading-none [font-size:inherit] md:[font-size:inherit]" />
+    ),
     dtTgl1: { value: tgl1, onChange: (v: string) => v && setTgl1(v) },
     dtTgl2: { value: tgl2, onChange: (v: string) => v && setTgl2(v) },
-    cOK: { onClick: () => setMuat((n) => n + 1) },
-    cAmbil: { onClick: ambil },
-    cClose: { onClick: props.onClose },
-    lsData: (g: Geom) => (
-      <div className="tj-grid cari-data" tabIndex={0} style={{ width: g.width, height: g.height }} onKeyDown={(e) => {
-        if (e.key === "ArrowDown") { e.preventDefault(); setSel((s) => Math.min(s + 1, rows.length - 1)); }
-        else if (e.key === "ArrowUp") { e.preventDefault(); setSel((s) => Math.max(s - 1, 0)); }
-        else if (e.key === "Enter") { e.preventDefault(); ambil(); }
-      }}>
-        <table>
-          <colgroup><col style={{ width: "22%" }} /><col style={{ width: "14%" }} /><col style={{ width: "28%" }} /><col style={{ width: "18%" }} /><col style={{ width: "18%" }} /></colgroup>
-          <thead><tr><th style={{ textAlign: "left" }}>No. Transaksi</th><th>Tanggal</th><th>{jual ? "Pelanggan" : "Pemasok"}</th><th>Sales</th><th className="r">Total</th></tr></thead>
-          <tbody>
-            {rows.map((r, i) => (
-              <tr key={r.notrans} className={i === sel ? "cur" : ""} onMouseDown={() => setSel(i)} onDoubleClick={() => props.onPick(r.notrans)}>
-                <td>{r.notrans}</td><td>{tglID(r.tgltrans)}</td><td className="nm">{r.kontak}</td><td className="nm">{r.sales}</td><td className="r">{rp(r.totaltrans)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+    cOK: { text: "Cari", onClick: () => setMuat((n) => n + 1) },
+    cAmbil: { text: "Ambil [Enter]", onClick: ambil, variant: "default" as const },
+    cClose: { text: "Tutup [Esc]", onClick: props.onClose },
+    lsData: (_g: Geom) => (
+      <div
+        data-slot="cari-data"
+        tabIndex={0}
+        onKeyDown={onListKeyDown}
+        className="cari-data tp-scroll-always size-full rounded-md border border-border bg-card font-sans text-xs text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring/40 [&>[data-slot=table-container]]:overflow-visible"
+      >
+        <Table className="table-fixed border-collapse">
+          <colgroup><col className="w-[22%]" /><col className="w-[14%]" /><col className="w-[28%]" /><col className="w-[18%]" /><col className="w-[18%]" /></colgroup>
+          <TableHeader>
+            <TableRow className="border-b border-border bg-muted hover:bg-muted">
+              <TableHead className="sticky top-0 z-20 h-7 border-r border-border bg-muted px-2 text-left text-xs font-semibold text-foreground">No. Transaksi</TableHead>
+              <TableHead className="sticky top-0 z-20 h-7 border-r border-border bg-muted px-2 text-left text-xs font-semibold text-foreground">Tanggal</TableHead>
+              <TableHead className="sticky top-0 z-20 h-7 border-r border-border bg-muted px-2 text-left text-xs font-semibold text-foreground">{jual ? "Pelanggan" : "Supplier"}</TableHead>
+              <TableHead className="sticky top-0 z-20 h-7 border-r border-border bg-muted px-2 text-left text-xs font-semibold text-foreground">Sales</TableHead>
+              <TableHead className="sticky top-0 z-20 h-7 bg-muted px-2 text-right text-xs font-semibold text-foreground">Total</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {rows.map((r, i) => {
+              const cur = i === sel;
+              return (
+                <TableRow
+                  key={r.notrans}
+                  data-state={cur ? "selected" : undefined}
+                  onMouseDown={() => setSel(i)}
+                  onDoubleClick={() => props.onPick(r.notrans)}
+                  className={cn(
+                    "cursor-default border-b border-border",
+                    cur ? "bg-primary text-primary-foreground hover:bg-primary" : "hover:bg-muted",
+                  )}
+                >
+                  <TableCell className={cn("h-6.5 truncate border-r px-2 py-0 tabular-nums", cur ? "border-transparent" : "border-border")}>{r.notrans}</TableCell>
+                  <TableCell className={cn("h-6.5 truncate border-r px-2 py-0 tabular-nums", cur ? "border-transparent" : "border-border")}>{tglID(r.tgltrans)}</TableCell>
+                  <TableCell className={cn("h-6.5 truncate border-r px-2 py-0", cur ? "border-transparent" : "border-border")}>{r.kontak}</TableCell>
+                  <TableCell className={cn("h-6.5 truncate border-r px-2 py-0", cur ? "border-transparent" : "border-border")}>{r.sales}</TableCell>
+                  <TableCell className="h-6.5 truncate px-2 py-0 text-right tabular-nums">{rp(r.totaltrans)}</TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+        {rows.length === 0 && (
+          <div className="px-6 py-8 text-center text-sm text-muted-foreground">
+            {jual ? "Transaksi tidak ditemukan. Ubah tanggal atau coba kata lain." : "Pembelian tidak ditemukan. Ubah tanggal atau coba kata lain."}
+          </div>
+        )}
       </div>
     ),
   };
   // Enter di kotak cari memuat ulang; panah bawah dari kotak cari pindah ke daftar bila ada isinya.
   return (
-    <div style={{ display: "contents" }} onKeyDownCapture={(e) => {
+    <div className="contents" onKeyDownCapture={(e) => {
       if (!(e.target instanceof HTMLInputElement)) return;
       if (e.key === "Enter") { e.preventDefault(); e.stopPropagation(); setMuat((n) => n + 1); }
       else if (e.key === "ArrowDown" && e.target.closest('[data-vb="tData"]') && rows.length) {
         e.preventDefault();
-        document.querySelector<HTMLElement>(".cari-data")?.focus();
+        document.querySelector<HTMLElement>('[data-slot="cari-data"], .cari-data')?.focus();
       }
     }}>
       <VbModal form={jual ? "FrmCariTransJual" : "FrmCariTransBeli"} bind={bind} onClose={props.onClose} />

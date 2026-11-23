@@ -1,12 +1,17 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Kbd } from "@/components/ui/kbd";
+import { Label } from "@/components/ui/label";
+import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
 import { api, errText, MasterTable, Row } from "../api";
 import { useApp } from "../appContext";
 import { rp } from "../format";
-import { Bind, formSize, VbForm } from "../vb/VbForm";
-import { GridCol, useEnterNav, useMsgBox, VbGrid, VbModal } from "../vb/VbGrid";
+import { Bind, formCaption, formSize, useTinggiJudul } from "../vb/VbForm";
+import { GridCol, ModalFrame, useMsgBox, useTopEscape, VbGrid, VbModal } from "../vb/VbGrid";
 import { berkasApi } from "../api/berkas";
 import { AlamatFoto, kotakFoto, simpanFoto, useFotoBarang } from "./fotoBarang";
-import { distinct, KEYS, kodeUrut, loadAll, q2, useList } from "./masterLib";
+import { distinct, GridKosong, HAPUS_MERAH, KEYS, kodeUrut, loadAll, q2, TUTUP, useLabelRapi, useList } from "./masterLib";
 
 /** Angka dari isian: angka dipakai apa adanya; teks memakai aturan Indonesia (titik pemisah ribuan, koma desimal). */
 const n = (v: unknown): number => (typeof v === "number" ? v : Number(String(v ?? "").replace(/\./g, "").replace(",", ".")) || 0);
@@ -28,7 +33,7 @@ const opts = (list: [string, string][], blank?: string) => (
 /** Isian combo yang boleh diketik bebas, dengan saran dari data yang sudah ada. */
 const freeCombo = (id: string, value: string, set: (x: string) => void, list: string[]): Bind => () => (
   <>
-    <input className="vb-txt" list={id} value={value} onChange={(e) => set(e.target.value)} />
+    <Input list={id} value={value} readOnly={false} onChange={(e) => set(e.target.value)} className="h-full w-full rounded-sm bg-background px-1.5 py-0 [font-family:inherit] [font-size:inherit] [font-weight:inherit] md:[font-size:inherit]" />
     <datalist id={id}>{list.map((o) => <option key={o} value={o} />)}</datalist>
   </>
 );
@@ -64,6 +69,7 @@ export function BarangEdit(props: { row: Row; isNew: boolean; onClose: () => voi
   const muatSemua = () => { loadAll("mdbarang", {}).then(setSemua).catch(() => undefined); };
   useEffect(muatSemua, []);
   const set = (k: string, val: unknown) => setV((x) => ({ ...x, [k]: val }));
+  const labelBarang = useLabelRapi("FrmDataBarang", { Label9: "Supplier" }, ["LabelKodeBarang", "LabelNamaBarang"]);
 
   // Hitungan harga dijalankan saat kolom kehilangan fokus (LostFocus di aslinya), bukan setiap ketikan.
   const hitungBeli = () => setV((x) => {
@@ -102,11 +108,12 @@ export function BarangEdit(props: { row: Row; isNew: boolean; onClose: () => voi
 
   const simpan = async () => {
     const info = (t: string) => msg.alert(t, "Informasi");
-    if (!s(v.kodebarang).trim() || !s(v.namabarang).trim()) return msg.alert("Lengkapi data anda!\nAda data yang harus diisi.", "Information");
-    if (!s(v.kodekelompok)) return info("Kelompok harus dipilih!");
-    if (!s(v.kodekategori)) return info("Kategori harus dipilih!");
-    if (!s(v.kodesatuan)) return info("Satuan harus dipilih!");
-    if (!s(v.kodepemasok)) return info("Nama Pemasok harus dipilih!");
+    if (!s(v.kodebarang).trim()) return info("Kode barang belum diisi.");
+    if (!s(v.namabarang).trim()) return info("Nama barang belum diisi.");
+    if (!s(v.kodekelompok)) return info("Kelompok belum dipilih.");
+    if (!s(v.kodekategori)) return info("Kategori belum dipilih.");
+    if (!s(v.kodesatuan)) return info("Satuan belum dipilih.");
+    if (!s(v.kodepemasok)) return info("Supplier belum dipilih.");
     const data: Row = {};
     for (const k of NUM_COLS) data[k] = n(v[k]);
     for (const k of TEXT_COLS) data[k] = v[k] ?? "";
@@ -126,7 +133,7 @@ export function BarangEdit(props: { row: Row; isNew: boolean; onClose: () => voi
   };
   const hapus = () => {
     if (!orig) return;
-    msg.confirm("Apakah data akan dihapus?", async () => {
+    msg.confirm(`Hapus barang ${s(v.namabarang) || orig}? Barang yang sudah dihapus tidak bisa dikembalikan.`, async () => {
       try {
         await api.masterDelete("mdbarang", orig);
         setOrig(null);
@@ -138,7 +145,7 @@ export function BarangEdit(props: { row: Row; isNew: boolean; onClose: () => voi
       } catch (e) {
         msg.alert(errText(e));
       }
-    }, "Konfirmasi");
+    }, "Hapus barang", undefined, true);
   };
 
   const katList = s(v.kodekelompok) ? kat.rows.filter((k) => k.kodekelompok === v.kodekelompok) : kat.rows;
@@ -169,9 +176,9 @@ export function BarangEdit(props: { row: Row; isNew: boolean; onClose: () => voi
     cDelFoto: { onClick: () => {
       const k = fotoKode ?? "";
       if (!k || !foto.src) return msg.alert("Barang ini belum punya foto.");
-      msg.confirm("Apakah file foto akan dihapus?", async () => {
+      msg.confirm("Hapus foto barang ini? Fotonya tidak bisa dikembalikan.", async () => {
         try { await berkasApi.fotoHapus(k); foto.muat(); } catch (e) { msg.alert(errText(e)); }
-      });
+      }, "Hapus foto", undefined, true);
     } },
     // Kolom Kode terisi sendiri saat difokus kalau masih kosong (tKode_GotFocus).
     tKode: { value: s(v.kodebarang), onChange: (x) => set("kodebarang", x), onFocus: () => { if (!s(v.kodebarang).trim()) void isiKode(); } },
@@ -188,22 +195,27 @@ export function BarangEdit(props: { row: Row; isNew: boolean; onClose: () => voi
     tStokAkhir: { value: q2(orig ? v.stokakhir : n(v.stokawal)), disabled: true },
     chkAktif: { value: String(Number(v.aktif ?? 1)), onChange: (x) => set("aktif", x === "1" ? 1 : 0) },
     cBaru: { onClick: () => { setOrig(null); setFotoKode(null); setV(newBarang()); } },
-    cSimpan: { onClick: () => void simpan() },
-    cHapus: { onClick: hapus, disabled: !orig },
+    cSimpan: { onClick: () => void simpan(), variant: "default" },
+    cHapus: { onClick: hapus, disabled: !orig, className: HAPUS_MERAH },
     cCustom: { onClick: () => setMenu((m) => !m) },
-    cTutup: { onClick: props.onClose },
+    cTutup: { onClick: props.onClose, text: TUTUP },
+    ...labelBarang,
   };
 
   // Menu harga hanya bereaksi kalau Kode sudah terisi.
   const pick = (k: Sub) => { setMenu(false); if (s(v.kodebarang).trim()) setSub(k); };
   const { height } = formSize("FrmDataBarang");
+  const tinggiJudul = useTinggiJudul();
   return (
     <VbModal form="FrmDataBarang" bind={bind} hide={["tFile", "lblID", "lblTmpKode"]} onClose={props.onClose}>
       {menu && (
-        <div className="vbm-pop" style={{ left: 5730 / 15 + 1, bottom: height + 22 - (5265 + 150) / 15 - 21 }}>
-          <button type="button" onClick={() => pick("satuan")}>Harga Multi Satuan</button>
-          <button type="button" onClick={() => pick("level")}>Harga Level</button>
-          <button type="button" onClick={() => pick("tingkat")}>Harga Tingkat</button>
+        <div
+          className="absolute z-20 min-w-44 rounded-md border border-border bg-popover p-1 text-xs text-popover-foreground shadow-lg"
+          style={{ left: 5730 / 15 + 1, bottom: height + tinggiJudul - (5265 + 150) / 15 - 21 }}
+        >
+          <button type="button" data-slot="menu-item" className="block w-full rounded-sm px-2.5 py-1.5 text-left hover:bg-accent hover:text-accent-foreground" onClick={() => pick("satuan")}>Harga Multi Satuan</button>
+          <button type="button" data-slot="menu-item" className="block w-full rounded-sm px-2.5 py-1.5 text-left hover:bg-accent hover:text-accent-foreground" onClick={() => pick("level")}>Harga Level</button>
+          <button type="button" data-slot="menu-item" className="block w-full rounded-sm px-2.5 py-1.5 text-left hover:bg-accent hover:text-accent-foreground" onClick={() => pick("tingkat")}>Harga Tingkat</button>
         </div>
       )}
       {msg.node}
@@ -290,7 +302,7 @@ function BarangSub(props: { kind: Sub; v: Row; orig: string | null; satuan: Row[
   };
   const bind: Record<string, Bind> = {
     ...info,
-    cSimpan: { onClick: () => void simpan() },
+    cSimpan: { onClick: () => void simpan(), variant: "default" },
     cBatal: { onClick: () => setW(pick()) },
     cTutup: { onClick: props.onClose },
   };
@@ -341,12 +353,14 @@ export function PartyEdit(props: { table: MasterTable; row: Row; isNew: boolean;
   const msg = useMsgBox();
   const set = (k: string, val: unknown) => setV((x) => ({ ...x, [k]: val }));
   const blank = (): Row => ({ aktif: 1 });
+  const labelParty = useLabelRapi(cfg.form, {}, ["LabelKodeBarang", ...(props.table === "mdpemasok" ? ["LabelBarcode"] : [])]);
 
   const simpan = async () => {
     const kode = s(v[cfg.key]).trim();
     // Pemasok wajib kode dan nama; Karyawan dan Pelanggan aslinya tanpa pemeriksaan nama. Kode kosong tidak disimpan
     // karena aslinya baris berkode kosong tidak pernah tampil di daftar (`where kode<>''`).
-    if (!kode || (props.table === "mdpemasok" && !s(v[cfg.name]).trim())) return msg.alert("Lengkapi data anda!\nAda data yang harus diisi.", "Information");
+    if (!kode) return msg.alert(`Kode ${cfg.title} belum diisi.`, "Informasi");
+    if (props.table === "mdpemasok" && !s(v[cfg.name]).trim()) return msg.alert("Nama supplier belum diisi.", "Informasi");
     // Kode yang sudah ada memperbarui data lama (select first 1 ... lalu update), bukan ditolak.
     const ada = props.rows.find((r) => s(r[cfg.key]).toUpperCase() === kode.toUpperCase());
     const asli = ada ? s(ada[cfg.key]) : null;
@@ -366,7 +380,7 @@ export function PartyEdit(props: { table: MasterTable; row: Row; isNew: boolean;
   const hapus = () => {
     const kode = s(v[cfg.key]).trim();
     if (!kode) return;
-    msg.confirm("Apakah data akan dihapus?", async () => {
+    msg.confirm(`Hapus ${cfg.title} ${s(v[cfg.name]).trim() || kode}? Data yang sudah dihapus tidak bisa dikembalikan.`, async () => {
       try {
         await api.masterDelete(props.table, kode);
         setOrig(null);
@@ -376,16 +390,17 @@ export function PartyEdit(props: { table: MasterTable; row: Row; isNew: boolean;
       } catch (e) {
         msg.alert(errText(e));
       }
-    }, "Konfirmasi");
+    }, `Hapus ${cfg.title}`, undefined, true);
   };
 
   const bind: Record<string, Bind> = {
     cAutoKode: { onClick: () => set(cfg.key, kodeUrut(props.rows.map((r) => r[cfg.key]), AWALAN[props.table], 3)) },
     chkAktif: { value: String(Number(v.aktif ?? 1)), onChange: (x) => set("aktif", x === "1" ? 1 : 0) },
     cBaru: { onClick: () => { setOrig(null); setV(blank()); } },
-    cSimpan: { onClick: () => void simpan() },
-    cHapus: { onClick: hapus },
-    cTutup: { onClick: props.onClose },
+    cSimpan: { onClick: () => void simpan(), variant: "default" },
+    cHapus: { onClick: hapus, className: HAPUS_MERAH },
+    cTutup: { onClick: props.onClose, text: TUTUP },
+    ...labelParty,
     cLevel: { value: s(v.level), onChange: (x) => set("level", x), children: opts([1, 2, 3, 4, 5].map((i) => [`Level ${i}`, `Level ${i}`]), "") },
     dtMasaAktif: { value: s(v.masaaktif).slice(0, 10), onChange: (x) => set("masaaktif", x) },
     tPoin: { value: rp(v.poin), disabled: true },
@@ -397,7 +412,7 @@ export function PartyEdit(props: { table: MasterTable; row: Row; isNew: boolean;
       : txt(v[col] ?? "", (x) => set(col, x), kunci);
   }
   for (const [ctl, col] of Object.entries(cfg.free)) bind[ctl] = freeCombo(`dl-${ctl}`, s(v[col]), (x) => set(col, x), distinct(props.rows, col));
-  return <VbModal form={cfg.form} bind={bind} onClose={props.onClose}>{msg.node}</VbModal>;
+  return <VbModal form={cfg.form} title={props.table === "mdpemasok" ? "Data Supplier" : undefined} bind={bind} onClose={props.onClose}>{msg.node}</VbModal>;
 }
 
 /* =========================================================================
@@ -419,6 +434,7 @@ export function SimpleMaster(props: { table: Simple; onClose?: () => void; pemas
 
 /** Panjang angka dan awalan kode otomatis: Kelompok "01", Kategori "001". */
 const SIMPLE_LEBAR: Record<Simple, number> = { mdkelompok: 2, mdkategori: 3, mdsatuan: 0 };
+const NAMA_SIMPLE: Record<Simple, string> = { mdkelompok: "kelompok", mdkategori: "kategori", mdsatuan: "satuan" };
 
 function SimpleBody(props: { table: Simple; onClose?: () => void }) {
   const { table } = props;
@@ -431,9 +447,10 @@ function SimpleBody(props: { table: Simple; onClose?: () => void }) {
   const [sorot, setSorot] = useState<string | null>(null);
   const [addKel, setAddKel] = useState(false);
   const kel = useList(table === "mdkategori" ? "mdkelompok" : null);
-  const ref = useEnterNav(form);
   const close = props.onClose ?? (() => go("home"));
   const set = (k: string, val: unknown) => setV((x) => ({ ...x, [k]: val }));
+  // Sebagai halaman, Esc menutup layar ini; sebagai jendela, ModalFrame yang mengurus Esc.
+  useTopEscape(props.onClose ? undefined : close);
 
   const load = () => { loadAll(table, { sort: key }).then(setRows).catch((e) => msg.alert(errText(e))); };
   useEffect(load, [table]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -443,7 +460,8 @@ function SimpleBody(props: { table: Simple; onClose?: () => void }) {
   const kosongkan = () => { setV({}); setSorot(null); };
   const simpan = async () => {
     const kode = s(v[key]).trim();
-    if (!kode || !s(v[name]).trim()) return msg.alert("Lengkapi data anda!\nAda data yang harus diisi.", "Information");
+    if (!kode) return msg.alert(`Kode ${NAMA_SIMPLE[table]} belum diisi.`, "Informasi");
+    if (!s(v[name]).trim()) return msg.alert(`Nama ${NAMA_SIMPLE[table]} belum diisi.`, "Informasi");
     // Kode yang sudah ada memperbarui data lama, seperti aslinya.
     const ada = rows.find((r) => s(r[key]).toUpperCase() === kode.toUpperCase());
     const data: Row = { [key]: kode, [name]: s(v[name]) };
@@ -461,7 +479,8 @@ function SimpleBody(props: { table: Simple; onClose?: () => void }) {
     // Kelompok memakai baris terpilih; Satuan dan Kategori memakai isi kolom Kode.
     const kode = table === "mdkelompok" ? sorot ?? "" : s(v[key]).trim();
     if (!kode) return;
-    msg.confirm("Apakah data akan dihapus?", async () => {
+    const nm = s(rows.find((r) => s(r[key]) === kode)?.[name] ?? v[name]).trim();
+    msg.confirm(`Hapus ${NAMA_SIMPLE[table]} ${nm || kode}? Data yang sudah dihapus tidak bisa dikembalikan.`, async () => {
       try {
         await api.masterDelete(table, kode);
         kosongkan();
@@ -470,51 +489,99 @@ function SimpleBody(props: { table: Simple; onClose?: () => void }) {
       } catch (e) {
         msg.alert(errText(e));
       }
-    }, "Konfirmasi");
+    }, `Hapus ${NAMA_SIMPLE[table]}`, undefined, true);
   };
 
   const kelName = (k: string) => kel.rows.find((r) => r.kodekelompok === k)?.namakelompok ?? k;
-  const no: GridCol<Row> = { title: "No.", width: 40, align: "right", render: (_r, i) => i + 1 };
+  const no: GridCol<Row> = { title: "No.", width: 42, align: "right", render: (_r, i) => i + 1 };
   const cols: GridCol<Row>[] = table === "mdkategori"
-    ? [no, { title: "Kode", width: 90, render: (r) => r.kodekategori }, { title: "Kelompok", width: 140, render: (r) => kelName(r.kodekelompok) },
+    ? [no, { title: "Kode", width: 95, render: (r) => r.kodekategori }, { title: "Kelompok", width: 145, render: (r) => kelName(r.kodekelompok) },
       { title: "Nama", width: 220, render: (r) => r.namakategori }]
     : table === "mdkelompok"
       ? [no, { title: "Kode", width: 110, render: (r) => r.kodekelompok }, { title: "Nama", width: 330, render: (r) => r.namakelompok }]
       : [no, { title: "Kode", width: 110, render: (r) => r.kodesatuan }, { title: "Nama", width: 330, render: (r) => r.namasatuan }];
 
-  const pair = (kode: boolean): Bind => ({
-    value: s(v.kodekelompok), onChange: (x) => set("kodekelompok", x),
-    children: opts(kel.rows.map((r) => [r.kodekelompok, kode ? r.kodekelompok : r.namakelompok]), ""),
-  });
   const autoKode = () => set(key, kodeUrut(rows.map((r) => r[key]), "", SIMPLE_LEBAR[table]));
-  const bind: Record<string, Bind> = {
-    tKode: txt(v[key], (x) => set(key, x)),
-    tNama: txt(v[name], (x) => set(name, x)),
-    cAutoKode: { onClick: autoKode },
-    // "+" di Data Satuan tidak punya handler di aslinya; Command1 hanya ada di form itu.
-    Command1: { onClick: () => undefined },
-    cKeloimpokNama: pair(false), cKelompokKode: pair(true),
-    cAddKelompok: { onClick: () => setAddKel(true) },
-    lsData: () => <VbGrid cols={cols} rows={rows} rowKey={(r) => r[key]} selected={sorot} onSelect={setSorot} onOpen={pickRow} />,
-    cBaru: { onClick: kosongkan },
-    cSimpan: { onClick: () => void simpan() },
-    cHapus: { onClick: hapus },
-    cTutup: { onClick: close },
-  };
-  const extra = (
-    <>
+
+  const body = (
+    <div className="vb-modern flex size-full min-h-0 flex-col justify-between gap-3 bg-background p-3 font-sans text-xs text-foreground" data-form={form}>
+      <div className="flex flex-col gap-2.5 rounded-md border border-border bg-card p-3">
+        {table === "mdkategori" && (
+          <div className="grid grid-cols-[1fr_90px_auto] items-end gap-2">
+            <div className="flex flex-col gap-1" data-vb="cKeloimpokNama">
+              <Label className="text-xs font-medium text-foreground">Kelompok</Label>
+              <NativeSelect value={s(v.kodekelompok)} onChange={(e) => set("kodekelompok", e.target.value)} className="w-full">
+                <NativeSelectOption value="" />
+                {kel.rows.map((r) => <NativeSelectOption key={r.kodekelompok} value={r.kodekelompok}>{r.namakelompok}</NativeSelectOption>)}
+              </NativeSelect>
+            </div>
+            <div className="flex flex-col gap-1" data-vb="cKelompokKode">
+              <Label className="text-xs font-medium text-foreground">Kode</Label>
+              <NativeSelect value={s(v.kodekelompok)} onChange={(e) => set("kodekelompok", e.target.value)} className="w-full">
+                <NativeSelectOption value="" />
+                {kel.rows.map((r) => <NativeSelectOption key={r.kodekelompok} value={r.kodekelompok}>{r.kodekelompok}</NativeSelectOption>)}
+              </NativeSelect>
+            </div>
+            <Button type="button" variant="outline" size="sm" data-vb="cAddKelompok" className="h-7 px-2.5 text-xs font-semibold" onClick={() => setAddKel(true)}>
+              +
+            </Button>
+          </div>
+        )}
+        <div className={`grid items-end gap-2 ${SIMPLE_LEBAR[table] > 0 ? "grid-cols-[140px_auto_1fr]" : "grid-cols-[140px_1fr]"}`}>
+          <div className="flex flex-col gap-1" data-vb="tKode">
+            <Label className="text-xs font-medium text-foreground">Kode <span className="text-destructive">*</span></Label>
+            <Input value={s(v[key])} readOnly={false} onChange={(e) => set(key, e.target.value)} className="h-7 bg-background text-xs" />
+          </div>
+          {SIMPLE_LEBAR[table] > 0 ? (
+            <Button type="button" variant="outline" size="sm" data-vb="cAutoKode" className="h-7 px-2.5 text-xs font-medium" onClick={autoKode}>
+              Kode otomatis
+            </Button>
+          ) : null}
+          <div className="flex flex-col gap-1" data-vb="tNama">
+            <Label className="text-xs font-medium text-foreground">Nama <span className="text-destructive">*</span></Label>
+            <Input value={s(v[name])} readOnly={false} onChange={(e) => set(name, e.target.value)} className="h-7 bg-background text-xs" />
+          </div>
+        </div>
+      </div>
+
+      <div className="min-h-0 flex-1" data-vb="lsData">
+        <GridKosong kosong={rows.length === 0} teks="Belum ada data. Isi kode dan nama di atas, lalu klik Simpan.">
+          <VbGrid cols={cols} rows={rows} rowKey={(r) => r[key]} selected={sorot} onSelect={setSorot} onOpen={pickRow} />
+        </GridKosong>
+      </div>
+
+      <div className="flex items-center justify-between border-t border-border pt-2">
+        <div className="flex items-center gap-1.5">
+          <Button type="button" variant="outline" size="default" data-vb="cHapus" className={`h-8 bg-background px-3 text-xs font-medium ${HAPUS_MERAH}`} onClick={hapus}>
+            Hapus
+          </Button>
+          <Button type="button" variant="outline" size="default" data-vb="cBaru" className="h-8 px-3 text-xs font-medium" onClick={kosongkan}>
+            Baru
+          </Button>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <Button type="button" variant="outline" size="default" data-vb="cTutup" className="h-8 gap-1.5 px-2.5 text-xs font-medium" onClick={close}>
+            <span>Tutup</span>
+            <Kbd className="border border-border bg-muted text-foreground">Esc</Kbd>
+          </Button>
+          <Button type="button" variant="default" size="default" data-vb="cSimpan" className="h-8 px-4 text-xs font-semibold" onClick={() => void simpan()}>
+            Simpan
+          </Button>
+        </div>
+      </div>
       {msg.node}
       {addKel && <SimpleMaster table="mdkelompok" onClose={() => { setAddKel(false); kel.reload(); }} />}
-    </>
-  );
-
-  if (props.onClose) return <VbModal form={form} bind={bind} onClose={close}>{extra}</VbModal>;
-  return (
-    <div className="vbm-area" ref={ref}>
-      <VbForm form={form} bind={bind} />
-      {extra}
     </div>
   );
+
+  if (props.onClose) {
+    return (
+      <ModalFrame title={formCaption(form)} width={560} height={table === "mdkategori" ? 450 : 410} onClose={close}>
+        {body}
+      </ModalFrame>
+    );
+  }
+  return body;
 }
 
 /** "+" di samping Pemasok pada Data Barang: daftar supplier dengan isiannya, lalu kembali ke Data Barang. */

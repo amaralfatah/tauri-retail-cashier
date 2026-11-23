@@ -1,26 +1,31 @@
+import { ChevronDownIcon, ChevronRightIcon, CircleHelpIcon } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
 import { api, errText, Row } from "../api";
 import { useApp } from "../appContext";
 import { Modal } from "../components/Modal";
 import { berkasApi } from "../api/berkas";
-import { Bind, formCaption, Geom, VbForm } from "../vb/VbForm";
+import { formCaption } from "../vb/VbForm";
 import { allowedFor, MENU, MenuNode } from "../vb/shell";
-import { GridCol, ToolItem, useMsgBox, VbGrid, VbToolbar } from "../vb/VbGrid";
-
+import { GridCol, ToolItem, useMsgBox, useTopEscape, VbGrid, VbToolbar } from "../vb/VbGrid";
 import { useDaftarFile } from "./daftarFile";
-import "./pengguna.css";
 
 /** Isi combo Level di FrmZPengguna aslinya, dengan urutan yang sama. */
 const LEVELS = ["Kasir", "Supervisor", "Manager", "Direktur", "Lainnya"];
+const ACTIONS = ["Baru", "Hapus", "Filter", "Refresh", "Export", "Cetak", "Tutup"];
 
 const status = (r: Row) => (Number(r.aktif ?? 1) === 0 ? "Non Aktif" : Number(r.belum_ada_password) === 1 ? "Belum ada password" : "Aktif");
 
 const COLS: GridCol<Row>[] = [
-  { title: "No.", width: 40, align: "right", render: (_, i) => i + 1 },
-  { title: "Nama User", width: 110, render: (r) => r.iduser },
-  { title: "Level", width: 80, render: (r) => r.level },
-  { title: "Karyawan", width: 130, render: (r) => r.namakaryawan ?? "" },
-  { title: "Status", width: 110, render: status },
+  { title: "No.", width: 42, align: "right", render: (_, i) => i + 1 },
+  { title: "Nama Pengguna", width: 130, render: (r) => r.iduser },
+  { title: "Level", width: 95, render: (r) => r.level },
+  { title: "Karyawan", width: 160, render: (r) => r.namakaryawan ?? "" },
+  { title: "Status", width: 120, render: status },
 ];
 
 /* ---- Hak akses: pohon menu dengan kotak centang ---- */
@@ -39,18 +44,34 @@ function Cabang(props: { node: MenuNode; akses: Set<string>; buka: Set<string>; 
   const sebagian = n > 0 && !penuh;
   return (
     <li>
-      <div className="hk-baris">
+      <div className="hk-baris flex h-5 items-center">
         {anak.length ? (
-          <button type="button" className="hk-panah" aria-label={buka.has(node.id) ? "Tutup" : "Buka"} onClick={() => props.lipat(node.id)}>{buka.has(node.id) ? "▾" : "▸"}</button>
-        ) : <span className="hk-panah" />}
-        <label>
-          <input type="checkbox" checked={penuh} disabled={disabled} ref={(el) => { if (el) el.indeterminate = sebagian; }}
-            onChange={(e) => props.ubah(ids, e.target.checked)} />
+          <button
+            type="button"
+            data-slot="tree-toggle"
+            className="hk-panah flex w-4 cursor-pointer items-center justify-center border-0 bg-transparent p-0 text-muted-foreground hover:text-foreground"
+            aria-label={`${buka.has(node.id) ? "Tutup" : "Buka"} ${node.caption}`}
+            aria-expanded={buka.has(node.id)}
+            onClick={() => props.lipat(node.id)}
+          >
+            {buka.has(node.id) ? <ChevronDownIcon className="size-3.5" /> : <ChevronRightIcon className="size-3.5" />}
+          </button>
+        ) : <span className="hk-panah w-4" />}
+        <label data-slot="tree-label" className="flex cursor-pointer items-center gap-1.5 text-xs text-foreground">
+          <input
+            data-slot="tree-check"
+            type="checkbox"
+            className="size-3.5 accent-primary"
+            checked={penuh}
+            disabled={disabled}
+            ref={(el) => { if (el) el.indeterminate = sebagian; }}
+            onChange={(e) => props.ubah(ids, e.target.checked)}
+          />
           <span>{node.caption}</span>
         </label>
       </div>
       {anak.length > 0 && buka.has(node.id) && (
-        <ul>{anak.map((c) => <Cabang key={c.id} {...props} node={c} />)}</ul>
+        <ul className="m-0 list-none pl-4">{anak.map((c) => <Cabang key={c.id} {...props} node={c} />)}</ul>
       )}
     </li>
   );
@@ -62,6 +83,7 @@ const KOSONG: Isian = { iduser: "", level: "", kodekaryawan: "", namakaryawan: "
 /** FrmZPengguna (Daftar Pengguna): daftar user di kiri, isian user di kanan. */
 export function Pengguna() {
   const { user, go } = useApp();
+  useTopEscape(() => go("home"));
   const msg = useMsgBox();
   const [rows, setRows] = useState<Row[]>([]);
   const [sel, setSel] = useState<string | null>(null);
@@ -75,7 +97,7 @@ export function Pengguna() {
   const [showFilter, setShowFilter] = useState(false);
 
   const muat = useCallback(() => {
-    api.listUsers().then(setRows).catch((e) => msg.alert(errText(e)));
+    api.listUsers().then((r) => setRows(Array.isArray(r) ? r : [])).catch((e) => msg.alert(errText(e)));
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(muat, [muat]);
 
@@ -91,7 +113,7 @@ export function Pengguna() {
 
   const muatAkses = (id: string) => {
     berkasApi.userAkses(id)
-      .then((l) => setAkses(new Set(l.filter((m) => Number(m.akses) > 0 && SEMUA_DAUN.some((d) => d.id === m.idmenu)).map((m) => m.idmenu))))
+      .then((l) => setAkses(new Set((Array.isArray(l) ? l : []).filter((m) => Number(m.akses) > 0 && SEMUA_DAUN.some((d) => d.id === m.idmenu)).map((m) => m.idmenu))))
       .catch((e) => msg.alert(errText(e)));
   };
   const ubahAkses = (ids: string[], on: boolean) => setAkses((o) => { const n = new Set(o); ids.forEach((i) => (on ? n.add(i) : n.delete(i))); return n; });
@@ -129,7 +151,7 @@ export function Pengguna() {
 
   const hapus = () => {
     if (!sel) return msg.alert("Pilih dulu pengguna yang akan dihapus.");
-    msg.confirm(`Hapus pengguna ${sel}? Data yang dihapus tidak bisa dikembalikan.`, async () => {
+    msg.confirm(`Anda akan menghapus pengguna ${sel}. Pengguna yang dihapus tidak bisa dikembalikan.`, async () => {
       try {
         await api.deleteUser(sel);
         tambah();
@@ -137,7 +159,7 @@ export function Pengguna() {
       } catch (e) {
         msg.alert(errText(e));
       }
-    });
+    }, undefined, undefined, true);
   };
 
   const handlers: Record<string, () => void> = {
@@ -147,39 +169,125 @@ export function Pengguna() {
   };
   const sepBefore = new Set(["Filter", "Export", "Tutup"]);
   const sendiri = !baru && f.iduser === user.iduser;
-
-  const bind: Record<string, Bind> = {
-    tbMenu: (_g, ctrl) => (
-      <VbToolbar items={(ctrl.texts ?? []).map<ToolItem>((c) => ({ caption: c, onClick: handlers[c] ?? (() => undefined), sepBefore: sepBefore.has(c) }))} />
-    ),
-    lsData: () => <VbGrid cols={COLS} rows={tampil} rowKey={(r) => r.iduser} selected={sel} onSelect={pilih} />,
-    cLevel: { value: f.level, onChange: (x: string) => { setF((o) => ({ ...o, level: x })); if (baru) setAkses(bawaan(x)); }, disabled: sendiri,
-      children: <><option value="" />{LEVELS.map((x) => <option key={x} value={x}>{x}</option>)}</> },
-    tNamaUser: { value: f.iduser, onChange: (x: string) => setF((o) => ({ ...o, iduser: x })), disabled: !baru },
-    tSandi: (g: Geom) => (
-      <input className="vb-txt" style={{ width: g.width, height: g.height }} type="password" value={f.password} disabled={sendiri}
-        autoComplete="new-password" onChange={(e) => setF((o) => ({ ...o, password: e.target.value }))} />
-    ),
-    // Aslinya MsgBox berisi kata sandi. Di sini kata sandi disimpan terenkripsi, jadi tidak bisa ditampilkan.
-    cCek: { onClick: () => msg.alert("Kata sandi disimpan dalam bentuk terenkripsi, jadi tidak bisa ditampilkan. Kalau pengguna lupa, isi kata sandi baru lalu klik Simpan.") },
-    lblKode: { text: f.kodekaryawan || "-", onClick: () => setPilihKar(true), style: { cursor: "pointer" } },
-    lblNama: { text: f.namakaryawan || "-", onClick: () => setPilihKar(true), style: { cursor: "pointer" } },
-    cSimpan: { onClick: simpan },
-    chkMenu: { value: bukaSemua ? "1" : "0", onChange: (x: string) => { setBukaSemua(x === "1"); setBuka(x === "1" ? semuaInduk() : new Set()); } },
-    xMenu: () => (
-      <div className="hk-pohon">
-        <ul>
-          {MENU.map((m) => <Cabang key={m.id} node={m} akses={akses} buka={buka} disabled={f.level === "Manager"} ubah={ubahAkses} lipat={lipat} />)}
-        </ul>
-      </div>
-    ),
-  };
+  const toolItems: ToolItem[] = ACTIONS.map((c) => ({ caption: c, onClick: handlers[c] ?? (() => undefined), sepBefore: sepBefore.has(c) }));
 
   return (
-    <div className="vbm-fill">
-      <VbForm form="FrmZPengguna" bind={bind} hide={["TV", "lblTotal"]} fill
-        anchor={{ picRight: { left: true, right: true, top: true, bottom: true }, lsData: { top: true, bottom: true } }}
-        pos={{ lsData: { height: 5460 } }} />
+    <div className="vb-modern flex h-full min-h-0 flex-col bg-background font-sans text-foreground" data-form="FrmZPengguna">
+      <div data-vb="tbMenu">
+        <VbToolbar items={toolItems} />
+      </div>
+
+      <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 p-3 lg:grid-cols-[minmax(360px,1fr)_420px]">
+        <div className="min-h-0 flex-1" data-vb="lsData">
+          <VbGrid cols={COLS} rows={tampil} rowKey={(r) => r.iduser} selected={sel} onSelect={pilih} />
+        </div>
+
+        <div className="flex min-h-0 flex-col gap-3 rounded-md border border-border bg-card p-3.5 text-xs" data-vb="picRight">
+          <div className="flex items-center justify-between border-b border-border pb-2">
+            <span className="text-xs font-semibold text-foreground">{baru ? "Pengguna Baru" : `Pengguna: ${f.iduser}`}</span>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-7 gap-1.5 text-xs font-medium"
+              onClick={() => setPilihKar(true)}
+            >
+              {f.namakaryawan
+                ? <><span data-vb="lblNama">{f.namakaryawan}</span><span data-vb="lblKode" className="text-muted-foreground">({f.kodekaryawan})</span></>
+                : <span data-vb="lblNama">Pilih Karyawan</span>}
+            </Button>
+          </div>
+
+          <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-3">
+            <div className="flex flex-col gap-1" data-vb="cLevel">
+              <Label className="text-xs font-medium text-foreground">Level</Label>
+              <NativeSelect
+                value={f.level}
+                disabled={sendiri}
+                onChange={(e) => {
+                  const x = e.target.value;
+                  setF((o) => ({ ...o, level: x }));
+                  if (baru) setAkses(bawaan(x));
+                }}
+                className="w-full"
+              >
+                <NativeSelectOption value="" />
+                {LEVELS.map((x) => <NativeSelectOption key={x} value={x}>{x}</NativeSelectOption>)}
+              </NativeSelect>
+            </div>
+
+            <div className="flex flex-col gap-1" data-vb="tNamaUser">
+              <Label className="text-xs font-medium text-foreground">Nama Pengguna</Label>
+              <Input
+                value={f.iduser}
+                disabled={!baru}
+                onChange={(e) => setF((o) => ({ ...o, iduser: e.target.value }))}
+                placeholder="Nama untuk masuk"
+                className="h-7 border-foreground/25 bg-background text-xs"
+              />
+            </div>
+
+            <div className="flex flex-col gap-1" data-vb="tSandi">
+              <Label className="text-xs font-medium text-foreground">Kata Sandi</Label>
+              <div className="flex items-center gap-1">
+                <Input
+                  type="password"
+                  value={f.password}
+                  disabled={sendiri}
+                  autoComplete="new-password"
+                  placeholder={baru ? "Sandi baru" : "(Tetap)"}
+                  onChange={(e) => setF((o) => ({ ...o, password: e.target.value }))}
+                  className="h-7 flex-1 border-foreground/25 bg-background text-xs"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  data-vb="cCek"
+                  className="h-7 px-2 text-xs"
+                  title="Kenapa kata sandi tidak terlihat?"
+                  aria-label="Kenapa kata sandi tidak terlihat?"
+                  onClick={() => msg.alert("Kata sandi disimpan dalam bentuk terenkripsi, jadi tidak bisa ditampilkan. Kalau pengguna lupa, isi kata sandi baru lalu klik Simpan.")}
+                >
+                  <CircleHelpIcon className="size-3.5" />
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between pt-1">
+            <span className="text-xs font-semibold text-foreground">Hak Akses Menu</span>
+            <div data-vb="chkMenu">
+              <Label className="flex cursor-pointer items-center gap-1.5 text-xs font-normal text-foreground">
+                <Checkbox
+                  checked={bukaSemua}
+                  onCheckedChange={(v) => {
+                    const on = !!v;
+                    setBukaSemua(on);
+                    setBuka(on ? semuaInduk() : new Set());
+                  }}
+                />
+                <span>Buka semua item menu</span>
+              </Label>
+            </div>
+          </div>
+
+          <div className="min-h-0 flex-1" data-vb="xMenu">
+            <div className="hk-pohon tp-scroll-always size-full rounded-md border border-border bg-background p-2 font-sans text-xs text-foreground">
+              <ul className="m-0 list-none p-0">
+                {MENU.map((m) => <Cabang key={m.id} node={m} akses={akses} buka={buka} disabled={f.level === "Manager"} ubah={ubahAkses} lipat={lipat} />)}
+              </ul>
+            </div>
+          </div>
+
+          <div className="flex justify-end pt-1">
+            <Button type="button" variant="default" size="sm" data-vb="cSimpan" className="h-8 px-4 font-semibold" onClick={() => void simpan()}>
+              Simpan
+            </Button>
+          </div>
+        </div>
+      </div>
+
       {msg.node}
       {file.node}
       {showFilter && <FilterPengguna value={filter} onClose={() => setShowFilter(false)} onApply={(v) => { setFilter(v); setShowFilter(false); }} />}
@@ -194,9 +302,9 @@ function PilihKaryawan(props: { onClose: () => void; onPick: (k: { kodekaryawan:
   const semua = useMemo(() => list.filter((k) => Number(k.aktif ?? 1) !== 0), [list]);
   return (
     <Modal title="Pilih Karyawan" onClose={props.onClose}>
-      <div className="tp-pilih">
-        <button className="btn" onClick={() => props.onPick({ kodekaryawan: "-", namakaryawan: "" })}>Tanpa karyawan</button>
-        {semua.map((k) => <button key={k.kodekaryawan} className="btn" onClick={() => props.onPick(k as any)}>{k.kodekaryawan} - {k.namakaryawan}</button>)}
+      <div className="flex max-h-[50vh] flex-col gap-0.5 overflow-auto">
+        <Button variant="ghost" className="w-full justify-start text-muted-foreground" onClick={() => props.onPick({ kodekaryawan: "-", namakaryawan: "" })}>Tanpa karyawan</Button>
+        {semua.map((k) => <Button key={k.kodekaryawan} variant="ghost" className="w-full justify-start" onClick={() => props.onPick(k as any)}>{k.kodekaryawan} - {k.namakaryawan}</Button>)}
       </div>
     </Modal>
   );
@@ -206,19 +314,24 @@ function FilterPengguna(props: { value: { cari: string; level: string; status: s
   const [v, setV] = useState(props.value);
   return (
     <Modal title="Filter Pengguna" onClose={props.onClose}
-      footer={<><button className="btn" onClick={() => props.onApply({ cari: "", level: "", status: "" })}>Hapus Filter</button><button className="btn primary" onClick={() => props.onApply(v)}>Tampilkan</button></>}>
-      <div className="hk-filter">
-        <label>Nama user atau karyawan<input className="input" value={v.cari} onChange={(e) => setV({ ...v, cari: e.target.value })} autoFocus /></label>
-        <label>Level
-          <select className="input" value={v.level} onChange={(e) => setV({ ...v, level: e.target.value })}>
+      footer={<><Button variant="outline" onClick={() => props.onApply({ cari: "", level: "", status: "" })}>Hapus Filter</Button><Button onClick={() => props.onApply(v)}>Tampilkan</Button></>}>
+      <div className="flex min-w-70 flex-col gap-3">
+        <div className="flex flex-col gap-1.5">
+          <Label className="text-xs font-medium text-foreground">Nama user atau karyawan</Label>
+          <Input value={v.cari} onChange={(e) => setV({ ...v, cari: e.target.value })} autoFocus />
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <Label className="text-xs font-medium text-foreground">Level</Label>
+          <NativeSelect className="w-full" value={v.level} onChange={(e) => setV({ ...v, level: e.target.value })}>
             <option value="">{"{Semua}"}</option>{LEVELS.map((x) => <option key={x} value={x}>{x}</option>)}
-          </select>
-        </label>
-        <label>Status
-          <select className="input" value={v.status} onChange={(e) => setV({ ...v, status: e.target.value })}>
+          </NativeSelect>
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <Label className="text-xs font-medium text-foreground">Status</Label>
+          <NativeSelect className="w-full" value={v.status} onChange={(e) => setV({ ...v, status: e.target.value })}>
             <option value="">{"{Semua}"}</option>{["Aktif", "Non Aktif", "Belum ada password"].map((x) => <option key={x} value={x}>{x}</option>)}
-          </select>
-        </label>
+          </NativeSelect>
+        </div>
       </div>
     </Modal>
   );

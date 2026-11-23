@@ -31,14 +31,14 @@ export function ImporExcel(props: { jenis: string; nama: string; onClose: () => 
   const proses = () => {
     if (!data) return msg.alert("Pilih dulu file yang akan diimpor, lalu klik Cari.");
     const peringatan = hapusLama ? " Data lama akan dihapus lebih dulu." : "";
-    msg.confirm(`Apakah proses impor data akan dilanjutkan ?${peringatan} Program membuat cadangan otomatis sebelum mengimpor.`, async () => {
+    msg.confirm(`Data dari file ini akan diimpor.${peringatan} Program membuat cadangan dulu sebelum mengimpor. Lanjutkan?`, async () => {
       try {
         const r = await imporApi.proses(props.jenis, path, hapusLama, folderBackup.get());
         msg.alert(props.jenis === "stokbarang"
           ? `Stok ${r.jumlah} barang sudah diperbarui lewat stok opname ${r.notrans}.`
           : ubah ? `Data ${r.jumlah} barang sudah diperbarui.` : `Impor data selesai. ${r.jumlah} data sudah masuk.`);
       } catch (e) { msg.alert(errText(e)); }
-    });
+    }, undefined, undefined, hapusLama ? "Ya, hapus dan impor" : undefined);
   };
 
   const cols: GridCol<string[]>[] = [
@@ -52,8 +52,8 @@ export function ImporExcel(props: { jenis: string; nama: string; onClose: () => 
     FG: () => <VbGrid cols={cols} rows={data?.baris ?? []} rowKey={(r) => String(data?.baris.indexOf(r))} selected={sel} onSelect={setSel} />,
     lblJml: { text: `Jumlah Data : ${data?.jumlah ?? 0}` },
     chkHapus: { value: hapusLama ? "1" : "0", onChange: (v) => setHapusLama(v === "1") },
-    cProses: { onClick: proses },
-    cKeluar: { onClick: props.onClose },
+    cProses: { onClick: proses, variant: "default" },
+    cKeluar: { onClick: props.onClose, text: "Tutup [Esc]" },
   };
   return <VbModal form="FrmZImportExcel" bind={bind} hide={ubah ? ["pBar", "chkHapus"] : ["pBar"]} onClose={props.onClose}>{msg.node}</VbModal>;
 }

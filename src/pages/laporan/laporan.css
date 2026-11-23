@@ -1,13 +1,4 @@
-.lap-wrap { display: flex; flex-direction: column; height: 100%; background: #808080; }
-.lap-toolbar { display: flex; gap: 2px; padding: 3px; background: #f0f0f0; border-bottom: 1px solid #a0a0a0; }
-.lap-toolbar button { min-width: 64px; height: 24px; font: 12px Tahoma, "Segoe UI", sans-serif; border: 1px solid #707070; background: #e1e1e1; }
-.lap-toolbar button:hover { background: #e5f1fb; border-color: #0078d7; }
-.lap-toolbar .lap-info { margin-left: auto; align-self: center; font: 12px Tahoma, "Segoe UI", sans-serif; padding-right: 6px; }
-.lap-ekspor { position: relative; }
-.lap-menu { position: absolute; top: 26px; left: 0; z-index: 5; margin: 0; padding: 2px; list-style: none; background: #fff; border: 1px solid #707070; min-width: 150px; }
-.lap-menu button { width: 100%; text-align: left; border: 0; background: #fff; }
-.lap-menu button:hover { background: #f8f7f3; }
-.lap-scroll { flex: 1; overflow: auto; padding: 10px; }
+/* Kertas laporan cetak A4 (halaman laporan tetap putih dengan teks hitam supaya hasil cetak akurat) */
 /* Tiap halaman: ukuran isi = ukuran kertas dikurangi margin (diisi lewat --lap-w, --lap-h, --lap-m). */
 .lap-kertas { display: flex; flex-direction: column; align-items: center; gap: 12px; }
 .lap-page { position: relative; background: #fff; color: #000; box-sizing: content-box; width: var(--lap-w); height: var(--lap-h); padding: var(--lap-m);

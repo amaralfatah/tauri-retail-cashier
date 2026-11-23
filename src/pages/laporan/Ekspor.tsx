@@ -70,10 +70,10 @@ export function OpsiTextDialog(props: { nama: string; onClose: () => void; onSim
     txtFieldDelimiter: { value: kol, onChange: setKol },
     txtPageDelimiter: { value: hal, onChange: setHal },
     chkUnicaode: { value: uni ? "1" : "0", onChange: (x) => setUni(x === "1") },
-    chkSuppressBlank: { value: kosong ? "1" : "0", onChange: (x) => setKosong(x === "1") },
-    btnOpen: { onClick: () => void pilihSimpan(path, "txt", "Text (*.txt)").then((p) => { if (p) setPath(p); }) },
-    btnOK: { onClick: () => props.onSimpan(path, { pemisahKolom: kol, pemisahHalaman: hal, lewatiKosong: kosong, unicode: uni }) },
-    btnCancel: { onClick: props.onClose },
+    chkSuppressBlank: { value: kosong ? "1" : "0", onChange: (x) => setKosong(x === "1"), text: "Lewati baris kosong" },
+    btnOpen: { onClick: () => void pilihSimpan(path, "txt", "Text (*.txt)").then((p) => { if (p) setPath(p); }), text: "..." },
+    btnOK: { onClick: () => props.onSimpan(path, { pemisahKolom: kol, pemisahHalaman: hal, lewatiKosong: kosong, unicode: uni }), variant: "default", text: "Simpan" },
+    btnCancel: { onClick: props.onClose, text: "Batal [Esc]" },
   };
   return <VbModal form="FrmOpsiTextEkspor" title="Ekspor File Text" bind={bind} onClose={props.onClose} />;
 }

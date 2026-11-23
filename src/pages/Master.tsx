@@ -1,48 +1,65 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Input } from "@/components/ui/input";
+import { Kbd } from "@/components/ui/kbd";
+import { Label } from "@/components/ui/label";
+import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
 import { api, errText, MasterTable, Row } from "../api";
 import { useApp } from "../appContext";
 import { rp } from "../format";
-import { Bind, VbForm } from "../vb/VbForm";
-import { BELUM_ADA, GridCol, ToolItem, useMsgBox, VbGrid, VbToolbar } from "../vb/VbGrid";
+import { formCaption } from "../vb/VbForm";
+import { BELUM_ADA, GridCol, ToolItem, useMsgBox, useTopEscape, VbGrid, VbToolbar } from "../vb/VbGrid";
 import { BarangEdit, PartyEdit, SimpleMaster } from "./MasterEdit";
 import { FilterVal, FilterWindow, matchFilter } from "./MasterFilter";
 import { useDaftarFile } from "./daftarFile";
 import { ImportFoto } from "./fotoBarang";
 import { PoinMember } from "./Poin";
-import { formCaption } from "../vb/VbForm";
 import { getLocal } from "./localSettings";
-import { KEYS, loadAll, q2, statusText, useList, useListLayout } from "./masterLib";
+import { GridKosong, KEYS, loadAll, q2, statusText, useList } from "./masterLib";
 
 type Col = GridCol<Row>;
-const no: Col = { title: "No.", width: 40, align: "right", render: (_, i) => i + 1 };
+const no: Col = { title: "No.", width: 42, align: "right", render: (_, i) => i + 1 };
 const t = (title: string, width: number, key: string): Col => ({ title, width, render: (r) => r[key] });
 const money = (title: string, width: number, key: string): Col => ({ title, width, align: "right", render: (r) => rp(r[key]) });
-const stok = (title: string, key: string): Col => ({ title, width: 70, align: "right", render: (r) => q2(r[key]) });
-const status: Col = { title: "Status", width: 70, render: statusText };
+const stok = (title: string, key: string): Col => ({ title, width: 92, align: "right", render: (r) => q2(r[key]) });
+/** Stok Akhir: sel diberi tanda kalau stok sudah di bawah atau sama dengan stok minimum (stok minimum > 0). */
+const stokAkhir: Col = {
+  title: "Stok Akhir", width: 92, align: "right",
+  render: (r) => {
+    const menipis = Number(r.stokmin) > 0 && Number(r.stokakhir) <= Number(r.stokmin);
+    return menipis
+      ? <span className="rounded-sm bg-destructive/12 px-1.5 font-semibold text-destructive" title={`Stok tinggal ${q2(r.stokakhir)}, batas minimum ${q2(r.stokmin)}`}>{q2(r.stokakhir)}</span>
+      : q2(r.stokakhir);
+  },
+};
+const status: Col = { title: "Status", width: 75, render: statusText };
 
-interface MdCfg { form: string; title: string; cols: Col[]; extra?: string }
+interface MdCfg { form: string; title: string; cols: Col[]; actions: string[]; cari: string[]; placeholder: string; labelCari: string }
 const CFG: Record<string, MdCfg> = {
   mdbarang: {
-    form: "FrmMDBarang", title: "barang",
-    cols: [no, t("Jenis", 55, "jenis"), t("Kode Brg.", 90, "kodebarang"), t("Barcode", 100, "barcode"), t("Nama Brg", 210, "namabarang"), t("Satuan", 60, "kodesatuan"),
-      money("Hrg. Beli", 75, "hrgbeli"), money("Hrg. Jual", 75, "hrgjual"), stok("Stok Awal", "stokawal"), stok("Stok Masuk", "stokmasuk"), stok("Stok Keluar", "stokkeluar"),
-      stok("Stok Opname", "stokopname"), stok("Stok Akhir", "stokakhir"), status],
+    form: "FrmMDBarang", title: "barang", cari: ["namabarang", "kodebarang", "barcode"], placeholder: "Cari nama, kode, atau barcode…", labelCari: "Cari barang",
+    actions: ["Baru", "Edit", "Hapus", "Filter", "Refresh", "Export", "Cetak", "Import Foto", "Tutup"],
+    cols: [no, t("Jenis", 60, "jenis"), t("Kode Brg.", 95, "kodebarang"), t("Barcode", 110, "barcode"), t("Nama Barang", 222, "namabarang"), t("Satuan", 65, "kodesatuan"),
+      money("Hrg. Beli", 95, "hrgbeli"), money("Hrg. Jual", 95, "hrgjual"), stok("Stok Awal", "stokawal"), stok("Stok Masuk", "stokmasuk"), stok("Stok Keluar", "stokkeluar"),
+      { ...stok("Stok Opname", "stokopname"), width: 100 }, stokAkhir, status],
   },
   mdpelanggan: {
-    form: "FrmMDPelanggan", title: "pelanggan",
-    cols: [no, t("Kode", 90, "kodepelanggan"), t("Nama", 200, "namapelanggan"), t("Alamat", 220, "alamat"), t("Kota", 100, "kota"), t("Provinsi", 100, "provinsi"),
-      t("Telp1", 100, "tlp1"), t("Telp2", 100, "tlp2"), t("Email", 140, "email"), { title: "Masa Aktif", width: 85, render: (r) => String(r.masaaktif ?? "").slice(0, 10) },
-      t("Level", 70, "level"), status],
+    form: "FrmMDPelanggan", title: "pelanggan", cari: ["namapelanggan", "kodepelanggan", "tlp1", "tlp2"], placeholder: "Cari nama, kode, atau telepon…", labelCari: "Cari pelanggan",
+    actions: ["Baru", "Edit", "Hapus", "Filter", "Refresh", "Export", "Cetak", "Cek Poin", "Tutup"],
+    cols: [no, t("Kode", 95, "kodepelanggan"), t("Nama Pelanggan", 210, "namapelanggan"), t("Alamat", 220, "alamat"), t("Kota", 105, "kota"), t("Provinsi", 105, "provinsi"),
+      t("Telp 1", 105, "tlp1"), t("Telp 2", 105, "tlp2"), t("Email", 150, "email"), { title: "Masa Aktif", width: 92, render: (r) => String(r.masaaktif ?? "").slice(0, 10) },
+      t("Level", 75, "level"), status],
   },
   mdpemasok: {
-    form: "FrmMDPemasok", title: "supplier",
-    cols: [no, t("Kode", 90, "kodepemasok"), t("Nama", 200, "namapemasok"), t("Kontak", 140, "namakontak"), t("Alamat", 220, "alamat"), t("Kota", 100, "kota"),
-      t("Provinsi", 100, "provinsi"), t("Telp1", 100, "tlp1"), t("Telp2", 100, "tlp2"), t("Fax", 90, "fax"), t("Email", 140, "email"), status],
+    form: "FrmMDPemasok", title: "supplier", cari: ["namapemasok", "kodepemasok", "namakontak", "tlp1", "tlp2"], placeholder: "Cari nama, kode, kontak, atau telepon…", labelCari: "Cari supplier",
+    actions: ["Baru", "Edit", "Hapus", "Filter", "Refresh", "Export", "Cetak", "Tutup"],
+    cols: [no, t("Kode", 95, "kodepemasok"), t("Nama Supplier", 210, "namapemasok"), t("Kontak", 145, "namakontak"), t("Alamat", 220, "alamat"), t("Kota", 105, "kota"),
+      t("Provinsi", 105, "provinsi"), t("Telp 1", 105, "tlp1"), t("Telp 2", 105, "tlp2"), t("Fax", 95, "fax"), t("Email", 150, "email"), status],
   },
   mdkaryawan: {
-    form: "FrmMDKaryawan", title: "karyawan",
-    cols: [no, t("Kode", 90, "kodekaryawan"), t("Nama", 200, "namakaryawan"), t("Alamat", 220, "alamat"), t("Kota", 100, "kota"), t("Provinsi", 100, "provinsi"),
-      t("Telp1", 100, "tlp1"), t("Telp2", 100, "tlp2"), t("Email", 140, "email"), t("Jabatan", 120, "jabatan"), status],
+    form: "FrmMDKaryawan", title: "karyawan", cari: ["namakaryawan", "kodekaryawan", "jabatan", "tlp1"], placeholder: "Cari nama, kode, atau jabatan…", labelCari: "Cari karyawan",
+    actions: ["Baru", "Edit", "Hapus", "Filter", "Refresh", "Export", "Cetak", "Tutup"],
+    cols: [no, t("Kode", 95, "kodekaryawan"), t("Nama Karyawan", 210, "namakaryawan"), t("Alamat", 220, "alamat"), t("Kota", 105, "kota"), t("Provinsi", 105, "provinsi"),
+      t("Telp 1", 105, "tlp1"), t("Telp 2", 105, "tlp2"), t("Email", 150, "email"), t("Jabatan", 125, "jabatan"), status],
   },
 };
 
@@ -61,7 +78,6 @@ export function Master(props: { initial?: MasterTable }) {
 function MdList({ table }: { table: MasterTable }) {
   const cfg = CFG[table];
   const { go } = useApp();
-  const lay = useListLayout(cfg.form);
   const msg = useMsgBox();
   const { key, name } = KEYS[table];
 
@@ -93,8 +109,29 @@ function MdList({ table }: { table: MasterTable }) {
     load();
   }, [load]);
 
-  const rows = useMemo(() => all.filter((r) => matchFilter(table, filter, r)), [all, filter, table]);
+  // Kotak cari cepat (Data Barang): menyaring daftar yang sudah dimuat sambil mengetik.
+  const [cari, setCari] = useState("");
+  const [cariTunda, setCariTunda] = useState("");
+  const cariRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    const id = window.setTimeout(() => setCariTunda(cari.trim().toLowerCase()), 200);
+    return () => window.clearTimeout(id);
+  }, [cari]);
+  useEffect(() => {
+    const key = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "f") { e.preventDefault(); cariRef.current?.focus(); cariRef.current?.select(); }
+    };
+    window.addEventListener("keydown", key);
+    return () => window.removeEventListener("keydown", key);
+  }, [table]);
+  const rows = useMemo(
+    () => all.filter((r) => matchFilter(table, filter, r) &&
+      (!cariTunda || cfg.cari.some((k) => String(r[k] ?? "").toLowerCase().includes(cariTunda)))),
+    [all, filter, table, cariTunda, cfg],
+  );
   const current = rows.find((r) => r[key] === sel);
+  // Esc: kalau kotak cari berisi, kosongkan dulu; kalau tidak, tutup layar ini.
+  useTopEscape(() => { if (cari) { setCari(""); setCariTunda(""); } else go("home"); });
 
   const openEdit = (r?: Row) => {
     // Tanpa baris terpilih Edit diam saja, seperti aslinya.
@@ -103,7 +140,7 @@ function MdList({ table }: { table: MasterTable }) {
   };
   const hapus = () => {
     if (!current) return;
-    msg.confirm("Apakah data terpilih akan dihapus?", async () => {
+    msg.confirm(`Hapus ${cfg.title} ${current[name]}? Data yang sudah dihapus tidak bisa dikembalikan.`, async () => {
       try {
         await api.masterDelete(table, current[key]);
         setSel(null);
@@ -112,7 +149,7 @@ function MdList({ table }: { table: MasterTable }) {
       } catch (e) {
         msg.alert(errText(e));
       }
-    }, "Konfirmasi");
+    }, `Hapus ${cfg.title}`, undefined, true);
   };
   const cekPoin = () => {
     if (!current) return msg.alert("Pilih dulu pelanggan yang akan dicek poinnya.");
@@ -133,27 +170,78 @@ function MdList({ table }: { table: MasterTable }) {
     "Tutup": () => go("home"),
   };
   const sepBefore = new Set(["Filter", "Export", "Tutup"]);
+  const toolItems: ToolItem[] = cfg.actions.map((c) => ({ caption: c, onClick: handlers[c] ?? belum, sepBefore: sepBefore.has(c) }));
 
   // Pilihan kelompok tidak mempersempit daftar kategori (di EXE asli tidak ada kode yang melakukannya).
   const katList = kategori;
-  const pickKel = (v: string) => setKel(v);
+  const kosongTeks = cariTunda || Object.values(filter).some(Boolean)
+    ? `Tidak ada ${cfg.title} yang cocok. Ubah kata kunci atau filternya.`
+    : all.length === 0 && table === "mdbarang" && getLocal("autoLoad") !== "1"
+      ? "Klik Refresh untuk menampilkan barang."
+      : `Belum ada ${cfg.title}. Klik Baru untuk menambah.`;
 
-  const bind: Record<string, Bind> = {
-    tbMenu: (_g, ctrl) => (
-      <VbToolbar items={(ctrl.texts ?? []).map<ToolItem>((c) => ({ caption: c, onClick: handlers[c] ?? belum, sepBefore: sepBefore.has(c) }))} />
-    ),
-    lsData: () => <VbGrid cols={cfg.cols} rows={rows} rowKey={(r) => r[key]} selected={sel} onSelect={setSel} onOpen={openEdit} />,
-    lblTotal: { text: `Jumlah Data : ${rp(rows.length)}` },
-    cKelompokNama: { value: kel, onChange: pickKel, children: <><option value="">{"{Semua Kelompok}"}</option>{kelompok.map((k) => <option key={k.kodekelompok} value={k.kodekelompok}>{k.namakelompok}</option>)}</> },
-    cKelompokKode: { value: kel, onChange: pickKel, children: <><option value="" />{kelompok.map((k) => <option key={k.kodekelompok} value={k.kodekelompok}>{k.kodekelompok}</option>)}</> },
-    cKategoriNama: { value: kat, onChange: setKat, children: <><option value="">{"{Semua Kategori}"}</option>{katList.map((k) => <option key={k.kodekategori} value={k.kodekategori}>{k.namakategori}</option>)}</> },
-    cKategoriKode: { value: kat, onChange: setKat, children: <><option value="" />{katList.map((k) => <option key={k.kodekategori} value={k.kodekategori}>{k.kodekategori}</option>)}</> },
-    cmbUrut: { value: urut, onChange: setUrut, children: <><option value="" />{URUT.map((u) => <option key={u[0]} value={u[0]}>{u[0]}</option>)}</> },
-  };
+  const kotakCari = (
+      <div className="ml-auto flex items-center gap-2" data-vb="tCari">
+        <Input
+          ref={cariRef}
+          type="search"
+          value={cari}
+          onChange={(e) => setCari(e.target.value)}
+          placeholder={cfg.placeholder}
+          aria-label={cfg.labelCari}
+          className="w-72"
+        />
+        <Kbd className="border border-border bg-card text-foreground">Ctrl+F</Kbd>
+      </div>
+  );
 
   return (
-    <div className="vbm-fill">
-      <VbForm form={cfg.form} bind={bind} hide={["cKelompokKode", "cKategoriKode"]} fill anchor={lay.anchor} pos={lay.pos} />
+    <div className="vb-modern flex h-full min-h-0 flex-col bg-background font-sans text-foreground" data-form={cfg.form}>
+      <div data-vb="tbMenu">
+        <VbToolbar items={toolItems} />
+      </div>
+      {table === "mdbarang" && (
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-border bg-muted/40 px-3 py-2 text-xs">
+          <div className="flex items-center gap-2" data-vb="cKelompokNama">
+            <Label className="text-xs font-semibold text-foreground">Kelompok</Label>
+            <NativeSelect value={kel} onChange={(e) => setKel(e.target.value)} className="w-56">
+              <NativeSelectOption value="">{"{Semua Kelompok}"}</NativeSelectOption>
+              {kelompok.map((k) => <NativeSelectOption key={k.kodekelompok} value={k.kodekelompok}>{k.namakelompok}</NativeSelectOption>)}
+            </NativeSelect>
+          </div>
+          <div className="flex items-center gap-2" data-vb="cKategoriNama">
+            <Label className="text-xs font-semibold text-foreground">Kategori</Label>
+            <NativeSelect value={kat} onChange={(e) => setKat(e.target.value)} className="w-56">
+              <NativeSelectOption value="">{"{Semua Kategori}"}</NativeSelectOption>
+              {katList.map((k) => <NativeSelectOption key={k.kodekategori} value={k.kodekategori}>{k.namakategori}</NativeSelectOption>)}
+            </NativeSelect>
+          </div>
+          <div className="flex items-center gap-2" data-vb="cmbUrut">
+            <Label className="text-xs font-semibold text-foreground">Urutkan berdasarkan</Label>
+            <NativeSelect value={urut} onChange={(e) => setUrut(e.target.value)} className="w-44">
+              <NativeSelectOption value="" />
+              {URUT.map((u) => <NativeSelectOption key={u[0]} value={u[0]}>{u[0]}</NativeSelectOption>)}
+            </NativeSelect>
+          </div>
+          {kotakCari}
+        </div>
+      )}
+      {table !== "mdbarang" && (
+        <div className="flex items-center border-b border-border bg-muted/40 px-3 py-2 text-xs">{kotakCari}</div>
+      )}
+      <div className="min-h-0 flex-1 p-2.5" data-vb="lsData">
+        <GridKosong kosong={rows.length === 0} teks={kosongTeks}>
+          <VbGrid cols={cfg.cols} rows={rows} rowKey={(r) => r[key]} selected={sel} onSelect={setSel} onOpen={openEdit} />
+        </GridKosong>
+      </div>
+      <div className="flex items-center justify-between border-t border-border bg-muted/40 px-3 py-1.5 text-xs font-semibold text-foreground" data-vb="lblTotal">
+        <span>Jumlah Data : {rp(rows.length)}</span>
+        {current && (
+          <span className="truncate text-muted-foreground">
+            Terpilih: <strong className="text-foreground">{current[key]} — {current[name]}</strong>
+          </span>
+        )}
+      </div>
       {msg.node}
       {file.node}
       {poinKode && <PoinMember kode={poinKode} onClose={() => { setPoinKode(null); load(); }} />}

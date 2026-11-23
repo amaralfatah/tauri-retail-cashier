@@ -1,3 +1,7 @@
+import {
+  ChartColumnIcon, CircleHelpIcon, HouseIcon, LogOutIcon, type LucideIcon, PackageIcon, PowerIcon,
+  SettingsIcon, ShoppingCartIcon, TruckIcon, WalletIcon, WarehouseIcon,
+} from "lucide-react";
 import menuData from "./menu.json";
 import type { MasterTable } from "../api";
 import type { Tab } from "../pages/Laporan";
@@ -71,24 +75,12 @@ export const TARGETS: Record<string, Target> = {
 };
 
 /**
- * Form VB dengan BorderStyle = 1 (Fixed Single, tengah layar) tampil sebagai dialog modal di atas
- * halaman yang sedang terbuka, bukan sebagai halaman MDI. Nilainya nama form VB untuk ukuran jendelanya.
+ * Hanya dialog kecil (Pengaturan Database dan Item Non Tunai yang dibuka dari Pengaturan Program)
+ * yang tampil sebagai modal; layar kerja lainnya tampil full-size memenuhi ruang kerja utama.
  */
 export const DIALOG_FORM: Partial<Record<Page, string>> = {
-  piutang: "FrmTransJualPiutang",
-  hutang: "FrmTransBeliHutang",
-  barcode: "FrmCetakBarcode",
-  pricetag: "FrmCetakBarcode",
-  katalog: "FrmKatalogBrg",
-  pengaturan: "FrmZPengaturan",
   database: "FrmZDatabase",
-  alat: "FrmZAlat",
-  poin: "FrmTransPoin",
   nontunai: "FrmDataJenisNonTunaiItem",
-  // Data Satuan, Kelompok, Kategori adalah form isian modal (BorderStyle 1) di aslinya.
-  satuan: "FrmDataSatuan",
-  kelompok: "FrmDataKelompok",
-  kategori: "FrmDataKategori",
 };
 export const isDialog = (p: Page) => p in DIALOG_FORM;
 
@@ -109,20 +101,23 @@ export function allowedFor(kasir: boolean, node: MenuNode, ditolak?: ReadonlySet
   return t.page !== "laporan" || KASIR_LAPORAN.includes(t.tab as string);
 }
 
-/** Tombol bilah alat utama (tbMenu) dan menu yang dibukanya. */
-export interface ToolBtn { key: string; caption: string; icon: string; menu?: string; sepBefore?: boolean }
+/**
+ * Tombol bilah alat utama (tbMenu) dan menu yang dibukanya.
+ * Ikon dari Lucide (sama dengan ikon lain di aplikasi), jadi mengganti ikon cukup mengganti satu nama di sini.
+ */
+export interface ToolBtn { key: string; caption: string; icon: LucideIcon; menu?: string; sepBefore?: boolean }
 export const TOOLBAR: ToolBtn[] = [
-  { key: "home", caption: "Home", icon: "home" },
-  { key: "logoff", caption: "Log Off", icon: "logoff" },
-  { key: "master", caption: "Master Data", icon: "master", menu: "mnMasterData", sepBefore: true },
-  { key: "jual", caption: "Penjualan", icon: "penjualan", menu: "mnTRPenjualan" },
-  { key: "beli", caption: "Pembelian", icon: "pembelian", menu: "mnTRPembelian" },
-  { key: "inv", caption: "Inventori", icon: "inventori", menu: "mnInventori" },
-  { key: "lap", caption: "Laporan", icon: "laporan", menu: "mnLaporan" },
-  { key: "keu", caption: "Keuangan", icon: "keuangan", menu: "mnKeuangan" },
-  { key: "atur", caption: "Pengaturan", icon: "pengaturan", menu: "mnPengaturan", sepBefore: true },
-  { key: "bantu", caption: "Bantuan", icon: "bantuan", menu: "mnBantuan" },
-  { key: "keluar", caption: "Keluar", icon: "keluar", sepBefore: true },
+  { key: "home", caption: "Home", icon: HouseIcon },
+  { key: "logoff", caption: "Log Off", icon: LogOutIcon },
+  { key: "master", caption: "Master Data", icon: PackageIcon, menu: "mnMasterData", sepBefore: true },
+  { key: "jual", caption: "Penjualan", icon: ShoppingCartIcon, menu: "mnTRPenjualan" },
+  { key: "beli", caption: "Pembelian", icon: TruckIcon, menu: "mnTRPembelian" },
+  { key: "inv", caption: "Inventori", icon: WarehouseIcon, menu: "mnInventori" },
+  { key: "lap", caption: "Laporan", icon: ChartColumnIcon, menu: "mnLaporan" },
+  { key: "keu", caption: "Keuangan", icon: WalletIcon, menu: "mnKeuangan" },
+  { key: "atur", caption: "Pengaturan", icon: SettingsIcon, menu: "mnPengaturan", sepBefore: true },
+  { key: "bantu", caption: "Bantuan", icon: CircleHelpIcon, menu: "mnBantuan" },
+  { key: "keluar", caption: "Keluar", icon: PowerIcon, sepBefore: true },
 ];
 
 /** Caption jendela anak untuk halaman tanpa pilihan menu (sama dengan caption form aslinya). */

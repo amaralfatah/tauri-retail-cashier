@@ -8,7 +8,7 @@ import { GridCol, VbGrid, VbModal } from "../vb/VbGrid";
 export function CariSatuan(props: { units: Unit[]; aktif: number; jual: boolean; onPick: (index: number) => void; onClose: () => void }) {
   const [sel, setSel] = useState<string | null>(String(props.aktif));
   const root = useRef<HTMLDivElement>(null);
-  useEffect(() => { root.current?.querySelector<HTMLElement>(".vbg")?.focus(); }, []);
+  useEffect(() => { root.current?.querySelector<HTMLElement>('[data-slot="vbg"], .vbg')?.focus(); }, []);
   const rows = props.units.map((u, i) => ({ ...u, i: String(i) }));
   type R = (typeof rows)[number];
   // Kolom asli: No, Satuan, Konversi, Hrg.Satuan (per satuan dasar), Hrg.Multi Satuan (harga satu satuan ini).
@@ -26,8 +26,8 @@ export function CariSatuan(props: { units: Unit[]; aktif: number; jual: boolean;
   };
   const bind: Record<string, Bind> = {
     lsData: () => <VbGrid cols={cols} rows={rows} rowKey={(r) => r.i} selected={sel} onSelect={setSel} onOpen={ambil} />,
-    cAmbil: { onClick: () => ambil() },
-    cClose: { onClick: props.onClose },
+    cAmbil: { text: "Ambil [Enter]", onClick: () => ambil(), variant: "default" },
+    cClose: { text: "Tutup [Esc]", onClick: props.onClose },
   };
-  return <div ref={root} style={{ display: "contents" }}><VbModal form="FrmCariSatuan" bind={bind} onClose={props.onClose} /></div>;
+  return <div ref={root} className="contents"><VbModal form="FrmCariSatuan" bind={bind} onClose={props.onClose} /></div>;
 }

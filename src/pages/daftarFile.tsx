@@ -104,7 +104,7 @@ function EksporDialog(props: { nama: string; onClose: () => void; onSimpan: (pat
     txtFieldDelimiter: { value: pemisah, onChange: setPemisah },
     chkUnicaode: { value: bom ? "1" : "0", onChange: (x) => setBom(x === "1") },
     chkSuppressBlank: { value: kosong ? "1" : "0", onChange: (x) => setKosong(x === "1") },
-    btnOK: { onClick: () => props.onSimpan(path, { pemisah, bom, lewatiKosong: kosong }) },
+    btnOK: { onClick: () => props.onSimpan(path, { pemisah, bom, lewatiKosong: kosong }), variant: "default" },
     btnCancel: { onClick: props.onClose },
   };
   return <VbModal form="FrmOpsiTextEkspor" title="Ekspor File Text" bind={bind} hide={["btnOpen", "txtPageDelimiter", "lblTag(0)"]} onClose={props.onClose} />;

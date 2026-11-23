@@ -1,8 +1,0 @@
-/* FrmZPengaturan: TabStrip klasik dan kotak halaman tab */
-[data-form="FrmZPengaturan"] [data-vb="xTab"] { pointer-events: none; }
-.vbp-tabs { position: relative; width: 100%; height: 100%; box-sizing: border-box; }
-.vbp-head { position: relative; z-index: 1; display: flex; height: 28px; }
-.vbp-head span { pointer-events: auto; box-sizing: border-box; height: 26px; margin-top: 2px; margin-right: -1px; padding: 5px 14px 0; cursor: default; user-select: none; background: #f0f0f0; border: 1px solid; border-color: #fff #808080 transparent #fff; }
-.vbp-head span.on { height: 29px; margin-top: 0; background: #f0f0f0; }
-.vbp-page { position: absolute; left: 0; right: 0; top: 27px; bottom: 0; border: 1px solid; border-color: #fff #808080 #808080 #fff; }
-.vbp-eg { color: #000; }

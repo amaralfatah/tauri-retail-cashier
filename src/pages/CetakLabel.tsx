@@ -1,29 +1,28 @@
 import { ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { FilterIcon, PrinterIcon, SearchIcon } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Kbd } from "@/components/ui/kbd";
+import { Label } from "@/components/ui/label";
+import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
 import { api, errText, Row } from "../api";
 import { inventoriApi } from "../api/inventori";
 import { useApp } from "../appContext";
 import { CariBarang } from "../components/CariBarang";
 import { Modal } from "../components/Modal";
 import { qty, rp, today } from "../format";
-import { Geom, VbForm } from "../vb/VbForm";
 import { useMsgBox } from "../vb/VbGrid";
 import { code128Bars } from "./barcode128";
 import { FilterBarang } from "./inventoriLib";
 import { NumInput } from "./Transaksi";
-import "./transaksi.css";
 import "./label.css";
 
 export type LabelMode = "barcode" | "pricetag";
 
 interface Item { kode: string; barcode: string; nama: string; hrgjual: number; hrgpromo: number; ketpromo: string; jml: number }
 
-const ROW_H = 23;
-const HEAD_H = 40;
 /** Lebar kolom (No, Kode, Barcode, Nama Barang, Hrg. Jual, Jml. Cetak) dalam persen. */
 const COLS = [5, 14, 16, 33, 16, 16];
-const FULL = { left: true, right: true, top: true, bottom: true };
-const ANCHOR = { tdBarang: FULL, Picture1: { left: true, right: true, bottom: true }, cTutup: { right: true } };
 
 const KODE_BARANG = "Kode Barang";
 const BARCODE = "Barcode";
@@ -47,15 +46,15 @@ function Sheet({ mode, items }: { mode: LabelMode; items: Item[] }) {
           <div className="nm">{it.nama}</div>
           <Barcode value={it.barcode} />
           <div className="kd">{it.barcode}</div>
-          <div className="hg">Rp. {rp(it.hrgjual)}</div>
+          <div className="hg">Rp {rp(it.hrgjual)}</div>
         </div>
       ) : (
         <div className="lbl" key={i}>
           <div className="nm">{it.nama}</div>
           <div className="kd">{it.kode}</div>
           <div>
-            {it.hrgpromo > 0 && <div className="coret">Rp. {rp(it.hrgjual)}</div>}
-            <div className="hg">Rp. {rp(it.hrgpromo > 0 ? it.hrgpromo : it.hrgjual)}</div>
+            {it.hrgpromo > 0 && <div className="coret">Rp {rp(it.hrgjual)}</div>}
+            <div className="hg">Rp {rp(it.hrgpromo > 0 ? it.hrgpromo : it.hrgjual)}</div>
           </div>
           <div className="promo">{it.ketpromo}</div>
         </div>
@@ -155,8 +154,8 @@ export function CetakLabel({ mode }: { mode: LabelMode }) {
     return () => window.removeEventListener("keydown", onKey);
   }, [ada, go]);
 
-  const grid = (g: Geom) => {
-    const total = Math.max(items.length + 1, Math.floor((g.height - 2 - HEAD_H) / ROW_H));
+  const renderGrid = () => {
+    const total = Math.max(items.length + 1, 16);
     const idx = items.findIndex((i) => i.kode === selected);
     const onKeyDown = (e: React.KeyboardEvent) => {
       if (e.target !== e.currentTarget) return;
@@ -179,7 +178,7 @@ export function CetakLabel({ mode }: { mode: LabelMode }) {
           <tr key={`e${i}`}>
             <td className="no">{i + 1}</td>
             <td className="kd">{i === items.length && (
-              <input ref={scanRef} value={scan} autoComplete="off" autoFocus onChange={(e) => setScan(e.target.value)}
+              <input ref={scanRef} data-slot="grid-input" value={scan} autoComplete="off" autoFocus onChange={(e) => setScan(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void onScan(); } }} />
             )}</td>
             <td /><td /><td /><td />
@@ -202,14 +201,14 @@ export function CetakLabel({ mode }: { mode: LabelMode }) {
       );
     }
     return (
-      <div className="tj-grid" tabIndex={0} ref={gridRef} onKeyDown={onKeyDown}
+      <div className="tj-grid vb-modern" tabIndex={0} ref={gridRef} onKeyDown={onKeyDown}
         onKeyDownCapture={(e) => {
           if (e.key === "Enter" && e.target instanceof HTMLInputElement && e.target.dataset.jml) { e.preventDefault(); scanRef.current?.focus(); }
         }}>
         <table>
           <colgroup>{COLS.map((c, i) => <col key={i} style={{ width: `${c}%` }} />)}</colgroup>
           <thead>
-            <tr><th className="r">No</th><th>Kode</th><th>Barcode</th><th>Nama Barang</th><th className="r">Hrg. Jual</th><th className="r">Jml. Cetak</th></tr>
+            <tr><th className="r">No</th><th className="text-left">Kode</th><th className="text-left">Barcode</th><th className="text-left">Nama Barang</th><th className="r">Hrg. Jual</th><th className="r">Jml. Cetak</th></tr>
           </thead>
           <tbody>{rows}</tbody>
         </table>
@@ -222,20 +221,69 @@ export function CetakLabel({ mode }: { mode: LabelMode }) {
     gridRef.current?.querySelectorAll<HTMLInputElement>("td.r input").forEach((el) => el.setAttribute("data-jml", "1"));
   });
 
-  const bind = useMemo(() => ({
-    tdBarang: grid,
-    cKode: {
-      value: kodeJenis, onChange: setKodeJenis,
-      children: <><option value={KODE_BARANG}>{KODE_BARANG}</option><option value={BARCODE}>{BARCODE}</option></>,
-    },
-    cFilter: { onClick: () => setFilter(true) },
-    cCetak: { onClick: () => void cetak() },
-    cTutup: { onClick: () => go("home") },
-  }), [items, selected, scan, kodeJenis, ada]); // eslint-disable-line react-hooks/exhaustive-deps
+  const totalLabel = items.reduce((s, i) => s + Math.max(0, Math.round(i.jml)), 0);
 
   return (
-    <div className="tj-page">
-      <VbForm form="FrmCetakBarcode" bind={bind} hide={tag ? ["lKode", "cKode"] : []} fill anchor={ANCHOR} />
+    <div className="flex size-full flex-col overflow-hidden bg-background font-sans text-xs text-foreground" data-form="FrmCetakBarcode">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b bg-display px-3.5 py-2 text-display-foreground">
+        <div className="flex items-center gap-4">
+          <div className="flex flex-col" data-vb="lblJudul">
+            <span className="text-[11px] font-medium tracking-wider text-display-foreground/65 uppercase">Layar</span>
+            <span className="text-xl leading-none font-bold tracking-tight uppercase">{tag ? "Cetak Price Tag" : "Cetak Barcode"}</span>
+          </div>
+          <div className="h-7 w-px bg-display-foreground/15" />
+          <div className="flex flex-col">
+            <span className="text-[11px] font-medium tracking-wider text-display-foreground/65 uppercase">Jenis Barang</span>
+            <span className="text-xl leading-none font-bold tabular-nums">{items.length}</span>
+          </div>
+          <div className="h-7 w-px bg-display-foreground/15" />
+          <div className="flex flex-col">
+            <span className="text-[11px] font-medium tracking-wider text-display-foreground/65 uppercase">Total Label</span>
+            <span className="text-xl leading-none font-bold tabular-nums">{totalLabel}</span>
+          </div>
+        </div>
+        <div className="text-xs font-medium text-display-foreground/80">
+          Scan barcode atau ketik kode di tabel. F10 untuk mencari barang.
+        </div>
+      </div>
+
+      <div className="min-h-0 flex-1 bg-muted/20 p-2.5" data-vb="tdBarang">
+        {renderGrid()}
+      </div>
+
+      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border bg-muted px-3 py-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {!tag && (
+            <div className="flex items-center gap-2" data-vb="cKode">
+              <Label className="text-xs font-semibold text-foreground">Sumber Barcode</Label>
+              <NativeSelect value={kodeJenis} onChange={(e) => setKodeJenis(e.target.value)} className="w-36">
+                <NativeSelectOption value={KODE_BARANG}>{KODE_BARANG}</NativeSelectOption>
+                <NativeSelectOption value={BARCODE}>{BARCODE}</NativeSelectOption>
+              </NativeSelect>
+            </div>
+          )}
+          <Button type="button" variant="outline" size="sm" className="h-8 gap-1.5 border-foreground/20 bg-background font-semibold text-foreground shadow-2xs" onClick={() => setCari(true)}>
+            <SearchIcon className="size-3.5" />
+            <span>Cari Barang</span>
+            <Kbd className="border border-border bg-muted text-foreground">F10</Kbd>
+          </Button>
+          <Button type="button" variant="outline" size="sm" data-vb="cFilter" className="h-8 gap-1.5 border-foreground/20 bg-background font-semibold text-foreground shadow-2xs" onClick={() => setFilter(true)}>
+            <FilterIcon className="size-3.5" />
+            <span>Filter Barang</span>
+          </Button>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button type="button" variant="outline" size="sm" data-vb="cTutup" className="h-8 gap-1.5 border-foreground/20 bg-background px-3 font-semibold text-foreground shadow-2xs" onClick={() => go("home")}>
+            <span>Tutup</span>
+            <Kbd className="border border-border bg-muted text-foreground">Esc</Kbd>
+          </Button>
+          <Button type="button" variant="default" size="sm" data-vb="cCetak" className="h-8 gap-1.5 px-4 font-bold shadow-xs" onClick={() => void cetak()}>
+            <PrinterIcon className="size-3.5" />
+            <span>Cetak</span>
+          </Button>
+        </div>
+      </div>
+
       {msg.node}
       {cari && (
         <CariBarang initial={scan} onClose={() => { setCari(false); scanRef.current?.focus(); }}
@@ -248,9 +296,9 @@ export function CetakLabel({ mode }: { mode: LabelMode }) {
       }} />}
       {preview && (
         <Modal title={tag ? "Cetak Price Tag" : "Cetak Barcode"} wide onClose={() => setPreview(null)}
-          footer={<><button className="btn" onClick={() => setPreview(null)}>Tutup</button><button className="btn primary" onClick={() => void cetakSekarang()}>Cetak</button></>}>
+          footer={<><Button variant="outline" onClick={() => setPreview(null)}>Tutup</Button><Button autoFocus onClick={() => void cetakSekarang()}>Cetak</Button></>}>
           <p>{preview.length} label siap dicetak. Cek tampilannya di bawah, lalu klik Cetak.</p>
-          <div className="lbl-preview"><Sheet mode={mode} items={preview} /></div>
+          <div className="lbl-preview rounded-md border border-border bg-muted/70"><Sheet mode={mode} items={preview} /></div>
         </Modal>
       )}
       {preview && createPortal(

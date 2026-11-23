@@ -44,21 +44,23 @@ export function Otentikasi(props: { alasan?: string; onOk: (tanda: string) => vo
     return () => window.removeEventListener("keydown", onKey, true);
   });
 
-  const { width, height } = formSize(FORM);
+  const { width } = formSize(FORM);
   return (
-    <div className="modal-backdrop no-print" style={{ zIndex: 60 }}>
-      <div ref={box} style={{ width: width + 2 }}
+    <div className="no-print fixed inset-0 z-60 grid place-items-center bg-black/40 p-2">
+      <div ref={box} className="flex flex-col gap-2" style={{ width: width + 2 }}
         onKeyDown={(e) => { if (e.key === "Enter" && e.target instanceof HTMLInputElement) { e.preventDefault(); void login(); } }}>
         <VbWindow form={FORM} title={formCaption(FORM)} onClose={props.onBatal} bind={{
           tNamaUser: { value: nama, onChange: setNama },
           tSandi: { value: sandi, onChange: setSandi },
-          cLogin: { onClick: () => void login(), disabled: busy },
-          cBatal: { onClick: props.onBatal },
+          cLogin: { onClick: () => void login(), disabled: busy, variant: "default", text: "Login [Enter]" },
+          cBatal: { onClick: props.onBatal, text: "Batal [Esc]" },
         }} />
-        <div style={{ background: "#f0f0f0", border: "1px solid #7a7a7a", borderTop: 0, padding: "6px 10px", font: "12px Tahoma, sans-serif", minHeight: 0, maxHeight: height }}>
-          {props.alasan && !err && <div>{props.alasan}</div>}
-          <Alert>{err}</Alert>
-        </div>
+        {(props.alasan || err) && (
+          <div className="flex flex-col gap-1.5 rounded-lg border bg-background px-3 py-2 text-xs text-muted-foreground shadow-lg">
+            {props.alasan && !err && <div>{props.alasan}</div>}
+            <Alert>{err}</Alert>
+          </div>
+        )}
       </div>
     </div>
   );

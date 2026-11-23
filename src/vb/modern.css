@@ -1,0 +1,249 @@
+/*
+ * Jembatan minimal antara VbForm (vb.css klasik tanpa @layer) dan skin modern (shadcn + Tailwind).
+ * Seluruh komponen tampilan (tombol, isian, tabel, daftar, dialog) memakai komponen shadcn + token tema Tailwind.
+ */
+
+.vb-form.vb-modern {
+  font-family: var(--font-app);
+  font-size: 12px;
+  color: var(--foreground);
+  background: var(--background);
+}
+.vb-modern .vb-c { line-height: 1.35; }
+/* Cincin fokus kotak isian dan tombol digambar di luar kotaknya, jadi jangan dipotong. */
+.vb-modern .vb-t-TextBox,
+.vb-modern .vb-t-ComboBox,
+.vb-modern .vb-t-CommandButton,
+.vb-modern .vb-t-OCX { overflow: visible; }
+
+/* Baris barang yang baru masuk disorot sebentar. Dua nama animasi dipakai bergantian supaya animasinya
+   mulai lagi saat barang yang sama discan berulang. */
+@keyframes tp-flash-0 { from { background-color: color-mix(in oklab, var(--success) 30%, var(--card)); } }
+@keyframes tp-flash-1 { from { background-color: color-mix(in oklab, var(--success) 30%, var(--card)); } }
+.tp-flash-0 > td { animation: tp-flash-0 0.9s ease-out; }
+.tp-flash-1 > td { animation: tp-flash-1 0.9s ease-out; }
+@media (prefers-reduced-motion: reduce) {
+  .tp-flash-0 > td, .tp-flash-1 > td { animation: none; }
+}
+
+/* Bilah gulir (scrollbar) tabel selalu tampil di macOS/WebKit supaya kasir bisa menyeret atau melihat posisi baris. */
+.tp-scroll-always {
+  overflow-y: scroll !important;
+  overflow-x: auto;
+}
+.tp-scroll-always::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+.tp-scroll-always::-webkit-scrollbar-track {
+  background: color-mix(in oklab, var(--muted) 75%, var(--card));
+  border-left: 1px solid var(--border);
+}
+.tp-scroll-always::-webkit-scrollbar-thumb {
+  background: color-mix(in oklab, var(--foreground) 28%, var(--muted));
+  border-radius: 9999px;
+  border: 2px solid color-mix(in oklab, var(--muted) 75%, var(--card));
+  min-height: 28px;
+}
+.tp-scroll-always::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in oklab, var(--foreground) 45%, var(--muted));
+}
+.tp-scroll-always::-webkit-scrollbar-thumb:active {
+  background: var(--primary);
+}
+.tp-scroll-always::-webkit-scrollbar-corner {
+  background: color-mix(in oklab, var(--muted) 75%, var(--card));
+}
+
+/* Tabel detail (.tj-grid) dan tabel bonus (.tj-bonus) pada layar gaya VB maupun layar modern */
+.tj-grid,
+.vb-modern .tj-grid,
+.vb-modern.tj-grid,
+.vb-modern .tj-bonus {
+  font-family: var(--font-app);
+  color: var(--foreground);
+  background: var(--card);
+  border: 1px solid color-mix(in oklab, var(--foreground) 20%, transparent);
+  border-radius: var(--radius-md);
+}
+.tj-grid:focus-visible,
+.vb-modern .tj-grid:focus-visible {
+  box-shadow: 0 0 0 2px color-mix(in oklab, var(--ring) 40%, transparent);
+}
+.tj-grid th,
+.vb-modern .tj-grid th,
+.vb-modern .tj-bonus th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  height: 32px;
+  padding: 0 8px;
+  font-family: var(--font-app);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--foreground);
+  background: var(--muted);
+  border: 0;
+  border-right: 1px solid color-mix(in oklab, var(--foreground) 20%, transparent);
+  border-bottom: 1px solid color-mix(in oklab, var(--foreground) 25%, transparent);
+}
+.tj-grid th:last-child,
+.vb-modern .tj-grid th:last-child,
+.vb-modern .tj-bonus th:last-child {
+  border-right: 0;
+}
+.tj-grid td,
+.vb-modern .tj-grid td,
+.vb-modern .tj-bonus td {
+  height: 28px;
+  padding: 0 8px;
+  font-family: var(--font-app);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  color: var(--foreground);
+  border: 0;
+  border-right: 1px solid color-mix(in oklab, var(--foreground) 14%, transparent);
+  border-bottom: 1px solid color-mix(in oklab, var(--foreground) 14%, transparent);
+}
+.tj-grid td:last-child,
+.vb-modern .tj-grid td:last-child,
+.vb-modern .tj-bonus td:last-child {
+  border-right: 0;
+}
+.tj-grid td.no,
+.vb-modern .tj-grid td.no,
+.vb-modern .tj-bonus td:first-child {
+  background: var(--muted);
+  color: color-mix(in oklab, var(--foreground) 85%, transparent);
+  font-size: 12px;
+  font-weight: 600;
+  text-align: right;
+}
+.tj-grid tr.cur > td:not(.no),
+.vb-modern .tj-grid tr.cur > td:not(.no) {
+  background: color-mix(in oklab, var(--primary) 14%, var(--card));
+}
+.tj-grid tr.warn > td:not(.no),
+.vb-modern .tj-grid tr.warn > td:not(.no) {
+  background: color-mix(in oklab, var(--warning) 18%, var(--card));
+}
+.tj-grid td:has(> input:focus),
+.tj-grid td:has(.kd-edit > input:focus),
+.vb-modern .tj-grid td:has(> input:focus),
+.vb-modern .tj-grid td:has(.kd-edit > input:focus) {
+  position: relative;
+  z-index: 2;
+  background: var(--card) !important;
+  box-shadow: inset 0 0 0 2px var(--ring);
+}
+.tj-grid input,
+.tj-grid select,
+.vb-modern .tj-grid input,
+.vb-modern .tj-grid select {
+  height: 100%;
+  padding: 0 4px;
+  font-family: var(--font-app);
+  font-size: 13px;
+  color: var(--foreground);
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  outline: none;
+  box-shadow: none;
+}
+.vb-modern .tj-grid .kd-edit {
+  height: 100%;
+}
+.vb-modern .tj-grid .kd-cari {
+  color: var(--ring);
+  background: transparent;
+  border: 0;
+  border-radius: 2px;
+}
+.vb-modern .tj-grid .kd-cari:hover {
+  background: color-mix(in oklab, var(--primary) 15%, transparent);
+}
+.vb-modern .cari-data th {
+  height: 28px;
+  font-size: 12px;
+}
+.vb-modern .cari-data td {
+  height: 26px;
+  font-size: 12px;
+}
+.vb-modern .cari-data td.kosong {
+  color: var(--muted-foreground);
+}
+
+/* Latar halaman daftar / form modern */
+.vbm-area {
+  min-height: 100%;
+  background: var(--muted) !important;
+}
+.vbm-fill,
+.tj-page {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: var(--background) !important;
+}
+.vbm-fill > .vb-form {
+  max-width: none;
+}
+
+/* TabStrip pada FrmZPengaturan dan FrmZAlat hanya merespons klik pada tombol tab, dan panel picTab selalu di atas */
+.vb-c[data-vb="xTab"] {
+  pointer-events: none;
+  z-index: 1;
+}
+.vb-c[data-vb="picTab"] {
+  z-index: 2;
+}
+
+/* Dashboard */
+.dash {
+  position: relative;
+  height: 100%;
+}
+
+/* Tabel detail (.tj-grid) ketika berdiri di luar .vb-modern */
+.tj-grid {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  outline: none;
+  font: 12px var(--font-app);
+  color: var(--foreground);
+}
+.tj-grid table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+.tj-grid td.r,
+.tj-grid th.r {
+  text-align: right;
+}
+.tj-grid td {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tj-grid td.kd {
+  padding: 0;
+}
+.tj-grid input,
+.tj-grid select {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  box-sizing: border-box;
+}
+.tj-grid input.r {
+  text-align: right;
+}

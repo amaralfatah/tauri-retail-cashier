@@ -1,4 +1,9 @@
-import { useState } from "react";
+import { SearchIcon } from "lucide-react";
+import { type KeyboardEvent, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Kbd } from "@/components/ui/kbd";
+import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
 import { Row } from "../../api";
 import { Modal } from "../../components/Modal";
 import { Bind } from "../../vb/VbForm";
@@ -8,6 +13,7 @@ import { KEYS, useList } from "../masterLib";
 export type LapFilterVal = Record<string, string>;
 type Who = "pelanggan" | "pemasok" | "kasir" | "sales";
 const TABEL: Record<Who, "mdpelanggan" | "mdpemasok" | "mdkaryawan"> = { pelanggan: "mdpelanggan", pemasok: "mdpemasok", kasir: "mdkaryawan", sales: "mdkaryawan" };
+const CARI = <span title="Cari" aria-label="Cari"><SearchIcon className="size-3.5" /></span>;
 const JUDUL: Record<Who, string> = { pelanggan: "Pelanggan", pemasok: "Supplier", kasir: "Kasir", sales: "Sales" };
 
 function Pilih(props: { who: Who; rows: Row[]; onPick: (kode: string) => void; onClose: () => void }) {
@@ -15,19 +21,24 @@ function Pilih(props: { who: Who; rows: Row[]; onPick: (kode: string) => void; o
   const { key, name } = KEYS[TABEL[props.who]];
   const list = props.rows.filter((r) => `${r[key]} ${r[name]}`.toLowerCase().includes(q.trim().toLowerCase())).slice(0, 300);
   return (
-    <Modal title={`Pilih ${JUDUL[props.who]}`} onClose={props.onClose} footer={<button className="btn" onClick={props.onClose}>Tutup</button>}>
-      <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Ketik kode atau nama" style={{ width: "100%", marginBottom: 6 }} />
-      <div style={{ maxHeight: 280, overflow: "auto" }}>
-        <table className="grid">
-          <tbody>
+    <Modal title={`Pilih ${JUDUL[props.who]}`} onClose={props.onClose} footer={<Button variant="outline" onClick={props.onClose}>Tutup <Kbd className="border border-border bg-muted text-foreground">Esc</Kbd></Button>}>
+      <Input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Ketik kode atau nama" />
+      <div className="tp-scroll-always max-h-70 rounded-md border border-border bg-card font-sans text-xs text-foreground">
+        <Table className="border-collapse">
+          <TableBody>
             {list.map((r) => (
-              <tr key={r[key]} style={{ cursor: "pointer" }} onClick={() => props.onPick(String(r[key]))}>
-                <td>{r[key]}</td><td>{r[name]}</td>
-              </tr>
+              <TableRow key={r[key]} className="cursor-pointer border-b border-border hover:bg-muted" onClick={() => props.onPick(String(r[key]))}>
+                <TableCell className="h-7 border-r border-border px-2 py-0 font-mono">{r[key]}</TableCell>
+                <TableCell className="h-7 px-2 py-0">{r[name]}</TableCell>
+              </TableRow>
             ))}
-            {list.length === 0 && <tr><td className="empty">Tidak ada data yang cocok.</td></tr>}
-          </tbody>
-        </table>
+            {list.length === 0 && (
+              <TableRow className="border-0 hover:bg-transparent">
+                <TableCell colSpan={2} className="p-4 text-center text-muted-foreground">Tidak ada data yang cocok.</TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
       </div>
     </Modal>
   );
@@ -54,8 +65,9 @@ export function LapFilterDialog(props: { form: string; value: LapFilterVal; onAp
     return String(data[who].find((r) => String(r[key]).toLowerCase() === (f[who] ?? "").toLowerCase())?.[name] ?? "");
   };
   const kode = (who: Who): Bind => ({ value: f[who] ?? "", onChange: (v) => set(who, v.trim()) });
-  const nama = (who: Who): Bind => ({ value: namaDari(who) });
-  const buka = (who: Who): Bind => ({ onClick: () => setPick(who) });
+  // Kotak nama hanya terbaca: terisi otomatis dari kode. Tanda "—" menunjukkan kotak ini bukan isian kosong.
+  const nama = (who: Who): Bind => ({ value: namaDari(who) || "—" });
+  const buka = (who: Who): Bind => ({ onClick: () => setPick(who), text: CARI });
   const txt = (k: string): Bind => ({ value: f[k] ?? "", onChange: (v) => set(k, v) });
   const pair = (k: string, rows: Row[], key: string, name: string, kodeCtl: boolean, parent?: [string, string]): Bind => {
     const list = parent && f[parent[0]] ? rows.filter((r) => r[parent[1]] === f[parent[0]]) : rows;
@@ -102,15 +114,24 @@ export function LapFilterDialog(props: { form: string; value: LapFilterVal; onAp
     cPemasokKode: pair("pemasok", pem, "kodepemasok", "namapemasok", true),
     tStok1: { value: f.stok1 ?? "", onChange: (v) => set("stok1", v), num: true },
     tStok2: { value: f.stok2 ?? "", onChange: (v) => set("stok2", v), num: true },
-    cTampil: { onClick: tampil },
-    cTutup: { onClick: props.onClose },
+    LabelKodeBarang: { className: "text-[11px] whitespace-nowrap" },
+    Label9: { text: "Supplier" },
+    cTampil: { onClick: tampil, variant: "default", text: "Tampilkan", className: "text-[11px]" },
+    cTutup: { onClick: props.onClose, text: "Tutup [Esc]", className: "text-[11px]" },
+  };
+
+  // Enter di kolom terakhir menampilkan laporan. Di kolom lain, Enter pindah ke kolom berikutnya (diatur VbModal).
+  const enterTampil = (e: KeyboardEvent) => {
+    const t = e.target as HTMLElement;
+    if (e.key !== "Enter" || e.defaultPrevented || t instanceof HTMLButtonElement) return;
+    if (t instanceof HTMLInputElement || t instanceof HTMLSelectElement) { e.preventDefault(); tampil(); }
   };
 
   return (
     <>
-      <VbModal form={props.form} bind={bind} onClose={props.onClose} />
+      <div onKeyDown={enterTampil}><VbModal form={props.form} bind={bind} onClose={props.onClose} /></div>
       {pick && <Pilih who={pick} rows={data[pick]} onClose={() => setPick(null)} onPick={(k) => { set(pick, k); setPick(null); }} />}
-      {pesan && <Modal title="Informasi" onClose={() => setPesan("")} footer={<button className="btn primary" onClick={() => setPesan("")}>OK</button>}><p>{pesan}</p></Modal>}
+      {pesan && <Modal title="Informasi" onClose={() => setPesan("")} footer={<Button autoFocus onClick={() => setPesan("")}>OK</Button>}><p>{pesan}</p></Modal>}
     </>
   );
 }

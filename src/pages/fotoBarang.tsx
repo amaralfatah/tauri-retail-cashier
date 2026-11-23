@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { errText, Row } from "../api";
 import { berkasApi } from "../api/berkas";
 import { inventoriApi } from "../api/inventori";
@@ -6,6 +8,7 @@ import { pilihGambar } from "../api/dialog";
 import { Modal } from "../components/Modal";
 import { Bind, Geom } from "../vb/VbForm";
 import { useMsgBox, VbModal } from "../vb/VbGrid";
+import { TUTUP } from "./masterLib";
 
 /** Foto barang yang tersimpan di folder foto aplikasi, dibaca sebagai gambar siap tampil. `muat` memuat ulang. */
 export function useFotoBarang(kode: string | null | undefined) {
@@ -23,8 +26,12 @@ export function useFotoBarang(kode: string | null | undefined) {
 
 /** Isi kotak foto (picFoto): gambar mengikuti ukuran kotak, atau kotak kosong kalau barang belum punya foto. */
 export const kotakFoto = (src: string | null, tinggi?: number): Bind => (g: Geom) => (
-  <div className="vb-pic" style={{ width: g.width, height: tinggi ?? g.height, background: "#fff", border: "1px solid #7a7a7a", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
-    {src && <img src={src} alt="" style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain" }} />}
+  <div
+    data-slot="vb-panel"
+    className="flex items-center justify-center overflow-hidden rounded-sm border border-border bg-card"
+    style={{ width: g.width, height: tinggi ?? g.height }}
+  >
+    {src ? <img src={src} alt="" className="max-h-full max-w-full object-contain" /> : <span className="px-2 text-center text-xs text-muted-foreground">Belum ada foto</span>}
   </div>
 );
 
@@ -51,14 +58,14 @@ export function AlamatFoto(props: { onPick: (path: string) => void; onClose: () 
   const ok = () => path.trim() && props.onPick(path.trim().replace(/^"|"$/g, ""));
   return (
     <Modal title="Pilih Gambar/Foto Barang" onClose={props.onClose}
-      footer={<><button className="btn" onClick={props.onClose}>Batal</button><button className="btn primary" onClick={ok} disabled={!path.trim()}>OK</button></>}>
+      footer={<><Button variant="outline" onClick={props.onClose}>Batal</Button><Button onClick={ok} disabled={!path.trim()}>OK</Button></>}>
       <p>Klik Cari untuk memilih gambar di komputer Anda, atau ketik alamat filenya.</p>
-      <div style={{ display: "flex", gap: 6 }}>
-        <input className="input" style={{ flex: 1 }} autoFocus value={path} onChange={(e) => setPath(e.target.value)}
+      <div className="flex gap-1.5">
+        <Input className="flex-1" autoFocus value={path} onChange={(e) => setPath(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter") ok(); }} />
-        <button className="btn" onClick={() => void cari()}>Cari...</button>
+        <Button type="button" variant="outline" onClick={() => void cari()}>Cari...</Button>
       </div>
-      {pratinjau && <img src={pratinjau} alt="" style={{ display: "block", maxWidth: "100%", maxHeight: 180, margin: "8px auto 0", objectFit: "contain" }} />}
+      {pratinjau && <img src={pratinjau} alt="" className="mx-auto mt-2 block max-h-45 max-w-full object-contain" />}
     </Modal>
   );
 }
@@ -115,18 +122,18 @@ export function ImportFoto(props: { barang?: Row; onClose: () => void; onSaved?:
     picFoto: kotakFoto(pratinjau ?? foto.src),
     // Pemilih drive, folder, dan file Windows diganti dialog pilih file; alamat tetap bisa diketik.
     File1: () => (
-      <div style={{ font: "12px Tahoma, 'Segoe UI', sans-serif" }}>
-        <div style={{ marginBottom: 4 }}>Alamat file gambar</div>
-        <div style={{ display: "flex", gap: 4 }}>
-          <input className="vb-txt" style={{ flex: 1, minWidth: 0 }} value={path} onChange={(e) => setPath(e.target.value)} placeholder="Klik Cari atau ketik alamat file" />
-          <button type="button" onClick={() => void pilih()}>Cari...</button>
+      <div className="flex flex-col gap-1.5 font-sans text-xs text-foreground">
+        <div className="font-medium">Alamat file gambar</div>
+        <div className="flex gap-1.5">
+          <Input className="h-7 min-w-0 flex-1 text-xs" value={path} onChange={(e) => setPath(e.target.value)} placeholder="Klik Cari atau ketik alamat file" />
+          <Button type="button" variant="outline" size="sm" className="h-7 text-xs" onClick={() => void pilih()}>Cari...</Button>
         </div>
-        <div style={{ marginTop: 6, color: "#444" }}>Gambar disalin ke folder foto aplikasi, dengan nama sesuai kode barang.</div>
+        <div className="text-muted-foreground">Gambar disalin ke folder foto aplikasi, dengan nama sesuai kode barang.</div>
       </div>
     ),
     chkHapus: { value: hapus ? "1" : "0", onChange: (v) => setHapus(v === "1") },
-    cSimpan: { onClick: () => void simpan() },
-    cKeluar: { onClick: props.onClose },
+    cSimpan: { onClick: () => void simpan(), variant: "default" },
+    cKeluar: { onClick: props.onClose, text: TUTUP },
   };
   return (
     <VbModal form="FrmZUploadFoto" title="Upload Foto/Gambar Barang" bind={bind} hide={["Drive1", "Dir1"]} onClose={props.onClose}>

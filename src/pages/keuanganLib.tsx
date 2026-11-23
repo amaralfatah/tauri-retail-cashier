@@ -1,9 +1,12 @@
 import { ReactNode, useEffect, useRef, useState } from "react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
+import { Alert } from "../components/Modal";
 import { api, errText, MasterTable, Row } from "../api";
 import { rp } from "../format";
 import { Bind } from "../vb/VbForm";
 import { GridCol, VbGrid, VbModal } from "../vb/VbGrid";
-import { KEYS } from "./masterLib";
+import { KEYS, TUTUP } from "./masterLib";
 
 export const s = (v: unknown) => String(v ?? "");
 export const txt = (v: unknown, set?: (x: string) => void, disabled?: boolean): Bind => ({ value: s(v), onChange: set, disabled });
@@ -51,9 +54,9 @@ export function CariMaster(props: { table: Extract<MasterTable, "mdpelanggan" | 
   const bind: Record<string, Bind> = {
     tData: { value: q, onChange: setQ },
     lsData: () => <VbGrid cols={cols} rows={rows} rowKey={(r) => r[key]} selected={sel} onSelect={setSel} onOpen={ambil} />,
-    cAmbil: { onClick: () => ambil() },
+    cAmbil: { onClick: () => ambil(), variant: "default" },
     cJthTempo: { onClick: () => setJth(true) },
-    cClose: { onClick: props.onClose },
+    cClose: { onClick: props.onClose, text: TUTUP },
   };
   const onKeyDown = (e: React.KeyboardEvent) => {
     const t = e.target as HTMLElement;
@@ -65,7 +68,7 @@ export function CariMaster(props: { table: Extract<MasterTable, "mdpelanggan" | 
   const hide = ["cOK", ...(props.jthTempo && props.table === "mdpelanggan" ? [] : ["cJthTempo"])];
   return (
     <div ref={root} onKeyDownCapture={onKeyDown}>
-      <VbModal form={FORM_CARI[props.table]} bind={bind} hide={hide} onClose={props.onClose}>{err && <div className="vbm-msg">{err}</div>}</VbModal>
+      <VbModal form={FORM_CARI[props.table]} bind={bind} hide={hide} onClose={props.onClose}>{err && <div className="mt-2"><Alert>{err}</Alert></div>}</VbModal>
     </div>
   );
 }
@@ -73,13 +76,29 @@ export function CariMaster(props: { table: Extract<MasterTable, "mdpelanggan" | 
 /** Daftar dengan kotak centang (ListBox gaya checkbox). */
 export function Checklist(props: { items: { kunci: string; nama: string }[]; picked: Set<string>; onToggle: (k: string) => void; radio?: boolean }) {
   return (
-    <div className="alat-list">
-      {props.items.map((i) => (
-        <label key={i.kunci} className={props.radio && props.picked.has(i.kunci) ? "on" : ""}>
-          <input type={props.radio ? "radio" : "checkbox"} checked={props.picked.has(i.kunci)} onChange={() => props.onToggle(i.kunci)} />
-          <span>{i.nama}</span>
-        </label>
-      ))}
+    <div className="tp-scroll-always flex size-full flex-col gap-0.5 rounded-md border border-border bg-card p-1 font-sans text-xs text-foreground">
+      {props.items.map((i) => {
+        const checked = props.picked.has(i.kunci);
+        return (
+          <Label
+            key={i.kunci}
+            className={`flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1 font-normal transition-colors ${props.radio && checked ? "bg-accent font-medium text-foreground" : "hover:bg-muted"}`}
+          >
+            {props.radio ? (
+              <input
+                data-slot="vb-check-input"
+                type="radio"
+                className="size-3.5 shrink-0 accent-primary"
+                checked={checked}
+                onChange={() => props.onToggle(i.kunci)}
+              />
+            ) : (
+              <Checkbox checked={checked} onCheckedChange={() => props.onToggle(i.kunci)} />
+            )}
+            <span className="truncate">{i.nama}</span>
+          </Label>
+        );
+      })}
     </div>
   );
 }

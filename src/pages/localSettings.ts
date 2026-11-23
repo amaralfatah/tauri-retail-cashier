@@ -6,6 +6,8 @@ const PREFIX = "tokopro.";
 
 export const LOCAL_DEFAULTS = {
   modeScan: "0",
+  /** Ukuran tampilan seluruh jendela dalam persen: "100", "115", atau "125". */
+  ukuranTampilan: "100",
   konfirmasiCetak: "0",
   formatQty: "###,##0.00",
   formatHrg: "###,##0",

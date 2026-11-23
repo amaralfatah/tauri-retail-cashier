@@ -1,5 +1,4 @@
 import { ReactNode, useRef, useState } from "react";
-import "./panduan.css";
 
 /** Isi panduan. Semua tombol dan kunci di sini diambil dari layar yang sudah ada di program. */
 type Blok =
@@ -33,11 +32,15 @@ const BAGIAN: Bagian[] = [
   {
     id: "layar", judul: "Layar utama dan pemberitahuan",
     isi: [
-      { p: "Menu ada di bilah atas: Home, Log Off, Master Data, Penjualan, Pembelian, Inventori, Laporan, Keuangan, Pengaturan, Bantuan, dan Keluar." },
-      { p: "Klik Home untuk kembali ke layar utama. Tombol X di kanan atas menutup jendela yang sedang terbuka." },
+      { p: "Menu ada di bilah atas, masing-masing dengan ikon: Home, Log Off, Master Data, Penjualan, Pembelian, Inventori, Laporan, Keuangan, Pengaturan, Bantuan, dan Keluar. Klik Home untuk kembali ke layar utama." },
+      { p: "Setiap layar punya tombol Tutup di kanan bawah, dengan petunjuk Esc di sebelahnya. Klik Tutup atau tekan Esc untuk menutup layar. Di layar kasir, kalau masih ada barang di tabel, program bertanya dulu karena transaksinya ikut dibatalkan." },
+      { p: "Nama layar yang sedang terbuka tampil di kiri bilah status di bagian bawah, disusul nama user, level, dan jam." },
+      { p: "Tombol dan kolom yang punya tombol pintas menuliskannya langsung di tombol atau labelnya, misalnya F4 atau Alt+1. Anda tidak perlu menghafal daftarnya." },
+      { p: "Tombol bulan atau matahari di bilah atas (tertulis Gelap atau Terang kalau jendela cukup lebar) mengganti tampilan program antara mode terang dan mode gelap. Pilihan Tema di Pengaturan Program, tab Info Usaha, juga bisa Ikut Sistem." },
+      { p: "Pertanyaan yang menghapus atau membatalkan sesuatu memilih Tidak lebih dulu, jadi Enter yang tidak sengaja tidak menghapus apa pun. Anda bisa menjawab dengan huruf Y untuk Ya atau T untuk Tidak." },
       { p: "Pemilik toko bisa memilih layar utama berupa Dashboard. Pilihannya ada di Pengaturan Program, tab Transaksi, kolom Pilihan Home Screen. Pilihan ini hanya berlaku di komputer yang Anda pakai." },
-      { p: "Dashboard menampilkan penjualan dan laba hari ini, rata-rata 30 hari terakhir, grafik penjualan dan laba, lima pelanggan dengan transaksi terbanyak, serta daftar piutang pelanggan. Klik Reload untuk memuat data terbaru." },
-      { p: "Setelah Anda masuk, program memeriksa piutang yang sudah jatuh tempo. Kalau ada, jendela kecil Notifikasi muncul dari kanan bawah. Klik jendela itu untuk membuka Pelunasan Piutang. Program memeriksa lagi tiap 10 menit. Jendela ini hanya muncul untuk pengguna yang boleh membuka Pelunasan Piutang." },
+      { p: "Dashboard menampilkan penjualan dan laba hari ini, rata-rata 30 hari terakhir, grafik penjualan dan laba, lima pelanggan dengan transaksi terbanyak, serta daftar piutang pelanggan. Klik Refresh untuk memuat data terbaru." },
+      { p: "Setelah Anda masuk, program memeriksa piutang yang sudah jatuh tempo. Kalau ada, jendela kecil Notifikasi muncul dari kanan bawah. Klik jendela itu untuk membuka Pelunasan Piutang, atau klik tanda × di pojoknya untuk menutupnya. Program memeriksa satu kali setelah Anda masuk, dan lagi setiap Anda mengklik Notifikasi di Ringkasan Toko. Jendela ini hanya muncul untuk pengguna yang boleh membuka Pelunasan Piutang." },
     ],
   },
   {
@@ -48,7 +51,7 @@ const BAGIAN: Bagian[] = [
       { p: "Untuk langsung mengisi jumlah, ketik jumlah, tanda bintang, lalu kode. Contohnya 3*A001 memasukkan 3 barang dengan kode A001." },
       { p: "Kalau kode tidak ditemukan, atau kolom scan kosong lalu Anda tekan Enter, daftar barang terbuka untuk dicari." },
       { p: "Klik baris di tabel untuk mengubah jumlah atau harga. Pilih barang lalu tekan Delete untuk menghapusnya dari tabel." },
-      { p: "Pilih pelanggan, sales, dan isi catatan kalau perlu. Tombol ? di samping kolom membuka daftarnya." },
+      { p: "Pilih kasir, pelanggan, sales, dan isi catatan kalau perlu. Klik ikon kaca pembesar di samping kolomnya untuk membuka daftar." },
       { p: "Tombol keyboard di layar ini:" },
       {
         kepala: ["Tombol", "Fungsi"],
@@ -57,26 +60,30 @@ const BAGIAN: Bagian[] = [
           ["F3", "Ambil Order: memakai order penjualan yang sudah dibuat"],
           ["F4", "Bayar"],
           ["F6", "Batal: mengosongkan semua barang di tabel"],
+          ["F7", "Pending: simpan transaksi dulu, bayar nanti"],
+          ["F8", "Data Pending: panggil transaksi yang tertunda"],
+          ["F9", "Cek Poin pelanggan (kalau poin member aktif)"],
           ["F10", "Cari barang di daftar"],
           ["Delete", "Hapus barang yang dipilih di tabel"],
           ["Esc", "Tutup layar"],
           ["Alt + T", "Pindah ke kolom scan atau tabel"],
           ["Alt + 1", "Ke kolom Tanggal"],
+          ["Alt + 2", "Pilih kasir (hanya untuk level selain Kasir)"],
           ["Alt + 3", "Pilih pelanggan"],
           ["Alt + 4", "Pilih sales"],
           ["Alt + 5", "Ke kolom Catatan"],
         ],
       },
-      { p: "Tekan Bayar [F4] kalau semua barang sudah masuk. Jendela Pembayaran terbuka dan menampilkan total transaksi." },
+      { p: "Tekan Bayar (F4) kalau semua barang sudah masuk. Jendela Pembayaran terbuka dan menampilkan total belanja." },
       { ul: [
-        "Isi Jml. Bayar dengan uang yang Anda terima. Kembaliannya dihitung otomatis.",
-        "Isi Diskon atau Biaya Lain kalau ada.",
-        "Untuk pembayaran non tunai, pilih Jenis Non Tunai lalu isi nomor referensinya.",
-        "Kalau uang yang diterima kurang dari total, pilih dulu pelanggannya di layar transaksi. Sisanya dicatat sebagai piutang. Atur tanggal Jatuh Tempo di jendela yang sama.",
-        "Alt + S menyimpan, Alt + B ke kolom Jml. Bayar, Alt + P menyalakan atau mematikan Preview Struk, Alt + T menutup jendela.",
+        "Pilih cara bayar: Tunai (Alt+1), QRIS (Alt+2), atau Debit/Kartu (Alt+3). Untuk QRIS dan Debit, isi nomor referensi dari struk EDC atau QRIS.",
+        "Isi uang yang diterima (Alt+B). Tombol Uang pas (Alt+U) dan pecahan uang di bawahnya mengisi jumlahnya sekali klik. Kembaliannya dihitung otomatis.",
+        "Klik Diskon, biaya lain, uang muka, dan non tunai (Alt+L) untuk mengisi diskon, biaya lain, uang muka, atau pembayaran non tunai campuran.",
+        "Kalau uang yang diterima kurang dari total, pilih dulu pelanggannya di layar transaksi. Kekurangannya dicatat sebagai piutang, dan Anda mengatur tanggal jatuh temponya di jendela yang sama.",
+        "Alt+P menyalakan atau mematikan Lihat struk dulu.",
       ] },
-      { p: "Klik Simpan. Struk muncul untuk dicetak. Kalau Anda mematikan Preview Struk, struk langsung dicetak, atau program bertanya dulu bila pilihan konfirmasi cetak aktif di Pengaturan Program." },
-      { p: "Klik Cetak Ulang kalau struk transaksi terakhir perlu dicetak lagi. Tombol Surat Jalan dan SPK Gudang mencetak dokumen untuk gudang. Tombol Cek Poin menampilkan poin pelanggan yang sedang dipilih." },
+      { p: "Klik Simpan atau tekan Enter. Struk muncul untuk dicetak. Kalau Lihat struk dulu dimatikan, struk langsung dicetak, atau program bertanya dulu bila pilihan konfirmasi cetak aktif di Pengaturan Program. Esc menutup jendela Pembayaran tanpa menyimpan." },
+      { p: "Klik Cetak Ulang kalau struk transaksi terakhir perlu dicetak lagi. Tombol Surat Jalan dan SPK Gudang mencetak dokumen untuk gudang." },
       { p: "Kalau pengaturan Izinkan stok minus saat penjualan mati, Anda tidak bisa menjual lebih dari stok. Jumlah yang terlalu banyak dikembalikan ke stok yang ada, dan barang yang stoknya habis tidak muncul saat dicari." },
     ],
   },
@@ -93,7 +100,7 @@ const BAGIAN: Bagian[] = [
     id: "beli", judul: "Pembelian",
     isi: [
       { p: "Buka Pembelian, lalu Transaksi Pembelian. Cara mengisinya sama seperti penjualan: scan atau ketik kode barang, isi jumlah, lalu cek harga belinya." },
-      { p: "Pilih pemasoknya lewat tombol ? di samping kolom Pemasok." },
+      { p: "Pilih supplier lewat ikon kaca pembesar di samping kolom Supplier (Alt+3)." },
       { ul: [
         "F1: Batal.",
         "F3: Ambil Order Pembelian yang sudah dibuat.",
@@ -102,7 +109,7 @@ const BAGIAN: Bagian[] = [
         "F10: Cari barang.",
       ] },
       { p: "Klik Edit Barang kalau data barang yang dipilih perlu diperbaiki, misalnya harga jual." },
-      { p: "Di jendela Pembayaran, isi Jml. Bayar. Kalau yang Anda bayar kurang dari total, sisanya dicatat sebagai hutang ke pemasok. Atur Jatuh Tempo di jendela itu." },
+      { p: "Di jendela Pembayaran, isi Jml. Bayar. Kalau yang Anda bayar kurang dari total, sisanya dicatat sebagai hutang ke supplier. Atur Jatuh Tempo di jendela itu." },
       { p: "Dua pengaturan memengaruhi pembelian: Update Harga Beli saat Transaksi Pembelian, dan Update Harga Jual dari margin saat Transaksi Pembelian. Keduanya ada di Pengaturan Program, tab Transaksi." },
       { p: "Order Pembelian ada di menu yang sama. Isinya sama seperti pembelian, tetapi stok belum bertambah sampai barangnya diambil lewat Ambil Order [F3]." },
     ],
@@ -111,8 +118,8 @@ const BAGIAN: Bagian[] = [
     id: "retur", judul: "Retur",
     isi: [
       { p: "Retur Penjualan dipakai kalau pembeli mengembalikan barang. Buka Penjualan, lalu Retur Penjualan. Tekan F3 (Cari Transaksi) dan pilih nota penjualannya. Isi jumlah barang yang dikembalikan, lalu tekan F4 untuk menyimpan." },
-      { p: "Retur Pembelian per Transaksi dipakai kalau Anda mengembalikan barang ke pemasok dan nota pembeliannya masih ada. Caranya sama seperti retur penjualan." },
-      { p: "Retur Pembelian per Barang dipakai kalau nota pembeliannya tidak ada. Pilih pemasok dulu, tekan F10 untuk mencari barang, isi jumlahnya, lalu tekan F4." },
+      { p: "Retur Pembelian per Transaksi dipakai kalau Anda mengembalikan barang ke supplier dan nota pembeliannya masih ada. Caranya sama seperti retur penjualan." },
+      { p: "Retur Pembelian per Barang dipakai kalau nota pembeliannya tidak ada. Pilih supplier dulu, tekan F10 untuk mencari barang, isi jumlahnya, lalu tekan F4." },
       { p: "Jumlah retur tidak boleh lebih besar dari jumlah di nota. Retur dicatat atas nama Anda. F1 membatalkan isian." },
     ],
   },
@@ -121,7 +128,7 @@ const BAGIAN: Bagian[] = [
     isi: [
       { p: "Pelunasan Piutang dipakai kalau pelanggan membayar tagihannya. Buka Penjualan, lalu Pelunasan Piutang. Pilih pelanggannya. Di kolom Mode Pembayaran, pilih Lunasi Transaksi yang Dicentang lalu centang tagihan yang dibayar, atau pilih Bayar Sebagian lalu isi Jml. Pelunasan di tiap tagihan. Tekan F4 untuk menyimpan." },
       { p: "Kolom Kekurangan/Sisa menunjukkan berapa yang masih harus dibayar setelah pelunasan ini. Tagihan yang sudah lunas tidak muncul lagi di daftar piutang." },
-      { p: "Pelunasan Hutang ada di menu Pembelian dan caranya sama, untuk hutang ke pemasok." },
+      { p: "Pelunasan Hutang ada di menu Pembelian dan caranya sama, untuk hutang ke supplier." },
       { p: "Daftar piutang dan hutang yang belum lunas juga ada di menu Laporan." },
     ],
   },
@@ -202,8 +209,8 @@ const BAGIAN: Bagian[] = [
       { p: "Buka Pengaturan, lalu Pengaturan Pengguna. Daftar pengguna ada di sebelah kiri, isian di sebelah kanan." },
       { ol: [
         "Pilih pengguna di daftar, atau klik Baru untuk menambah pengguna.",
-        "Isi Nama User, Level, dan pilih karyawannya. Kata sandi boleh dikosongkan untuk akun baru, dan pengguna itu masuk dengan kata sandi sementara.",
-        "Di bagian Hak Akses, centang menu yang boleh dibuka pengguna itu. Centang Buka semua item menu untuk melihat semua cabangnya.",
+        "Isi Nama Pengguna, Level, dan pilih karyawannya lewat tombol Pilih Karyawan. Kata sandi boleh dikosongkan untuk akun baru, dan pengguna itu masuk dengan kata sandi sementara.",
+        "Di bagian Hak Akses, centang menu yang boleh dibuka pengguna itu. Centang Buka semua item menu untuk membuka semua cabangnya. Klik tanda panah di depan nama menu untuk membuka atau menutup satu cabang.",
         "Klik Simpan.",
       ] },
       { p: "Level ada tiga: Manager, Supervisor, dan Kasir. Hanya Manager yang bisa memberi, mengubah, atau menghapus akun Manager. Hak akses Manager tidak bisa dibatasi." },
@@ -221,20 +228,34 @@ const BAGIAN: Bagian[] = [
       ] },
       { p: "Di Pengaturan Database, centang Auto Backup saat keluar aplikasi supaya program membuat salinan setiap Anda menutupnya. Klik Simpan setelah mencentang." },
       { p: "Restore mengembalikan data dari salinan. Buka Alat Bantu Program, pilih tab Restore Data, pilih file backup, lalu klik Restore. Data Anda saat ini diganti dengan isi file itu, jadi program membuat salinan dari data sekarang lebih dulu." },
-      { p: "Tab lain di Alat Bantu Program (Hapus Data, Import Data, SQL Editor, Repair Data, Hapus Transaksi) mengubah data secara langsung. Gunakan hanya kalau Anda paham akibatnya, dan lakukan backup dulu. Impor dari Excel ada di Impor Data Excel dan juga sebaiknya didahului backup." },
+      { p: "Tab Hapus Data, SQL Editor, dan Hapus Transaksi di Alat Bantu Program tertulis merah dan ada di ujung kanan, karena ketiganya mengubah atau menghapus data secara langsung. Tab Perbaiki Data dan Import Data juga mengubah data. Pakai hanya kalau Anda paham akibatnya, dan lakukan backup dulu. Impor dari Excel ada di Impor Data Excel dan juga sebaiknya didahului backup." },
     ],
   },
 ];
 
 function Isi({ b }: { b: Blok }): ReactNode {
-  if ("p" in b) return <p>{b.p}</p>;
-  if ("ul" in b) return <ul>{b.ul.map((x, i) => <li key={i}>{x}</li>)}</ul>;
-  if ("ol" in b) return <ol>{b.ol.map((x, i) => <li key={i}>{x}</li>)}</ol>;
+  if ("p" in b) return <p className="my-2 max-w-3xl leading-relaxed text-foreground/90">{b.p}</p>;
+  if ("ul" in b) return <ul className="my-2 max-w-3xl list-disc space-y-1 pl-5 text-foreground/90">{b.ul.map((x, i) => <li key={i}>{x}</li>)}</ul>;
+  if ("ol" in b) return <ol className="my-2 max-w-3xl list-decimal space-y-1 pl-5 text-foreground/90">{b.ol.map((x, i) => <li key={i}>{x}</li>)}</ol>;
   return (
-    <table>
-      <thead><tr><th>{b.kepala[0]}</th><th>{b.kepala[1]}</th></tr></thead>
-      <tbody>{b.tabel.map((r, i) => <tr key={i}><td>{r[0]}</td><td>{r[1]}</td></tr>)}</tbody>
-    </table>
+    <div className="my-2.5 max-w-3xl overflow-hidden rounded-md border border-border bg-card">
+      <table className="w-full border-collapse text-xs">
+        <thead>
+          <tr className="border-b border-border bg-muted text-left font-semibold text-foreground">
+            <th className="px-3 py-1.5">{b.kepala[0]}</th>
+            <th className="px-3 py-1.5">{b.kepala[1]}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {b.tabel.map((r, i) => (
+            <tr key={i} className="border-b border-border/60 last:border-b-0">
+              <td className="px-3 py-1.5 align-top font-semibold whitespace-nowrap text-foreground">{r[0]}</td>
+              <td className="px-3 py-1.5 align-top text-foreground/90">{r[1]}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }
 
@@ -247,23 +268,34 @@ export function Panduan() {
     area.current?.querySelector(`#pnd-${id}`)?.scrollIntoView({ block: "start" });
   };
   return (
-    <div className="pnd">
-      <nav className="pnd-isi" aria-label="Daftar isi">
-        <div className="pnd-isi-judul">Daftar Isi</div>
-        <ul>
+    <div className="pnd flex h-full gap-2 bg-muted/40 p-2 font-sans text-xs text-foreground">
+      <nav className="pnd-isi flex w-64 flex-none flex-col overflow-hidden rounded-md border border-border bg-card" aria-label="Daftar isi">
+        <div className="pnd-isi-judul border-b border-border bg-muted/70 px-3 py-2 text-xs font-semibold text-foreground">Daftar Isi</div>
+        <ul className="m-0 list-none divide-y divide-border/50 overflow-auto p-1">
           {BAGIAN.map((b, i) => (
             <li key={b.id}>
-              <button type="button" className={aktif === b.id ? "on" : ""} onClick={() => buka(b.id)}>{i + 1}. {b.judul}</button>
+              <button
+                type="button"
+                data-slot="pnd-nav-item"
+                className={`block w-full rounded-sm px-2.5 py-1.5 text-left text-xs transition-colors ${
+                  aktif === b.id
+                    ? "bg-primary font-semibold text-primary-foreground"
+                    : "text-foreground hover:bg-muted"
+                }`}
+                onClick={() => buka(b.id)}
+              >
+                {i + 1}. {b.judul}
+              </button>
             </li>
           ))}
         </ul>
       </nav>
-      <div className="pnd-area" ref={area}>
-        <h1>Panduan Penggunaan</h1>
-        <p className="pnd-awal">Panduan ini untuk pemilik toko dan kasir. Klik judul di daftar isi untuk membuka bagian yang Anda perlukan.</p>
+      <div className="pnd-area min-w-0 flex-1 overflow-auto rounded-md border border-border bg-card px-6 pt-4 pb-12 text-[13px] leading-relaxed" ref={area}>
+        <h1 className="text-lg font-bold text-foreground">Panduan Penggunaan</h1>
+        <p className="pnd-awal mt-1 text-xs text-muted-foreground">Panduan ini untuk pemilik toko dan kasir. Klik judul di daftar isi untuk membuka bagian yang Anda perlukan.</p>
         {BAGIAN.map((b, i) => (
           <section key={b.id} id={`pnd-${b.id}`}>
-            <h2>{i + 1}. {b.judul}</h2>
+            <h2 className="mt-6 mb-2 border-b border-border pb-1 text-sm font-semibold text-foreground">{i + 1}. {b.judul}</h2>
             {b.isi.map((x, k) => <Isi key={k} b={x} />)}
           </section>
         ))}

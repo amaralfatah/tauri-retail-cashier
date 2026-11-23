@@ -26,3 +26,39 @@ export function kertasStruk(ukuran = getLocal("ukuranKertas")): Kertas {
   if (/A5/i.test(ukuran)) return { lebar: "128mm", halaman: "A5", fontPx: 12, kolom: 42 };
   return { lebar: "72mm", halaman: "80mm auto", fontPx: 11, kolom: 42 };
 }
+
+/** Pilihan "Lihat struk dulu" di dialog Bayar, per komputer. Bawaannya mati; pilihan yang sudah tersimpan tetap dipakai. */
+export function getLihatStruk(): boolean {
+  try {
+    return localStorage.getItem("tokopro.lihatStruk") === "1";
+  } catch {
+    return false;
+  }
+}
+
+export function setLihatStruk(on: boolean) {
+  try {
+    localStorage.setItem("tokopro.lihatStruk", on ? "1" : "0");
+  } catch { /* penyimpanan tidak tersedia */ }
+}
+
+let audio: AudioContext | null = null;
+
+/** Nada rendah pendek (sekitar 150 md) tanda barcode tidak dikenal. Diam saja kalau suara tidak tersedia. */
+export function bunyiGagal() {
+  try {
+    const Ctx = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (!Ctx) return;
+    audio ??= new Ctx();
+    if (audio.state === "suspended") void audio.resume();
+    const osc = audio.createOscillator();
+    const gain = audio.createGain();
+    osc.type = "square";
+    osc.frequency.value = 180;
+    gain.gain.setValueAtTime(0.15, audio.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, audio.currentTime + 0.15);
+    osc.connect(gain).connect(audio.destination);
+    osc.start();
+    osc.stop(audio.currentTime + 0.15);
+  } catch { /* suara tidak tersedia */ }
+}
