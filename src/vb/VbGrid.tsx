@@ -165,7 +165,7 @@ export function VbGrid<T>(props: {
                 isSel
                   ? focused
                     ? "border-transparent bg-primary font-medium text-primary-foreground"
-                    : "border-transparent bg-foreground/10 font-medium text-foreground"
+                    : "border-transparent bg-primary/80 font-medium text-primary-foreground"
                   : i % 2 === 1
                     ? "bg-muted/25 hover:bg-muted/60"
                     : "hover:bg-muted/60",
@@ -179,7 +179,7 @@ export function VbGrid<T>(props: {
                   key={j}
                   className={cn(
                     "flex flex-none items-center overflow-hidden border-r border-foreground/10 px-2 tabular-nums last:border-r-0",
-                    isSel && focused && "border-primary-foreground/20",
+                    isSel && "border-primary-foreground/20",
                     c.align === "right" && "justify-end text-right",
                     c.align === "center" && "justify-center text-center",
                   )}
@@ -217,7 +217,7 @@ export function VbToolbar({ items }: { items: ToolItem[] }) {
               size="sm"
               onClick={b.onClick}
               className={cn(
-                "h-7 px-2.5 text-xs font-medium",
+                "h-8 px-2.5 text-xs font-medium",
                 !isPrimary && "border-foreground/20 bg-background text-foreground hover:bg-accent hover:text-foreground",
                 isDanger && "hover:border-destructive/40 hover:bg-destructive/10 hover:text-destructive",
               )}
@@ -262,11 +262,11 @@ export function useMsgBox() {
         <div className="flex justify-end gap-2">
           {msg.yes ? (
             <>
-              <Button type="button" variant="outline" className="min-w-20" autoFocus={!!msg.bahaya} onClick={tidak}><u>T</u>idak</Button>
-              <Button type="button" variant={msg.bahaya ? "destructive" : "default"} className="min-w-20" autoFocus={!msg.bahaya} onClick={ya}><u>Y</u>{labelYa.slice(1)}</Button>
+              <Button type="button" variant="outline" className="h-8 min-w-20 text-xs" autoFocus={!!msg.bahaya} onClick={tidak}><u>T</u>idak</Button>
+              <Button type="button" variant={msg.bahaya ? "destructive" : "default"} className="h-8 min-w-20 text-xs" autoFocus={!msg.bahaya} onClick={ya}><u>Y</u>{labelYa.slice(1)}</Button>
             </>
           ) : (
-            <Button type="button" className="min-w-20" autoFocus onClick={() => setMsg(null)}>OK</Button>
+            <Button type="button" className="h-8 min-w-20 text-xs" autoFocus onClick={() => setMsg(null)}>OK</Button>
           )}
         </div>
       </div>
@@ -299,17 +299,22 @@ export function useTopEscape(onClose?: () => void) {
   }, []);
 }
 
-function ModalFrame(props: { title: string; onClose?: () => void; width: number; height?: number; children: ReactNode }) {
+function ModalFrame(props: { title: string; onClose?: () => void; width: number; height?: number; footer?: ReactNode; children: ReactNode }) {
   useTopEscape(props.onClose);
   return (
-    <div className="no-print fixed inset-0 z-50 grid place-items-center bg-black/40 p-2">
+    <div className="no-print fixed inset-0 z-50 grid place-items-center bg-black/45 p-2">
       <div role="dialog" aria-modal="true" aria-label={props.title} style={{ width: props.width, height: props.height }}
-        className="vb-modern flex max-h-[98vh] max-w-[98vw] flex-col overflow-hidden rounded-lg border bg-background text-foreground shadow-2xl">
-        <div className="flex h-9 flex-none items-center gap-2 border-b bg-muted/40 pr-1.5 pl-3 select-none">
-          <span className="flex-1 truncate text-sm font-medium">{props.title}</span>
+        className="vb-modern flex max-h-[94vh] max-w-[96vw] flex-col overflow-hidden rounded-lg border border-border bg-background text-foreground shadow-2xl">
+        <div className="flex h-10 flex-none items-center gap-2 border-b border-border bg-muted/40 pr-1.5 pl-4 select-none">
+          <span className="flex-1 truncate text-sm font-semibold">{props.title}</span>
           {props.onClose && <Button type="button" variant="ghost" size="icon-sm" aria-label="Tutup" onClick={props.onClose}><XIcon /></Button>}
         </div>
-        <div className="min-h-0 flex-1 overflow-auto">{props.children}</div>
+        <div className={cn("min-h-0 flex-1 overflow-auto", props.footer && "p-4")}>{props.children}</div>
+        {props.footer && (
+          <div className="flex flex-none items-center justify-end gap-2 border-t border-border bg-muted/30 px-4 py-2.5">
+            {props.footer}
+          </div>
+        )}
       </div>
     </div>
   );

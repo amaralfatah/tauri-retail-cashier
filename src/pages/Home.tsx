@@ -135,15 +135,15 @@ export function Home() {
                     onClick={() => go(c.page)}
                     className={`flex items-center justify-between rounded-md border px-3.5 py-2.5 text-left transition-colors ${
                       c.primary
-                        ? "border-foreground/25 bg-card font-semibold hover:bg-accent"
+                        ? "border-primary bg-primary font-semibold text-primary-foreground shadow-sm hover:bg-primary/90"
                         : "border-border bg-background text-foreground hover:border-foreground/30 hover:bg-muted/50"
                     }`}
                   >
                     <div>
                       <div className="text-xs font-semibold">{c.title}</div>
-                      <div className={`mt-0.5 text-[11px] text-muted-foreground`}>{c.meta}</div>
+                      <div className={`mt-0.5 text-[11px] ${c.primary ? "text-primary-foreground/80" : "text-muted-foreground"}`}>{c.meta}</div>
                     </div>
-                    <span className={`text-xs ${c.primary ? "text-primary" : "text-muted-foreground"}`}>→</span>
+                    <span className={`text-xs ${c.primary ? "text-primary-foreground" : "text-muted-foreground"}`}>→</span>
                   </button>
                 ))}
               </div>

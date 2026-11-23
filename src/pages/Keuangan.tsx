@@ -1,14 +1,20 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "@/components/ui/input-group";
+import { Kbd } from "@/components/ui/kbd";
+import { Label } from "@/components/ui/label";
+import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
 import { errText, Row } from "../api";
 import { perluVerifikasi } from "../api/kasir";
 import { kasApi, KasDaftar } from "../api/keuangan";
 import { Otentikasi } from "../components/Otentikasi";
 import { useApp } from "../appContext";
 import { rp, tglID, today } from "../format";
-import { Bind, formCaption } from "../vb/VbForm";
-import { BELUM_ADA, GridCol, ToolItem, useMsgBox, useTopEscape, VbGrid, VbModal, VbToolbar } from "../vb/VbGrid";
-import { CariMaster, opsi, s, txt } from "./keuanganLib";
-import { HAPUS_MERAH, TUTUP } from "./masterLib";
+import { formCaption } from "../vb/VbForm";
+import { BELUM_ADA, GridCol, ModalFrame, ToolItem, useMsgBox, useTopEscape, VbGrid, VbToolbar } from "../vb/VbGrid";
+import { CariMaster, s } from "./keuanganLib";
+import { HAPUS_MERAH } from "./masterLib";
 import { useDaftarFile } from "./daftarFile";
 
 const num = (v: string) => Number(v.replace(/\./g, "").replace(",", ".")) || 0;
@@ -127,13 +133,34 @@ export function Keuangan() {
 
 function FilterKas(props: { value: { dari: string; sampai: string }; onApply: (f: { dari: string; sampai: string }) => void; onClose: () => void }) {
   const [f, setF] = useState({ dari: props.value.dari || today().slice(0, 8) + "01", sampai: props.value.sampai || today() });
-  const bind: Record<string, Bind> = {
-    dtTgl1: { value: f.dari, onChange: (v) => v && setF((x) => ({ ...x, dari: v })) },
-    dtTgl2: { value: f.sampai, onChange: (v) => v && setF((x) => ({ ...x, sampai: v })) },
-    cTampil: { onClick: () => props.onApply(f), variant: "default" },
-    cTutup: { onClick: props.onClose, text: TUTUP },
-  };
-  return <VbModal form="FrmFilterKas" bind={bind} onClose={props.onClose} />;
+  return (
+    <ModalFrame
+      title="Filter Transaksi Kas"
+      width={400}
+      onClose={props.onClose}
+      footer={
+        <>
+          <Button type="button" variant="outline" className="h-8 text-xs" data-vb="cTutup" onClick={props.onClose}>
+            Tutup <Kbd>Esc</Kbd>
+          </Button>
+          <Button type="button" className="h-8 text-xs" data-vb="cTampil" onClick={() => props.onApply(f)}>
+            Tampilkan
+          </Button>
+        </>
+      }
+    >
+      <div className="grid grid-cols-2 gap-3">
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="kas-tgl1" className="text-xs text-muted-foreground">Dari Tanggal</Label>
+          <Input id="kas-tgl1" type="date" data-vb="dtTgl1" className="h-8 text-xs tabular-nums" value={f.dari} onChange={(e) => e.target.value && setF((x) => ({ ...x, dari: e.target.value }))} />
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="kas-tgl2" className="text-xs text-muted-foreground">Sampai Tanggal</Label>
+          <Input id="kas-tgl2" type="date" data-vb="dtTgl2" className="h-8 text-xs tabular-nums" value={f.sampai} onChange={(e) => e.target.value && setF((x) => ({ ...x, sampai: e.target.value }))} />
+        </div>
+      </div>
+    </ModalFrame>
+  );
 }
 
 function KasAdd(props: { onClose: () => void; onSaved: () => void }) {
@@ -166,27 +193,92 @@ function KasAdd(props: { onClose: () => void; onSaved: () => void }) {
     } catch (e) { msg.alert(errText(e)); } finally { simpanBusy.current = false; }
   };
 
-  const bind: Record<string, Bind> = {
-    dtTgl: { value: v.tgl, onChange: (x) => x && set("tgl", x) },
-    tNoRef: txt(v.noref, (x) => set("noref", x)),
-    cJenis: { value: v.jenis, onChange: (x) => { setV((o) => ({ ...o, jenis: x, masuk: "", keluar: "" })); }, children: opsi(["Saldo Awal", "Masuk", "Keluar"]) },
-    cKategori: { value: v.kategori, onChange: (x) => set("kategori", x), children: opsi(kategori) },
-    tPetugasNama: txt(petugas.namakaryawan),
-    tPelangganNama: txt(pelanggan?.namapelanggan),
-    tPemasokNama: txt(pemasok?.namapemasok),
-    cCariPetugas: { onClick: () => setCari("mdkaryawan") },
-    cCariPelanggan: { onClick: () => setCari("mdpelanggan") },
-    cCariPemasok: { onClick: () => setCari("mdpemasok") },
-    tKasMasuk: txt(v.masuk, (x) => set("masuk", x), !masuk),
-    tKasKeluar: txt(v.keluar, (x) => set("keluar", x), masuk),
-    tKet: txt(v.ket, (x) => set("ket", x)),
-    cSimpan: { onClick: () => void simpan(), variant: "default" },
-    cBatal: { onClick: batal, className: HAPUS_MERAH },
-    cKeluar: { onClick: props.onClose, text: TUTUP },
-    Label7: { text: "Supplier" },
-  };
   return (
-    <VbModal form="FrmTransKasAdd" bind={bind} hide={["tPetugasKode", "tPelangganKode", "tPemasokKode"]} onClose={props.onClose}>
+    <ModalFrame
+      title="Input Transaksi Kas"
+      width={560}
+      onClose={props.onClose}
+      footer={
+        <>
+          <Button type="button" variant="outline" className={`mr-auto h-8 text-xs ${HAPUS_MERAH}`} data-vb="cBatal" onClick={batal}>
+            Reset
+          </Button>
+          <Button type="button" variant="outline" className="h-8 text-xs" data-vb="cKeluar" onClick={props.onClose}>
+            Tutup <Kbd>Esc</Kbd>
+          </Button>
+          <Button type="button" className="h-8 text-xs" data-vb="cSimpan" onClick={() => void simpan()}>
+            Simpan
+          </Button>
+        </>
+      }
+    >
+      <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+        <div className="flex flex-col gap-1">
+          <Label htmlFor="kas-tgl" className="text-xs text-muted-foreground">Tanggal</Label>
+          <Input id="kas-tgl" type="date" data-vb="dtTgl" className="h-8 text-xs tabular-nums" value={v.tgl} onChange={(e) => e.target.value && set("tgl", e.target.value)} />
+        </div>
+        <div className="flex flex-col gap-1">
+          <Label htmlFor="kas-noref" className="text-xs text-muted-foreground">No. Referensi</Label>
+          <Input id="kas-noref" data-vb="tNoRef" className="h-8 text-xs" value={v.noref} onChange={(e) => set("noref", e.target.value)} placeholder="Opsional" />
+        </div>
+        <div className="flex flex-col gap-1">
+          <Label htmlFor="kas-jenis" className="text-xs text-muted-foreground">Jenis Transaksi</Label>
+          <NativeSelect id="kas-jenis" size="sm" data-vb="cJenis" className="w-full" value={v.jenis} onChange={(e) => setV((o) => ({ ...o, jenis: e.target.value, masuk: "", keluar: "" }))}>
+            <NativeSelectOption value="Saldo Awal">Saldo Awal</NativeSelectOption>
+            <NativeSelectOption value="Masuk">Masuk</NativeSelectOption>
+            <NativeSelectOption value="Keluar">Keluar</NativeSelectOption>
+          </NativeSelect>
+        </div>
+        <div className="flex flex-col gap-1">
+          <Label htmlFor="kas-kat" className="text-xs text-muted-foreground">Kategori</Label>
+          <NativeSelect id="kas-kat" size="sm" data-vb="cKategori" className="w-full" value={v.kategori} onChange={(e) => set("kategori", e.target.value)}>
+            {kategori.map((k) => <NativeSelectOption key={k} value={k}>{k}</NativeSelectOption>)}
+          </NativeSelect>
+        </div>
+
+        <div className="col-span-2 flex flex-col gap-1">
+          <Label htmlFor="kas-petugas" className="text-xs text-muted-foreground">Petugas / Karyawan</Label>
+          <InputGroup className="h-8">
+            <InputGroupInput id="kas-petugas" data-vb="tPetugasNama" readOnly value={s(petugas.namakaryawan)} className="text-xs" />
+            <InputGroupAddon align="inline-end">
+              <InputGroupButton data-vb="cCariPetugas" onClick={() => setCari("mdkaryawan")}>Pilih...</InputGroupButton>
+            </InputGroupAddon>
+          </InputGroup>
+        </div>
+
+        <div className="flex flex-col gap-1">
+          <Label htmlFor="kas-pelanggan" className="text-xs text-muted-foreground">Pelanggan (Opsional)</Label>
+          <InputGroup className="h-8">
+            <InputGroupInput id="kas-pelanggan" data-vb="tPelangganNama" readOnly value={s(pelanggan?.namapelanggan)} placeholder="—" className="text-xs" />
+            <InputGroupAddon align="inline-end">
+              <InputGroupButton data-vb="cCariPelanggan" onClick={() => setCari("mdpelanggan")}>...</InputGroupButton>
+            </InputGroupAddon>
+          </InputGroup>
+        </div>
+        <div className="flex flex-col gap-1">
+          <Label htmlFor="kas-pemasok" className="text-xs text-muted-foreground">Supplier (Opsional)</Label>
+          <InputGroup className="h-8">
+            <InputGroupInput id="kas-pemasok" data-vb="tPemasokNama" readOnly value={s(pemasok?.namapemasok)} placeholder="—" className="text-xs" />
+            <InputGroupAddon align="inline-end">
+              <InputGroupButton data-vb="cCariPemasok" onClick={() => setCari("mdpemasok")}>...</InputGroupButton>
+            </InputGroupAddon>
+          </InputGroup>
+        </div>
+
+        <div className="flex flex-col gap-1">
+          <Label htmlFor="kas-masuk" className="text-xs text-muted-foreground">Kas Masuk (Rp)</Label>
+          <Input id="kas-masuk" data-vb="tKasMasuk" disabled={!masuk} value={v.masuk} onChange={(e) => set("masuk", e.target.value)} className="h-8 text-right text-xs font-semibold tabular-nums" placeholder="0" />
+        </div>
+        <div className="flex flex-col gap-1">
+          <Label htmlFor="kas-keluar" className="text-xs text-muted-foreground">Kas Keluar (Rp)</Label>
+          <Input id="kas-keluar" data-vb="tKasKeluar" disabled={masuk} value={v.keluar} onChange={(e) => set("keluar", e.target.value)} className="h-8 text-right text-xs font-semibold tabular-nums" placeholder="0" />
+        </div>
+
+        <div className="col-span-2 flex flex-col gap-1">
+          <Label htmlFor="kas-ket" className="text-xs text-muted-foreground">Keterangan</Label>
+          <Input id="kas-ket" data-vb="tKet" value={v.ket} onChange={(e) => set("ket", e.target.value)} className="h-8 text-xs" placeholder="Catatan transaksi kas..." />
+        </div>
+      </div>
       {msg.node}
       {cari && (
         <CariMaster table={cari} onClose={() => setCari(null)}
@@ -197,6 +289,6 @@ function KasAdd(props: { onClose: () => void; onSaved: () => void }) {
             setCari(null);
           }} />
       )}
-    </VbModal>
+    </ModalFrame>
   );
 }

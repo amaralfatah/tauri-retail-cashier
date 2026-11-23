@@ -1,8 +1,12 @@
 import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Kbd } from "@/components/ui/kbd";
+import { Label } from "@/components/ui/label";
+import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
 import { MasterTable, Row } from "../api";
-import { Bind } from "../vb/VbForm";
-import { VbModal } from "../vb/VbGrid";
-import { distinct, TUTUP, useList } from "./masterLib";
+import { ModalFrame } from "../vb/VbGrid";
+import { distinct, useList } from "./masterLib";
 
 export type FilterVal = Record<string, string>;
 
@@ -34,7 +38,12 @@ export function matchFilter(table: MasterTable, f: FilterVal, r: Row): boolean {
     && (!f.kota || r.kota === f.kota) && (!f.provinsi || r.provinsi === f.provinsi) && (!f.jabatan || r.jabatan === f.jabatan);
 }
 
-const FORM: Record<string, string> = { mdbarang: "FrmFilterBarang", mdpelanggan: "FrmFilterPelanggan", mdpemasok: "FrmFilterPemasok", mdkaryawan: "FrmFilterKaryawan" };
+const TITLE: Record<string, string> = {
+  mdbarang: "Filter Data Barang",
+  mdpelanggan: "Filter Data Pelanggan",
+  mdpemasok: "Filter Data Supplier",
+  mdkaryawan: "Filter Data Karyawan",
+};
 
 export function FilterWindow(props: { table: MasterTable; rows: Row[]; value: FilterVal; onApply: (f: FilterVal) => void; onClose: () => void }) {
   const { table } = props;
@@ -45,47 +54,154 @@ export function FilterWindow(props: { table: MasterTable; rows: Row[]; value: Fi
   const sat = useList(table === "mdbarang" ? "mdsatuan" : null).rows;
   const pem = useList(table === "mdbarang" ? "mdpemasok" : null).rows;
 
-  const txt = (k: string): Bind => ({ value: f[k] ?? "", onChange: (v) => set(k, v) });
-  const angka = (k: string): Bind => ({ value: f[k] ?? "", onChange: (v) => set(k, v), num: true });
-  const opt = (list: string[], all = "{Semua}") => (
-    <>
-      <option value="">{all}</option>
-      {list.map((o) => <option key={o} value={o}>{o}</option>)}
-    </>
-  );
-  const combo = (k: string, list: string[]): Bind => ({ value: f[k] ?? "", onChange: (v) => set(k, v), children: opt(list) });
-  const pair = (k: string, rows: Row[], key: string, name: string, kodeCtl: boolean, parent?: [string, string]): Bind => {
-    const list = parent && f[parent[0]] ? rows.filter((r) => r[parent[1]] === f[parent[0]]) : rows;
-    return {
-      value: f[k] ?? "", onChange: (v) => { set(k, v); if (k === "kelompok") set("kategori", ""); },
-      children: (
-        <>
-          <option value="">{kodeCtl ? "" : "{Semua}"}</option>
-          {list.map((r) => <option key={r[key]} value={r[key]}>{kodeCtl ? r[key] : r[name]}</option>)}
-        </>
-      ),
-    };
-  };
+  const katFiltered = f.kelompok ? kat.filter((r) => r.kodekelompok === f.kelompok) : kat;
+  const kotaList = distinct(props.rows, "kota");
+  const provList = distinct(props.rows, "provinsi");
+  const jabList = distinct(props.rows, "jabatan");
 
-  const bind: Record<string, Bind> = {
-    tKode: txt("kode"), tNama: txt("nama"), tAlamat: txt("alamat"), tNamaKontak: txt("kontak"), tBarcode: txt("barcode"),
-    tStok1: angka("stok1"), tStok2: angka("stok2"),
-    cmbStatus: { value: f.status ?? "", onChange: (v) => set("status", v), children: <><option value="">Semua</option><option value="Aktif">Aktif</option><option value="Tidak aktif">Tidak aktif</option></> },
-    cJenis: combo("jenis", ["Barang", "Jasa"]),
-    cKelompokNama: pair("kelompok", kel, "kodekelompok", "namakelompok", false),
-    cKelompokKode: pair("kelompok", kel, "kodekelompok", "namakelompok", true),
-    cKategoriNama: pair("kategori", kat, "kodekategori", "namakategori", false, ["kelompok", "kodekelompok"]),
-    cKategoriKode: pair("kategori", kat, "kodekategori", "namakategori", true, ["kelompok", "kodekelompok"]),
-    cSatuan: pair("satuan", sat, "kodesatuan", "namasatuan", false),
-    cPemasokNama: pair("pemasok", pem, "kodepemasok", "namapemasok", false),
-    cPemasokKode: pair("pemasok", pem, "kodepemasok", "namapemasok", true),
-    cKota: combo("kota", distinct(props.rows, "kota")),
-    cProvinsi: combo("provinsi", distinct(props.rows, "provinsi")),
-    cJabatan: combo("jabatan", distinct(props.rows, "jabatan")),
-    cTampil: { onClick: () => props.onApply(f), variant: "default" },
-    cTutup: { onClick: props.onClose, text: TUTUP },
-    ...(table === "mdbarang" ? { Label9: { text: "Supplier" } } : {}),
-  };
-  const hide = table === "mdbarang" ? ["picTgl"] : table === "mdpelanggan" ? ["tNamaKontak", "LabelNamaBarang"] : [];
-  return <VbModal form={FORM[table]} bind={bind} hide={hide} onClose={props.onClose} />;
+  return (
+    <ModalFrame
+      title={TITLE[table] ?? "Filter Data"}
+      width={560}
+      onClose={props.onClose}
+      footer={
+        <>
+          <Button type="button" variant="outline" className="mr-auto h-8 text-xs" onClick={() => setF({})}>
+            Reset Filter
+          </Button>
+          <Button type="button" variant="outline" className="h-8 text-xs" data-vb="cTutup" onClick={props.onClose}>
+            Tutup <Kbd>Esc</Kbd>
+          </Button>
+          <Button type="button" className="h-8 text-xs" data-vb="cTampil" onClick={() => props.onApply(f)}>
+            Tampilkan
+          </Button>
+        </>
+      }
+    >
+      {table === "mdbarang" ? (
+        <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+          <div className="flex flex-col gap-1">
+            <Label htmlFor="flt-status" className="text-xs text-muted-foreground">Status</Label>
+            <NativeSelect id="flt-status" size="sm" data-vb="cmbStatus" className="w-full" value={f.status ?? ""} onChange={(e) => set("status", e.target.value)}>
+              <NativeSelectOption value="">Semua</NativeSelectOption>
+              <NativeSelectOption value="Aktif">Aktif</NativeSelectOption>
+              <NativeSelectOption value="Tidak aktif">Tidak aktif</NativeSelectOption>
+            </NativeSelect>
+          </div>
+          <div className="flex flex-col gap-1">
+            <Label htmlFor="flt-jenis" className="text-xs text-muted-foreground">Jenis</Label>
+            <NativeSelect id="flt-jenis" size="sm" data-vb="cJenis" className="w-full" value={f.jenis ?? ""} onChange={(e) => set("jenis", e.target.value)}>
+              <NativeSelectOption value="">Semua</NativeSelectOption>
+              <NativeSelectOption value="Barang">Barang</NativeSelectOption>
+              <NativeSelectOption value="Jasa">Jasa</NativeSelectOption>
+            </NativeSelect>
+          </div>
+
+          <div className="flex flex-col gap-1">
+            <Label htmlFor="flt-kel" className="text-xs text-muted-foreground">Kelompok</Label>
+            <NativeSelect
+              id="flt-kel"
+              size="sm"
+              data-vb="cKelompokNama"
+              className="w-full"
+              value={f.kelompok ?? ""}
+              onChange={(e) => { set("kelompok", e.target.value); set("kategori", ""); }}
+            >
+              <NativeSelectOption value="">Semua</NativeSelectOption>
+              {kel.map((r) => <NativeSelectOption key={r.kodekelompok} value={r.kodekelompok}>{r.namakelompok} ({r.kodekelompok})</NativeSelectOption>)}
+            </NativeSelect>
+          </div>
+          <div className="flex flex-col gap-1">
+            <Label htmlFor="flt-kat" className="text-xs text-muted-foreground">Kategori</Label>
+            <NativeSelect id="flt-kat" size="sm" data-vb="cKategoriNama" className="w-full" value={f.kategori ?? ""} onChange={(e) => set("kategori", e.target.value)}>
+              <NativeSelectOption value="">Semua</NativeSelectOption>
+              {katFiltered.map((r) => <NativeSelectOption key={r.kodekategori} value={r.kodekategori}>{r.namakategori} ({r.kodekategori})</NativeSelectOption>)}
+            </NativeSelect>
+          </div>
+
+          <div className="flex flex-col gap-1">
+            <Label htmlFor="flt-kode" className="text-xs text-muted-foreground">Kode Barang (Persis)</Label>
+            <Input id="flt-kode" data-vb="tKode" className="h-8 text-xs" value={f.kode ?? ""} onChange={(e) => set("kode", e.target.value)} />
+          </div>
+          <div className="flex flex-col gap-1">
+            <Label htmlFor="flt-barcode" className="text-xs text-muted-foreground">Barcode (Persis)</Label>
+            <Input id="flt-barcode" data-vb="tBarcode" className="h-8 text-xs" value={f.barcode ?? ""} onChange={(e) => set("barcode", e.target.value)} />
+          </div>
+
+          <div className="col-span-2 flex flex-col gap-1">
+            <Label htmlFor="flt-nama" className="text-xs text-muted-foreground">Nama Barang</Label>
+            <Input id="flt-nama" data-vb="tNama" className="h-8 text-xs" value={f.nama ?? ""} onChange={(e) => set("nama", e.target.value)} placeholder="Mengandung teks..." />
+          </div>
+
+          <div className="flex flex-col gap-1">
+            <Label htmlFor="flt-sat" className="text-xs text-muted-foreground">Satuan</Label>
+            <NativeSelect id="flt-sat" size="sm" data-vb="cSatuan" className="w-full" value={f.satuan ?? ""} onChange={(e) => set("satuan", e.target.value)}>
+              <NativeSelectOption value="">Semua</NativeSelectOption>
+              {sat.map((r) => <NativeSelectOption key={r.kodesatuan} value={r.kodesatuan}>{r.namasatuan}</NativeSelectOption>)}
+            </NativeSelect>
+          </div>
+          <div className="flex flex-col gap-1">
+            <Label htmlFor="flt-pem" className="text-xs text-muted-foreground">Supplier</Label>
+            <NativeSelect id="flt-pem" size="sm" data-vb="cPemasokNama" className="w-full" value={f.pemasok ?? ""} onChange={(e) => set("pemasok", e.target.value)}>
+              <NativeSelectOption value="">Semua</NativeSelectOption>
+              {pem.map((r) => <NativeSelectOption key={r.kodepemasok} value={r.kodepemasok}>{r.namapemasok}</NativeSelectOption>)}
+            </NativeSelect>
+          </div>
+
+          <div className="flex flex-col gap-1">
+            <Label htmlFor="flt-stok1" className="text-xs text-muted-foreground">Stok Minimal</Label>
+            <Input id="flt-stok1" data-vb="tStok1" className="h-8 text-right text-xs tabular-nums" value={f.stok1 ?? ""} onChange={(e) => set("stok1", e.target.value)} placeholder="0" />
+          </div>
+          <div className="flex flex-col gap-1">
+            <Label htmlFor="flt-stok2" className="text-xs text-muted-foreground">Stok Maksimal</Label>
+            <Input id="flt-stok2" data-vb="tStok2" className="h-8 text-right text-xs tabular-nums" value={f.stok2 ?? ""} onChange={(e) => set("stok2", e.target.value)} placeholder="∞" />
+          </div>
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+          <div className="flex flex-col gap-1">
+            <Label htmlFor="flt-kode" className="text-xs text-muted-foreground">Kode</Label>
+            <Input id="flt-kode" data-vb="tKode" className="h-8 text-xs" value={f.kode ?? ""} onChange={(e) => set("kode", e.target.value)} />
+          </div>
+          <div className="flex flex-col gap-1">
+            <Label htmlFor="flt-nama" className="text-xs text-muted-foreground">Nama</Label>
+            <Input id="flt-nama" data-vb="tNama" className="h-8 text-xs" value={f.nama ?? ""} onChange={(e) => set("nama", e.target.value)} />
+          </div>
+          {table === "mdpemasok" && (
+            <div className="col-span-2 flex flex-col gap-1">
+              <Label htmlFor="flt-kontak" className="text-xs text-muted-foreground">Nama Kontak</Label>
+              <Input id="flt-kontak" data-vb="tNamaKontak" className="h-8 text-xs" value={f.kontak ?? ""} onChange={(e) => set("kontak", e.target.value)} />
+            </div>
+          )}
+          <div className="col-span-2 flex flex-col gap-1">
+            <Label htmlFor="flt-alamat" className="text-xs text-muted-foreground">Alamat</Label>
+            <Input id="flt-alamat" data-vb="tAlamat" className="h-8 text-xs" value={f.alamat ?? ""} onChange={(e) => set("alamat", e.target.value)} />
+          </div>
+          <div className="flex flex-col gap-1">
+            <Label htmlFor="flt-kota" className="text-xs text-muted-foreground">Kota</Label>
+            <NativeSelect id="flt-kota" size="sm" data-vb="cKota" className="w-full" value={f.kota ?? ""} onChange={(e) => set("kota", e.target.value)}>
+              <NativeSelectOption value="">Semua</NativeSelectOption>
+              {kotaList.map((o) => <NativeSelectOption key={o} value={o}>{o}</NativeSelectOption>)}
+            </NativeSelect>
+          </div>
+          <div className="flex flex-col gap-1">
+            <Label htmlFor="flt-prov" className="text-xs text-muted-foreground">Provinsi</Label>
+            <NativeSelect id="flt-prov" size="sm" data-vb="cProvinsi" className="w-full" value={f.provinsi ?? ""} onChange={(e) => set("provinsi", e.target.value)}>
+              <NativeSelectOption value="">Semua</NativeSelectOption>
+              {provList.map((o) => <NativeSelectOption key={o} value={o}>{o}</NativeSelectOption>)}
+            </NativeSelect>
+          </div>
+          {table === "mdkaryawan" && (
+            <div className="col-span-2 flex flex-col gap-1">
+              <Label htmlFor="flt-jab" className="text-xs text-muted-foreground">Jabatan</Label>
+              <NativeSelect id="flt-jab" size="sm" data-vb="cJabatan" className="w-full" value={f.jabatan ?? ""} onChange={(e) => set("jabatan", e.target.value)}>
+                <NativeSelectOption value="">Semua</NativeSelectOption>
+                {jabList.map((o) => <NativeSelectOption key={o} value={o}>{o}</NativeSelectOption>)}
+              </NativeSelect>
+            </div>
+          )}
+        </div>
+      )}
+    </ModalFrame>
+  );
 }

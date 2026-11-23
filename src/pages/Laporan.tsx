@@ -140,15 +140,15 @@ export function Laporan(props: { initial?: Tab }) {
       {tampil && (
         <div className="lap-wrap flex h-full flex-col bg-muted/60">
           <div className="lap-toolbar no-print flex items-center gap-1.5 border-b border-border bg-muted px-3 py-1.5">
-            <Button type="button" variant="default" size="sm" onClick={() => { setMenuEkspor(false); cetakLaporan().catch((e) => setErr(errText(e))); }} disabled={rows === null}>Cetak</Button>
-            <Button type="button" variant="outline" size="sm" className="bg-background" onClick={() => { setMenuEkspor(false); void terapkan(filter); }} disabled={rows === null}>Refresh</Button>
+            <Button type="button" variant="default" className="h-8 px-3 text-xs" onClick={() => { setMenuEkspor(false); cetakLaporan().catch((e) => setErr(errText(e))); }} disabled={rows === null}>Cetak</Button>
+            <Button type="button" variant="outline" className="h-8 bg-background px-3 text-xs" onClick={() => { setMenuEkspor(false); void terapkan(filter); }} disabled={rows === null}>Refresh</Button>
             <span className="lap-ekspor relative">
-              <Button type="button" variant="outline" size="sm" className="bg-background" onClick={() => setMenuEkspor((x) => !x)} disabled={rows === null}>
+              <Button type="button" variant="outline" className="h-8 bg-background px-3 text-xs" onClick={() => setMenuEkspor((x) => !x)} disabled={rows === null}>
                 <span>Ekspor</span>
                 <ChevronDownIcon className="size-3.5" />
               </Button>
               {menuEkspor && (
-                <ul className="lap-menu absolute top-8 left-0 z-20 m-0 min-w-44 list-none rounded-md border border-border bg-popover p-1 text-xs text-popover-foreground shadow-lg">
+                <ul className="lap-menu absolute top-9 left-0 z-20 m-0 min-w-44 list-none rounded-md border border-border bg-popover p-1 text-xs text-popover-foreground shadow-lg">
                   {MENU_EKSPOR.map(([k, t]) => (
                     <li key={k}>
                       <button
@@ -165,9 +165,9 @@ export function Laporan(props: { initial?: Tab }) {
               )}
             </span>
             {!tanpaFilter && (
-              <Button type="button" variant="outline" size="sm" className="bg-background" onClick={() => { setMenuEkspor(false); setUbahFilter(true); }}>Ubah Filter</Button>
+              <Button type="button" variant="outline" className="h-8 bg-background px-3 text-xs" onClick={() => { setMenuEkspor(false); setUbahFilter(true); }}>Ubah Filter</Button>
             )}
-            <Button type="button" variant="outline" size="sm" className="bg-background" onClick={() => go("home")}>
+            <Button type="button" variant="outline" className="h-8 bg-background px-3 text-xs" onClick={() => go("home")}>
               <span>Tutup</span>
               <Kbd className="border border-border bg-muted text-foreground">Esc</Kbd>
             </Button>

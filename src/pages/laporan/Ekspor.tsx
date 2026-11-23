@@ -1,9 +1,14 @@
 import { useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "@/components/ui/input-group";
+import { Kbd } from "@/components/ui/kbd";
+import { Label } from "@/components/ui/label";
 import { pilihSimpan } from "../../api/dialog";
 import { berkasApi } from "../../api/berkas";
-import { Bind } from "../../vb/VbForm";
-import { VbModal } from "../../vb/VbGrid";
+import { ModalFrame } from "../../vb/VbGrid";
 
 export type FormatEkspor = "text" | "excel" | "rtf" | "pdf" | "html";
 /** Isi menu Ekspor seperti aslinya (LblMenuPopUp 0 sampai 4). */
@@ -65,15 +70,58 @@ export function OpsiTextDialog(props: { nama: string; onClose: () => void; onSim
   const [hal, setHal] = useState("");
   const [kosong, setKosong] = useState(true);
   const [uni, setUni] = useState(true);
-  const bind: Record<string, Bind> = {
-    txtFileName: { value: path, onChange: setPath },
-    txtFieldDelimiter: { value: kol, onChange: setKol },
-    txtPageDelimiter: { value: hal, onChange: setHal },
-    chkUnicaode: { value: uni ? "1" : "0", onChange: (x) => setUni(x === "1") },
-    chkSuppressBlank: { value: kosong ? "1" : "0", onChange: (x) => setKosong(x === "1"), text: "Lewati baris kosong" },
-    btnOpen: { onClick: () => void pilihSimpan(path, "txt", "Text (*.txt)").then((p) => { if (p) setPath(p); }), text: "..." },
-    btnOK: { onClick: () => props.onSimpan(path, { pemisahKolom: kol, pemisahHalaman: hal, lewatiKosong: kosong, unicode: uni }), variant: "default", text: "Simpan" },
-    btnCancel: { onClick: props.onClose, text: "Batal [Esc]" },
-  };
-  return <VbModal form="FrmOpsiTextEkspor" title="Ekspor File Text" bind={bind} onClose={props.onClose} />;
+  return (
+    <ModalFrame
+      title="Ekspor File Text"
+      width={480}
+      onClose={props.onClose}
+      footer={
+        <>
+          <Button type="button" variant="outline" className="h-8 text-xs" data-vb="btnCancel" onClick={props.onClose}>
+            Batal <Kbd>Esc</Kbd>
+          </Button>
+          <Button
+            type="button"
+            className="h-8 text-xs"
+            data-vb="btnOK"
+            onClick={() => props.onSimpan(path, { pemisahKolom: kol, pemisahHalaman: hal, lewatiKosong: kosong, unicode: uni })}
+          >
+            Simpan
+          </Button>
+        </>
+      }
+    >
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-1">
+          <Label htmlFor="eks-path" className="text-xs text-muted-foreground">Lokasi File</Label>
+          <InputGroup className="h-8">
+            <InputGroupInput id="eks-path" data-vb="txtFileName" className="text-xs" value={path} onChange={(e) => setPath(e.target.value)} />
+            <InputGroupAddon align="inline-end">
+              <InputGroupButton data-vb="btnOpen" onClick={() => void pilihSimpan(path, "txt", "Text (*.txt)").then((p) => { if (p) setPath(p); })}>...</InputGroupButton>
+            </InputGroupAddon>
+          </InputGroup>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="flex flex-col gap-1">
+            <Label htmlFor="eks-kol" className="text-xs text-muted-foreground">Pemisah Kolom</Label>
+            <Input id="eks-kol" data-vb="txtFieldDelimiter" className="h-8 text-xs font-mono" value={kol} onChange={(e) => setKol(e.target.value)} />
+          </div>
+          <div className="flex flex-col gap-1">
+            <Label htmlFor="eks-hal" className="text-xs text-muted-foreground">Pemisah Halaman</Label>
+            <Input id="eks-hal" data-vb="txtPageDelimiter" className="h-8 text-xs font-mono" value={hal} onChange={(e) => setHal(e.target.value)} placeholder="Opsional" />
+          </div>
+        </div>
+        <div className="flex flex-col gap-2 pt-1">
+          <Label className="flex w-fit cursor-pointer items-center gap-2 text-xs font-normal">
+            <Checkbox data-vb="chkUnicaode" checked={uni} onCheckedChange={(c) => setUni(Boolean(c))} />
+            <span>Simpan sebagai Unicode (UTF-8 BOM)</span>
+          </Label>
+          <Label className="flex w-fit cursor-pointer items-center gap-2 text-xs font-normal">
+            <Checkbox data-vb="chkSuppressBlank" checked={kosong} onCheckedChange={(c) => setKosong(Boolean(c))} />
+            <span>Lewati baris kosong</span>
+          </Label>
+        </div>
+      </div>
+    </ModalFrame>
+  );
 }

@@ -439,7 +439,7 @@ export default function App() {
               {page === "returjual" && <Retur key="rj" mode="jual" />}
               {page === "returbeli" && <Retur key="rb" mode="beli" />}
               {page === "returbelibrg" && <Retur key="rbb" mode="brg" />}
-              {page === "piutang" && <Pelunasan key="piutang" jenis="Piutang" />}
+              {page === "piutang" && <Pelunasan key={`piutang-${child.seq}`} jenis="Piutang" jatuhTempo={child.tab === ("jatuhtempo" as Tab)} />}
               {page === "hutang" && <Pelunasan key="hutang" jenis="Hutang" />}
             </div>
           </section>
@@ -488,7 +488,7 @@ export default function App() {
           </ModalFrame>
         );
       })}
-      <Notifikasi aktif diKasir={adaKasir(page)} onBuka={() => open("piutang")} />
+      <Notifikasi aktif diKasir={adaKasir(page)} onBuka={() => open("piutang", undefined, "jatuhtempo" as Tab)} />
       {info && (
         <Modal title="Informasi" onClose={() => setInfo("")} footer={<Button autoFocus onClick={() => setInfo("")}>OK</Button>}>
           <p>{info}</p>

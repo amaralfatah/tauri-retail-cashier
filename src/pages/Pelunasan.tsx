@@ -7,7 +7,7 @@ import { Kbd } from "@/components/ui/kbd";
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "@/components/ui/input-group";
 import { Label } from "@/components/ui/label";
 import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
-import { errText, Row } from "../api";
+import { api, errText, Row } from "../api";
 import { pelunasanApi } from "../api/retur";
 import { useApp } from "../appContext";
 import { rp, tglID, today } from "../format";
@@ -25,7 +25,8 @@ const angka = (t: string) => Number(t.replace(/\D/g, "")) || 0;
 const n = (v: unknown) => Number(v) || 0;
 
 /** Pelunasan piutang pelanggan atau hutang ke supplier, sebagai dialog di atas halaman yang sedang terbuka. */
-export function Pelunasan({ jenis }: { jenis: PelunasanJenis }) {
+/** `jatuhTempo`: dibuka dari pemberitahuan piutang jatuh tempo. */
+export function Pelunasan({ jenis, jatuhTempo }: { jenis: PelunasanJenis; jatuhTempo?: boolean }) {
   const { user, go } = useApp();
   const msg = useMsgBox();
   const piutang = jenis === "Piutang";
@@ -36,6 +37,7 @@ export function Pelunasan({ jenis }: { jenis: PelunasanJenis }) {
   const [nominal, setNominal] = useState(0);
   const [cek, setCek] = useState<Set<string>>(new Set());
   const [cari, setCari] = useState(false);
+  const [cariJth, setCariJth] = useState(false);
   const [kasir, setKasir] = useState<Kontak>({ kode: user.kodekaryawan, nama: user.namakaryawan });
   const [cariKasir, setCariKasir] = useState(false);
 
@@ -71,8 +73,19 @@ export function Pelunasan({ jenis }: { jenis: PelunasanJenis }) {
     const k = piutang ? { kode: String(r.kodepelanggan), nama: String(r.namapelanggan) } : { kode: String(r.kodepemasok), nama: String(r.namapemasok) };
     setKontak(k);
     setCari(false);
+    setCariJth(false);
     void muat(k);
   };
+
+  // Dibuka dari pemberitahuan: satu pelanggan langsung ditampilkan piutangnya; lebih dari satu, pilih dari daftar jatuh tempo.
+  useEffect(() => {
+    if (!jatuhTempo || !piutang) return;
+    api.pelangganJatuhTempo("").then((r) => {
+      if (r.length === 1) pilih(r[0]);
+      else if (r.length > 1) setCariJth(true);
+      else msg.alert("Saat ini tidak ada piutang yang jatuh tempo.");
+    }).catch((e) => msg.alert(errText(e)));
+  }, [jatuhTempo]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const simpanBusy = useRef(false);
   const simpan = useCallback(async () => {
@@ -249,7 +262,7 @@ export function Pelunasan({ jenis }: { jenis: PelunasanJenis }) {
       </div>
 
       {msg.node}
-      {cari && <CariMaster table={piutang ? "mdpelanggan" : "mdpemasok"} onPick={pilih} onClose={() => setCari(false)} />}
+      {(cari || cariJth) && <CariMaster table={piutang ? "mdpelanggan" : "mdpemasok"} jthTempo={piutang} awalJthTempo={cariJth} onPick={pilih} onClose={() => { setCari(false); setCariJth(false); }} />}
       {cariKasir && (
         <CariMaster table="mdkaryawan" onClose={() => setCariKasir(false)}
           onPick={(r) => { setKasir({ kode: String(r.kodekaryawan), nama: String(r.namakaryawan) }); setCariKasir(false); }} />

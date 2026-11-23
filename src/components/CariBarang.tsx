@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Kbd } from "@/components/ui/kbd";
+import { Label } from "@/components/ui/label";
 import { api, errText, Row } from "../api";
 import { kasirApi } from "../api/kasir";
 import { rp } from "../format";
-import { Bind } from "../vb/VbForm";
-import { GridCol, useMsgBox, VbGrid, VbModal } from "../vb/VbGrid";
-import { Input } from "@/components/ui/input";
+import { GridCol, ModalFrame, useMsgBox, VbGrid } from "../vb/VbGrid";
 import { getLocal } from "../pages/localSettings";
 import { Alert } from "./Modal";
 
@@ -15,8 +17,6 @@ import { Alert } from "./Modal";
 export function CariBarang(props: { initial?: string; onPick: (b: Row) => void; onClose: () => void; showBeli?: boolean; kasir?: boolean;
   /** Mode stok minimum: hanya barang dengan `stokakhir<=stokmin`. */
   stokMin?: boolean }) {
-  // Pengaturan per komputer AutoLoadData (dari VB): hidup = daftar dimuat dan dicari sambil mengetik;
-  // mati = baru dicari saat Enter atau tombol Cari (dipakai di komputer lambat atau katalog besar).
   const auto = getLocal("autoLoad") === "1";
   const msg = useMsgBox();
   const [q, setQ] = useState(props.initial ?? "");
@@ -39,7 +39,10 @@ export function CariBarang(props: { initial?: string; onPick: (b: Row) => void; 
     segera.current = false;
     const t = setTimeout(() => {
       (props.kasir ? kasirApi.cariBarang(kata, 500) : api.barangSearch(kata, 500, props.stokMin))
-        .then((r) => { if (!batal) { setList(r); setSel(r[0]?.kodebarang ?? null); setErr(""); setSelesai(true); } })
+        .then((r) => {
+          const rows = Array.isArray(r) ? r : [];
+          if (!batal) { setList(rows); setSel(rows[0]?.kodebarang ?? null); setErr(""); setSelesai(true); }
+        })
         .catch((e) => !batal && setErr(errText(e)));
     }, tunda);
     return () => { batal = true; clearTimeout(t); };
@@ -52,7 +55,7 @@ export function CariBarang(props: { initial?: string; onPick: (b: Row) => void; 
     el?.select();
   }, []);
 
-  // Alt+O menekan Cari (dulu OK), Alt+D ke kotak cari (tanda & pada caption aslinya).
+  // Alt+O menekan Cari (dulu OK), Alt+D ke kotak cari.
   useEffect(() => {
     const key = (e: KeyboardEvent) => {
       if (!e.altKey) return;
@@ -81,51 +84,64 @@ export function CariBarang(props: { initial?: string; onPick: (b: Row) => void; 
   };
 
   const cols: GridCol<Row>[] = [
-    { title: "No", width: 40, align: "right", render: (_r, i) => i + 1 },
-    { title: "Kode", width: 120, render: (r) => r.kodebarang },
-    { title: "Nama", width: 330, render: (r) => r.namabarang },
-    { title: "Harga", width: 100, align: "right", render: (r) => rp(r.hrgjual) },
-    { title: "Stok", width: 80, align: "right", render: (r) => (r.jenis === "Jasa" ? "" : qty2(r.stokakhir)) },
+    { title: "No", width: 42, align: "right", render: (_r, i) => i + 1 },
+    { title: "Kode", width: 115, render: (r) => r.kodebarang },
+    { title: "Nama Barang", width: 310, render: (r) => r.namabarang },
+    { title: props.showBeli ? "Hrg. Beli" : "Hrg. Jual", width: 100, align: "right", render: (r) => rp(props.showBeli ? r.hrgbeli : r.hrgjual) },
+    { title: "Stok", width: 85, align: "right", render: (r) => (r.jenis === "Jasa" ? "" : qty2(r.stokakhir)) },
     { title: "Rak", width: 75, render: (r) => r.rak ?? "" },
-    { title: "Status", width: 55, render: (r) => (Number(r.aktif ?? 1) === 0 ? "Tdk.Aktif" : "Aktif") },
+    { title: "Status", width: 70, render: (r) => (Number(r.aktif ?? 1) === 0 ? "Tdk.Aktif" : "Aktif") },
   ];
 
-  const bind: Record<string, Bind> = {
-    LabelData: { text: "Cari" },
-    tData: () => (
-      <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder={auto ? "Ketik nama, kode, atau barcode" : "Ketik nama, kode, atau barcode, lalu Enter"}
-        className="h-full w-full rounded-sm bg-background px-1.5 py-0 leading-none uppercase [font-size:inherit] placeholder:normal-case md:[font-size:inherit]" />
-    ),
-    cOK: { text: "Cari", onClick: cariSekarang },
-    lsData: () => (
-      <div className="relative size-full">
-        <VbGrid cols={cols} rows={list} rowKey={(r) => r.kodebarang} selected={sel} onSelect={setSel} onOpen={ambil} />
-        {selesai && list.length === 0 && (
-          <div className="pointer-events-none absolute inset-x-0 top-[30px] bottom-0 grid place-items-center px-6 text-center text-sm text-muted-foreground">
-            Barang tidak ditemukan. Coba kata lain.
-          </div>
-        )}
-      </div>
-    ),
-    cAmbil: { text: "Ambil [Enter]", onClick: () => ambil(), variant: "default" },
-    cClose: { text: "Tutup [Esc]", onClick: props.onClose },
-  };
-
-  const onKeyDown = (e: React.KeyboardEvent) => {
-    const t = e.target as HTMLElement;
-    if (t instanceof HTMLInputElement && t.closest('[data-vb="tData"]')) {
-      if (e.key === "Enter") { e.preventDefault(); e.stopPropagation(); cariSekarang(); }
-      else if (e.key === "ArrowDown") { e.preventDefault(); root.current?.querySelector<HTMLElement>('[data-slot="vbg"], .vbg')?.focus(); }
-    }
-  };
-
   return (
-    <div ref={root} onKeyDownCapture={onKeyDown}>
-      <VbModal form="FrmCariBarang" bind={bind} onClose={props.onClose}>
-        {err && <div className="mt-2"><Alert>{err}</Alert></div>}
+    <ModalFrame title="Cari Data Barang" width={820} height={520} onClose={props.onClose}>
+      <div ref={root} data-form="FrmCariBarang" className="flex size-full min-h-0 flex-col justify-between gap-2.5 p-3 font-sans text-xs text-foreground">
+        <div className="flex items-center gap-2">
+          <Label className="shrink-0 text-xs font-medium text-foreground">Cari</Label>
+          <div className="flex-1" data-vb="tData">
+            <Input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder={auto ? "Ketik nama, kode, atau barcode..." : "Ketik nama, kode, atau barcode, lalu Enter"}
+              className="h-8 text-xs uppercase placeholder:normal-case"
+              onKeyDown={(e) => {
+                if (e.key === "Enter") { e.preventDefault(); e.stopPropagation(); cariSekarang(); }
+                else if (e.key === "ArrowDown") { e.preventDefault(); root.current?.querySelector<HTMLElement>('[data-slot="vbg"], .vbg')?.focus(); }
+              }}
+            />
+          </div>
+          <Button type="button" variant="outline" size="default" data-vb="cOK" className="h-8 px-3 text-xs font-medium" onClick={cariSekarang}>
+            Cari
+          </Button>
+        </div>
+
+        {err && <Alert>{err}</Alert>}
+
+        <div className="relative min-h-0 flex-1" data-vb="lsData">
+          <VbGrid cols={cols} rows={list} rowKey={(r) => r.kodebarang} selected={sel} onSelect={setSel} onOpen={ambil} />
+          {selesai && list.length === 0 && (
+            <div className="pointer-events-none absolute inset-x-0 top-[30px] bottom-0 grid place-items-center px-6 text-center text-sm text-muted-foreground">
+              Barang tidak ditemukan. Coba kata lain.
+            </div>
+          )}
+        </div>
+
+        <div className="flex items-center justify-between border-t border-border pt-2.5">
+          <span className="text-xs text-muted-foreground">{list.length} barang ditemukan · Panah ↓ ke daftar</span>
+          <div className="flex items-center gap-2">
+            <Button type="button" variant="outline" size="default" data-vb="cClose" className="h-8 gap-1.5 px-3 text-xs font-medium" onClick={props.onClose}>
+              <span>Tutup</span>
+              <Kbd className="border border-border bg-muted text-foreground">Esc</Kbd>
+            </Button>
+            <Button type="button" variant="default" size="default" data-vb="cAmbil" className="h-8 gap-1.5 px-3.5 text-xs font-semibold" onClick={() => ambil()}>
+              <span>Ambil</span>
+              <Kbd className="border border-primary-foreground/30 bg-primary-foreground/20 text-primary-foreground">Enter</Kbd>
+            </Button>
+          </div>
+        </div>
         {msg.node}
-      </VbModal>
-    </div>
+      </div>
+    </ModalFrame>
   );
 }
 

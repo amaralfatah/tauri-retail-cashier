@@ -17,7 +17,7 @@ import { cetakStruk, Struk } from "../components/Struk";
 import { StrukPenjualan } from "../components/StrukPenjualan";
 import { addDays, hargaJual, num, qty, rp, tglID, today, Unit, unitsOf } from "../format";
 import { Geom, formCaption } from "../vb/VbForm";
-import { useMsgBox, VbModal } from "../vb/VbGrid";
+import { ModalFrame, useMsgBox } from "../vb/VbGrid";
 import { BarangEdit } from "./MasterEdit";
 import { PoinMember } from "./Poin";
 import { CariMaster } from "./keuanganLib";
@@ -387,8 +387,16 @@ function DetailGrid(props: {
       const act = (c: Kol) => cur && col === c;
       const bisaEditNama = props.jual && Number(l.b.bisaeditnama) === 1;
       rows.push(
-        <TableRow key={l.key} style={fillRowH ? { height: fillRowH } : undefined} className={cn("border-0 hover:bg-transparent", props.flash && props.flash.n > 0 && props.flash.key === l.key && `tp-flash-${props.flash.n % 2}`)}>
-          <TableCell className={GRID_TD_NO}>{i + 1}</TableCell>
+        <TableRow
+          key={l.key}
+          style={fillRowH ? { height: fillRowH } : undefined}
+          className={cn(
+            "border-0 hover:bg-transparent",
+            cur && "bg-[color-mix(in_oklab,var(--primary)_20%,var(--card))] hover:bg-[color-mix(in_oklab,var(--primary)_20%,var(--card))]",
+            props.flash && props.flash.n > 0 && props.flash.key === l.key && `tp-flash-${props.flash.n % 2}`,
+          )}
+        >
+          <TableCell className={cn(GRID_TD_NO, cur && "bg-primary! text-primary-foreground!")}>{i + 1}</TableCell>
           <TableCell className={cn(GRID_TD, act("kode") && ACT_CELL)} onMouseDown={klik("kode")}>
             {act("kode") ? (
               <div className="relative h-full">
@@ -648,96 +656,151 @@ function CariDataDialog(props: { jenis: CariJenis; onAmbil: (nomor: string) => v
     else if (e.key === "Enter") { e.preventDefault(); ambil(); }
   };
 
-  const bind: Record<string, any> = {
-    tData: { value: q, onChange: setQ },
-    dtTgl1: { value: dari, onChange: (v: string) => v && setDari(v) },
-    dtTgl2: { value: sampai, onChange: (v: string) => v && setSampai(v) },
-    cOK: { onClick: () => setMuat((n) => n + 1) },
-    cAmbil: { onClick: ambil, disabled: !sel, variant: "default" },
-    cHapus: { onClick: mulaiHapus, disabled: !sel },
-    cClose: { onClick: props.onClose },
-    lsData: (_g: Geom) => (
-      <div
-        data-slot="cari-data"
-        tabIndex={0}
-        onKeyDown={onListKeyDown}
-        className="cari-data tp-scroll-always size-full rounded-md border border-border bg-card font-sans text-xs text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring/40 [&>[data-slot=table-container]]:overflow-visible"
-      >
-        <Table className="table-fixed border-separate border-spacing-0">
-          <TableHeader>
-            <TableRow className="border-b border-border bg-muted hover:bg-muted">
-              <TableHead className="sticky top-0 z-20 h-7 border-r border-border bg-muted px-2 text-left text-xs font-semibold text-foreground">{props.jenis === "pending" ? "No. Pending" : "No. Order"}</TableHead>
-              <TableHead className="sticky top-0 z-20 h-7 border-r border-border bg-muted px-2 text-center text-xs font-semibold text-foreground">Tanggal</TableHead>
-              <TableHead className="sticky top-0 z-20 h-7 border-r border-border bg-muted px-2 text-center text-xs font-semibold text-foreground">{kontakLabel}</TableHead>
-              <TableHead className="sticky top-0 z-20 h-7 border-r border-border bg-muted px-2 text-center text-xs font-semibold text-foreground">Kasir</TableHead>
-              <TableHead className="sticky top-0 z-20 h-7 bg-muted px-2 text-right text-xs font-semibold text-foreground">Jumlah</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {list.map((r) => {
-              const cur = r[nomorKey] === sel;
-              return (
-                <TableRow
-                  key={r[nomorKey]}
-                  data-state={cur ? "selected" : undefined}
-                  onMouseDown={() => setSel(r[nomorKey])}
-                  onDoubleClick={ambil}
-                  className={cn(
-                    "cursor-default border-b border-border",
-                    cur ? "bg-primary text-primary-foreground hover:bg-primary" : "hover:bg-muted",
-                  )}
-                >
-                  <TableCell className={cn("h-6.5 truncate border-r px-2 py-0 tabular-nums", cur ? "border-transparent" : "border-border")}>{r[nomorKey]}</TableCell>
-                  <TableCell className={cn("h-6.5 truncate border-r px-2 py-0 tabular-nums", cur ? "border-transparent" : "border-border")}>{tglID(props.jenis === "pending" ? r.tgltrans : r.tglorder)}</TableCell>
-                  <TableCell className={cn("h-6.5 truncate border-r px-2 py-0", cur ? "border-transparent" : "border-border")}>{r.kontak}</TableCell>
-                  <TableCell className={cn("h-6.5 truncate border-r px-2 py-0", cur ? "border-transparent" : "border-border")}>{r.kasir}</TableCell>
-                  <TableCell className="h-6.5 truncate px-2 py-0 text-right tabular-nums">{rp(r.jmltrans)}</TableCell>
-                </TableRow>
-              );
-            })}
-            {list.length === 0 && (
-              <TableRow className="border-0 hover:bg-transparent">
-                <TableCell colSpan={5} className="p-4 text-center text-muted-foreground">
-                  {props.jenis === "pending" ? "Belum ada transaksi yang di-pending." : "Belum ada order yang menunggu diambil."}
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </div>
-    ),
-  };
-
   const apa = props.jenis === "pending" ? "data pending" : "order";
+  const judul = props.jenis === "pending" ? "Data Transaksi Pending" : props.jenis === "orderjual" ? "Cari Order Penjualan" : "Cari Order Pembelian";
   return (
-    <div className="contents"
+    <div
+      className="contents"
       onKeyDownCapture={(e) => {
         if (!(e.target instanceof HTMLInputElement)) return;
         if (e.key === "Enter") { e.preventDefault(); e.stopPropagation(); setMuat((n) => n + 1); }
-        else if (e.key === "ArrowDown" && e.target.closest('[data-vb="tData"]') && list.length) { e.preventDefault(); document.querySelector<HTMLElement>('[data-slot="cari-data"], .cari-data')?.focus(); }
-      }}>
-      <VbModal form={formName} title={formCaption(formName)} bind={bind} onClose={() => { if (!err && !hapus && !mintaIzin) props.onClose(); }}>
-        {err && (
-          <div className="absolute">
-            <Modal title={formCaption(formName)} onClose={() => setErr("")} footer={<Button autoFocus onClick={() => setErr("")}>OK</Button>}>
-              <Alert>{err}</Alert>
-            </Modal>
+        else if (e.key === "ArrowDown" && e.target.closest('[data-vb="tData"]') && list.length) {
+          e.preventDefault();
+          document.querySelector<HTMLElement>('[data-slot="cari-data"], .cari-data')?.focus();
+        }
+      }}
+    >
+      <ModalFrame
+        title={judul}
+        width={780}
+        height={480}
+        onClose={() => { if (!err && !hapus && !mintaIzin) props.onClose(); }}
+        footer={
+          <>
+            <Button
+              type="button"
+              variant="outline"
+              className="mr-auto h-8 text-xs text-destructive hover:bg-destructive/10 hover:text-destructive"
+              data-vb="cHapus"
+              disabled={!sel}
+              onClick={mulaiHapus}
+            >
+              Hapus
+            </Button>
+            <Button type="button" variant="outline" className="h-8 text-xs" data-vb="cClose" onClick={props.onClose}>
+              Tutup <Kbd>Esc</Kbd>
+            </Button>
+            <Button type="button" className="h-8 text-xs" data-vb="cAmbil" disabled={!sel} onClick={ambil}>
+              Ambil <Kbd className="bg-primary-foreground/15 text-primary-foreground">Enter</Kbd>
+            </Button>
+          </>
+        }
+      >
+        <div className="flex h-full min-h-0 flex-col gap-3">
+          <div className="flex flex-wrap items-end gap-2">
+            <div className="flex min-w-[200px] flex-1 flex-col gap-1">
+              <Label htmlFor="cari-data-q" className="text-xs text-muted-foreground">Cari Nomor / {kontakLabel}</Label>
+              <Input
+                id="cari-data-q"
+                autoFocus
+                data-vb="tData"
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                placeholder="Ketik nomor atau nama..."
+                className="h-8 text-xs"
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <Label htmlFor="cari-data-d1" className="text-xs text-muted-foreground">Dari</Label>
+              <Input id="cari-data-d1" type="date" data-vb="dtTgl1" value={dari} onChange={(e) => e.target.value && setDari(e.target.value)} className="h-8 w-36 text-xs tabular-nums" />
+            </div>
+            <div className="flex flex-col gap-1">
+              <Label htmlFor="cari-data-d2" className="text-xs text-muted-foreground">Sampai</Label>
+              <Input id="cari-data-d2" type="date" data-vb="dtTgl2" value={sampai} onChange={(e) => e.target.value && setSampai(e.target.value)} className="h-8 w-36 text-xs tabular-nums" />
+            </div>
+            <Button type="button" variant="outline" className="h-8 text-xs" data-vb="cOK" onClick={() => setMuat((n) => n + 1)}>
+              Tampilkan
+            </Button>
           </div>
+
+          <div
+            data-slot="cari-data"
+            data-vb="lsData"
+            tabIndex={0}
+            onKeyDown={onListKeyDown}
+            className="cari-data tp-scroll-always min-h-0 flex-1 rounded-md border border-border bg-card font-sans text-xs text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring/40 [&>[data-slot=table-container]]:overflow-visible"
+          >
+            <Table className="table-fixed border-separate border-spacing-0">
+              <TableHeader>
+                <TableRow className="border-b border-border bg-muted hover:bg-muted">
+                  <TableHead className="sticky top-0 z-20 h-7 w-[150px] border-r border-border bg-muted px-2 text-left text-xs font-semibold text-foreground">{props.jenis === "pending" ? "No. Pending" : "No. Order"}</TableHead>
+                  <TableHead className="sticky top-0 z-20 h-7 w-[100px] border-r border-border bg-muted px-2 text-center text-xs font-semibold text-foreground">Tanggal</TableHead>
+                  <TableHead className="sticky top-0 z-20 h-7 border-r border-border bg-muted px-2 text-left text-xs font-semibold text-foreground">{kontakLabel}</TableHead>
+                  <TableHead className="sticky top-0 z-20 h-7 w-[120px] border-r border-border bg-muted px-2 text-left text-xs font-semibold text-foreground">Kasir</TableHead>
+                  <TableHead className="sticky top-0 z-20 h-7 w-[120px] bg-muted px-2 text-right text-xs font-semibold text-foreground">Jumlah</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {list.map((r) => {
+                  const cur = r[nomorKey] === sel;
+                  return (
+                    <TableRow
+                      key={r[nomorKey]}
+                      data-state={cur ? "selected" : undefined}
+                      onMouseDown={() => setSel(r[nomorKey])}
+                      onDoubleClick={ambil}
+                      className={cn(
+                        "cursor-default border-b border-border",
+                        cur ? "bg-primary text-primary-foreground hover:bg-primary" : "hover:bg-muted",
+                      )}
+                    >
+                      <TableCell className={cn("h-7 truncate border-r px-2 py-0 tabular-nums", cur ? "border-transparent" : "border-border")}>{r[nomorKey]}</TableCell>
+                      <TableCell className={cn("h-7 truncate border-r px-2 py-0 text-center tabular-nums", cur ? "border-transparent" : "border-border")}>{tglID(props.jenis === "pending" ? r.tgltrans : r.tglorder)}</TableCell>
+                      <TableCell className={cn("h-7 truncate border-r px-2 py-0", cur ? "border-transparent" : "border-border")}>{r.kontak}</TableCell>
+                      <TableCell className={cn("h-7 truncate border-r px-2 py-0", cur ? "border-transparent" : "border-border")}>{r.kasir}</TableCell>
+                      <TableCell className="h-7 truncate px-2 py-0 text-right tabular-nums">{rp(r.jmltrans)}</TableCell>
+                    </TableRow>
+                  );
+                })}
+                {list.length === 0 && (
+                  <TableRow className="border-0 hover:bg-transparent">
+                    <TableCell colSpan={5} className="p-6 text-center text-muted-foreground">
+                      {props.jenis === "pending" ? "Belum ada transaksi yang di-pending." : "Belum ada order yang menunggu diambil."}
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </div>
+
+        {err && (
+          <Modal title={formCaption(formName)} onClose={() => setErr("")} footer={<Button autoFocus className="h-8 text-xs" onClick={() => setErr("")}>OK</Button>}>
+            <Alert>{err}</Alert>
+          </Modal>
         )}
         {hapus && (
-          <div className="absolute">
-            <Modal title={formCaption(formName)} onClose={() => setHapus(false)}
-              footer={<><Button variant="outline" onClick={() => setHapus(false)}>Tidak</Button><Button autoFocus onClick={() => void hapusData(izin)}>Ya</Button></>}>
-              <p>Apakah data order yg dipilih akan dihapus?</p>
-            </Modal>
-          </div>
+          <Modal
+            title={formCaption(formName)}
+            onClose={() => setHapus(false)}
+            footer={
+              <>
+                <Button variant="outline" className="h-8 text-xs" onClick={() => setHapus(false)}>Tidak</Button>
+                <Button autoFocus className="h-8 text-xs" onClick={() => void hapusData(izin)}>Ya</Button>
+              </>
+            }
+          >
+            <p>Apakah data {apa} yang dipilih akan dihapus?</p>
+          </Modal>
         )}
         {mintaIzin && (
-          <Otentikasi alasan={`Untuk menghapus ${apa}, masukkan nama user dan kata sandi supervisor atau pemilik toko.`}
+          <Otentikasi
+            alasan={`Untuk menghapus ${apa}, masukkan nama user dan kata sandi supervisor atau pemilik toko.`}
             onBatal={() => setMintaIzin(false)}
-            onOk={(t) => { setMintaIzin(false); setIzin(t); setHapus(true); }} />
+            onOk={(t) => { setMintaIzin(false); setIzin(t); setHapus(true); }}
+          />
         )}
-      </VbModal>
+      </ModalFrame>
     </div>
   );
 }

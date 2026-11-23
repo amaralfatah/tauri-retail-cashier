@@ -103,7 +103,12 @@ const kasRows: Row[] = [
   { idkas: 3, nokas: "KS2611-00003", tglkas: "2026-11-23", noreftrans: "-", jenis: "Keluar", kategori: "Biaya Operasional", namakaryawan: "Administrator", namakontak: "-", keterangan: "Listrik & Plastik", masuk: 0, keluar: 75000, saldo: 2875000 },
 ];
 
+/** Tanggal lokal YYYY-MM-DD, digeser `hari` dari hari ini. */
+const tglGeser = (hari: number) => { const d = new Date(); d.setDate(d.getDate() + hari); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
+
+// Satu piutang sudah lewat jatuh tempo (memicu pemberitahuan) dan satu belum, supaya alur pemberitahuan bisa dicoba.
 const piutangKartu: Row[] = [
+  { nopiutang: "PS2611-00002", noreftrans: "TJ2611-00095", kodepelanggan: "P001", nama: "Bu Siti", namapelanggan: "Bu Siti", jthtempo: tglGeser(-3), jmlpiutang: 180000, jmlterbayar: 0, kekurangan: 180000 },
   { nopiutang: "PS2611-00001", noreftrans: "TJ2611-00099", kodepelanggan: "P002", nama: "Warung Pak Budi", namapelanggan: "Warung Pak Budi", jthtempo: "2026-11-30", jmlpiutang: 350000, jmlterbayar: 100000, kekurangan: 250000 },
 ];
 const hutangKartu: Row[] = [
@@ -206,7 +211,7 @@ mockIPC((cmd, args) => {
       if (idx >= 0) list.splice(idx, 1);
       return null;
     }
-    case "pelanggan_jatuh_tempo": return pelanggan.filter((p) => piutangKartu.some((k) => k.kodepelanggan === p.kodepelanggan));
+    case "pelanggan_jatuh_tempo": return pelanggan.filter((p) => piutangKartu.some((k) => k.kodepelanggan === p.kodepelanggan && k.kekurangan > 0 && String(k.jthtempo) <= tglGeser(0)));
     case "barang_find": case "barang_find_kasir": case "label_barang_find":
       return barang.find((b) => cocok(b, String(a.code ?? ""))) ?? null;
     case "barang_cari_kasir": case "barang_search":
@@ -518,7 +523,8 @@ mockIPC((cmd, args) => {
         piutang: piutangKartu.map((k) => ({ nama: k.namapelanggan, piutang: k.kekurangan })),
       };
     case "notifikasi":
-      return { piutang_jatuh_tempo: piutangKartu.length };
+      // Sama dengan backend: piutang belum lunas yang jatuh temponya sampai tanggal ini.
+      return { piutang_jatuh_tempo: piutangKartu.filter((k) => k.kekurangan > 0 && String(k.jthtempo) <= String(a.tgl ?? tglGeser(0))).length };
     case "laporan_data": case "laporan_pembelian": case "laporan_stok": case "laporan_kas": case "laporan_piutang":
       return [];
     case "laporan_penjualan":

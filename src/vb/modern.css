@@ -119,9 +119,14 @@
   font-weight: 600;
   text-align: right;
 }
+.tj-grid tr.cur > td.no,
+.vb-modern .tj-grid tr.cur > td.no {
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
 .tj-grid tr.cur > td:not(.no),
 .vb-modern .tj-grid tr.cur > td:not(.no) {
-  background: color-mix(in oklab, var(--primary) 14%, var(--card));
+  background: color-mix(in oklab, var(--primary) 20%, var(--card));
 }
 .tj-grid tr.warn > td:not(.no),
 .vb-modern .tj-grid tr.warn > td:not(.no) {

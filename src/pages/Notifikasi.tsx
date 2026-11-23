@@ -47,7 +47,7 @@ export function Notifikasi(props: { aktif: boolean; onBuka: () => void; diKasir?
   if (!props.aktif || !ada) return null;
   return (
     <div
-      className={`no-print fixed right-3 ${props.diKasir ? "bottom-24" : "bottom-12"} z-50 flex w-80 cursor-pointer items-start gap-2.5 rounded-lg border border-border bg-card p-3 font-sans text-xs text-card-foreground shadow-xl transition-transform duration-500 ease-out hover:border-primary/40 hover:bg-muted/60 ${naik ? "translate-y-0" : "translate-y-[calc(100%+40px)]"}`}
+      className={`no-print fixed right-3 ${props.diKasir ? "bottom-24" : "bottom-12"} z-50 flex w-80 cursor-pointer items-start gap-2.5 rounded-lg border border-border bg-card p-3 font-sans text-xs text-card-foreground shadow-xl transition-transform duration-500 ease-out hover:bg-muted/60 ${naik ? "translate-y-0" : "translate-y-[calc(100%+40px)]"}`}
       role="status"
       onTransitionEnd={() => !naik && setAda(false)}
       onClick={() => { setNaik(false); if (jml > 0) props.onBuka(); }}
@@ -56,8 +56,8 @@ export function Notifikasi(props: { aktif: boolean; onBuka: () => void; diKasir?
       <TriangleAlertIcon aria-hidden className="size-7 shrink-0 text-warning" />
       <div className="min-w-0 flex-1">
         <div className="font-semibold text-foreground">Notifikasi</div>
-        <div className="mt-0.5 text-primary">
-          {`Ada ${jml} piutang yang jatuh tempo. Klik di sini untuk melunasinya.`}
+        <div className="mt-0.5 text-foreground/85">
+          {`Ada ${jml} piutang yang jatuh tempo. Klik di sini untuk melihatnya.`}
         </div>
       </div>
       <button

@@ -1,14 +1,17 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
+import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "@/components/ui/input-group";
+import { Kbd } from "@/components/ui/kbd";
+import { Label } from "@/components/ui/label";
 import { errText, Row } from "../api";
 import { berkasApi } from "../api/berkas";
 import { inventoriApi } from "../api/inventori";
 import { pilihGambar } from "../api/dialog";
 import { Modal } from "../components/Modal";
 import { Bind, Geom } from "../vb/VbForm";
-import { useMsgBox, VbModal } from "../vb/VbGrid";
-import { TUTUP } from "./masterLib";
+import { ModalFrame, useMsgBox } from "../vb/VbGrid";
 
 /** Foto barang yang tersimpan di folder foto aplikasi, dibaca sebagai gambar siap tampil. `muat` memuat ulang. */
 export function useFotoBarang(kode: string | null | undefined) {
@@ -113,31 +116,95 @@ export function ImportFoto(props: { barang?: Row; onClose: () => void; onSaved?:
     }
   };
 
-  const bind: Record<string, Bind> = {
-    tCari: { value: cari, onChange: setCari, onKeyDown: (e) => { if (e.key === "Enter") void temukan(); } },
-    cOK: { onClick: () => void temukan() },
-    tKode: { value: String(b?.kodebarang ?? ""), disabled: true },
-    tBarcode: { value: String(b?.barcode ?? ""), disabled: true },
-    tNama: { value: String(b?.namabarang ?? ""), disabled: true },
-    picFoto: kotakFoto(pratinjau ?? foto.src),
-    // Pemilih drive, folder, dan file Windows diganti dialog pilih file; alamat tetap bisa diketik.
-    File1: () => (
-      <div className="flex flex-col gap-1.5 font-sans text-xs text-foreground">
-        <div className="font-medium">Alamat file gambar</div>
-        <div className="flex gap-1.5">
-          <Input className="h-7 min-w-0 flex-1 text-xs" value={path} onChange={(e) => setPath(e.target.value)} placeholder="Klik Cari atau ketik alamat file" />
-          <Button type="button" variant="outline" size="sm" className="h-7 text-xs" onClick={() => void pilih()}>Cari...</Button>
-        </div>
-        <div className="text-muted-foreground">Gambar disalin ke folder foto aplikasi, dengan nama sesuai kode barang.</div>
-      </div>
-    ),
-    chkHapus: { value: hapus ? "1" : "0", onChange: (v) => setHapus(v === "1") },
-    cSimpan: { onClick: () => void simpan(), variant: "default" },
-    cKeluar: { onClick: props.onClose, text: TUTUP },
-  };
+  const imgSrc = pratinjau ?? foto.src;
   return (
-    <VbModal form="FrmZUploadFoto" title="Upload Foto/Gambar Barang" bind={bind} hide={["Drive1", "Dir1"]} onClose={props.onClose}>
+    <ModalFrame
+      title="Upload Foto / Gambar Barang"
+      width={600}
+      onClose={props.onClose}
+      footer={
+        <>
+          <Button type="button" variant="outline" className="h-8 text-xs" data-vb="cKeluar" onClick={props.onClose}>
+            Tutup <Kbd>Esc</Kbd>
+          </Button>
+          <Button type="button" className="h-8 text-xs" data-vb="cSimpan" onClick={() => void simpan()}>
+            Simpan Foto
+          </Button>
+        </>
+      }
+    >
+      <div className="grid grid-cols-[1fr_180px] gap-4">
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-1">
+            <Label htmlFor="uf-cari" className="text-xs text-muted-foreground">Cari Kode / Barcode Barang</Label>
+            <InputGroup className="h-8">
+              <InputGroupInput
+                id="uf-cari"
+                autoFocus
+                data-vb="tCari"
+                className="text-xs"
+                value={cari}
+                onChange={(e) => setCari(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") void temukan(); }}
+                placeholder="Ketik kode atau barcode lalu Enter..."
+              />
+              <InputGroupAddon align="inline-end">
+                <InputGroupButton data-vb="cOK" onClick={() => void temukan()}>OK</InputGroupButton>
+              </InputGroupAddon>
+            </InputGroup>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            <div className="flex flex-col gap-1">
+              <Label className="text-xs text-muted-foreground">Kode Barang</Label>
+              <Input data-vb="tKode" disabled value={String(b?.kodebarang ?? "")} className="h-8 text-xs" />
+            </div>
+            <div className="flex flex-col gap-1">
+              <Label className="text-xs text-muted-foreground">Barcode</Label>
+              <Input data-vb="tBarcode" disabled value={String(b?.barcode ?? "")} className="h-8 text-xs" />
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-1">
+            <Label className="text-xs text-muted-foreground">Nama Barang</Label>
+            <Input data-vb="tNama" disabled value={String(b?.namabarang ?? "")} className="h-8 text-xs" />
+          </div>
+
+          <div className="flex flex-col gap-1">
+            <Label htmlFor="uf-path" className="text-xs text-muted-foreground">File Gambar</Label>
+            <InputGroup className="h-8">
+              <InputGroupInput
+                id="uf-path"
+                className="text-xs"
+                value={path}
+                onChange={(e) => setPath(e.target.value)}
+                placeholder="Klik Cari atau ketik alamat file..."
+              />
+              <InputGroupAddon align="inline-end">
+                <InputGroupButton onClick={() => void pilih()}>Cari...</InputGroupButton>
+              </InputGroupAddon>
+            </InputGroup>
+            <span className="text-[11px] text-muted-foreground">Gambar disalin ke folder foto aplikasi sesuai kode barang.</span>
+          </div>
+
+          <Label className="flex w-fit cursor-pointer items-center gap-2 text-xs font-normal">
+            <Checkbox data-vb="chkHapus" checked={hapus} onCheckedChange={(c) => setHapus(Boolean(c))} />
+            <span>Hapus file sumber setelah disalin</span>
+          </Label>
+        </div>
+
+        <div className="flex flex-col gap-1">
+          <Label className="text-xs text-muted-foreground">Pratinjau Foto</Label>
+          <div className="flex h-52 items-center justify-center overflow-hidden rounded-md border border-border bg-card p-2">
+            {imgSrc ? (
+              <img src={imgSrc} alt="" className="max-h-full max-w-full object-contain" />
+            ) : (
+              <span className="px-2 text-center text-xs text-muted-foreground">Belum ada foto</span>
+            )}
+          </div>
+        </div>
+      </div>
       {msg.node}
-    </VbModal>
+    </ModalFrame>
   );
 }
