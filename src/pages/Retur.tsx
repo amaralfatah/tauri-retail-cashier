@@ -25,7 +25,7 @@ export type ReturMode = "jual" | "beli" | "brg";
 const FORM: Record<ReturMode, string> = { jual: "FrmTransJualRetur", beli: "FrmTransBeliRetur", brg: "FrmTransBeliReturBrg" };
 const KODE: Record<ReturMode, string> = { jual: "RJ", beli: "RB", brg: "RB" };
 
-interface Baris { b: Row; jml: number; harga: number }
+interface Baris { b: Row; nama?: string; jml: number; harga: number }
 
 export function Retur({ mode }: { mode: ReturMode }) {
   const { user, go, setting } = useApp();
@@ -112,7 +112,7 @@ export function Retur({ mode }: { mode: ReturMode }) {
         h = await returApi.simpanBeliBarang({
           tgl, kodepemasok: pemasok!.kodepemasok, catatan, kodekasir: kasir.kode,
           items: barisan.map((x) => ({
-            kodebarang: x.b.kodebarang, namabarang: x.b.namabarang, kodesatuan: x.b.kodesatuan, satuanjual: x.b.kodesatuan,
+            kodebarang: x.b.kodebarang, namabarang: x.nama?.trim() || x.b.namabarang, kodesatuan: x.b.kodesatuan, satuanjual: x.b.kodesatuan,
             konversi: 1, jmljual: x.jml, harga: x.harga,
           })),
         });
@@ -208,7 +208,14 @@ export function Retur({ mode }: { mode: ReturMode }) {
           <tr key={kode} className={selected === kode ? "cur" : ""} onMouseDown={() => setSelected(kode)}>
             <td className="no">{i + 1}</td>
             <td>{x.b.barcode || kode}</td>
-            <td className="nm">{x.b.namabarang}</td>
+            <td className="nm kd">
+              <input
+                data-slot="grid-input"
+                value={x.nama ?? x.b.namabarang}
+                onChange={(e) => setBarisan((xs) => xs.map((y) => (y === x ? { ...y, nama: e.target.value } : y)))}
+                onBlur={(e) => { if (!e.target.value.trim()) setBarisan((xs) => xs.map((y) => (y === x ? { ...y, nama: undefined } : y))); }}
+              />
+            </td>
             <td>{x.b.kodesatuan}</td>
             <td className="r"><NumInput className="r" value={x.jml} onChange={(v) => setBarisan((xs) => xs.map((y) => (y === x ? { ...y, jml: v } : y)))} /></td>
             <td className="r"><NumInput className="r" value={x.harga} onChange={(v) => setBarisan((xs) => xs.map((y) => (y === x ? { ...y, harga: v } : y)))} /></td>

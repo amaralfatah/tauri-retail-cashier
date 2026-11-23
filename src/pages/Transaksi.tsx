@@ -47,7 +47,7 @@ interface Line {
   jml: number;
   harga: number;
   manual: boolean;
-  /** Nama barang yang diubah di baris (hanya untuk barang dengan BISAEDITNAMA = 1). */
+  /** Nama barang yang diubah khusus untuk transaksi ini (tidak mengubah Master Barang). */
   nama?: string;
   /** Pembelian: harga jual per satuan transaksi yang diisi di kolom Hrg. Jual (kosong = harga jual master). */
   hrgjual?: number;
@@ -339,7 +339,6 @@ function DetailGrid(props: {
       const klik = (c: Kol) => () => { if (!(cur && col === c)) { wantFocus.current = true; setCol(c); } if (selected !== l.key) props.onSelect(l.key); };
       const kodeTampil = l.b.kodebarang;
       const act = (c: Kol) => cur && col === c;
-      const bisaEditNama = props.jual && Number(l.b.bisaeditnama) === 1;
       rows.push(
         <TableRow
           key={l.key}
@@ -361,11 +360,24 @@ function DetailGrid(props: {
           </TableCell>
           <TableCell className={cn(GRID_TD, act("nama") && ACT_CELL)} onMouseDown={klik("nama")} title={namaBaris(l)}>
             {act("nama") ? (
-              bisaEditNama ? (
-                <Input data-act="nama" value={namaBaris(l)} onChange={(e) => props.onUpdate(l.key, { nama: e.target.value })} className={GRID_INPUT} />
-              ) : (
-                <Input readOnly data-act="nama" value={namaBaris(l)} className={cn(GRID_INPUT, "cursor-default")} />
-              )
+              <Input
+                data-act="nama"
+                value={namaBaris(l)}
+                onFocus={(e) => { e.currentTarget.dataset.orig = e.currentTarget.value; }}
+                onChange={(e) => props.onUpdate(l.key, { nama: e.target.value })}
+                onBlur={(e) => { if (!e.target.value.trim()) props.onUpdate(l.key, { nama: undefined }); }}
+                onKeyDown={(e) => {
+                  if (e.key === "Escape") {
+                    const orig = e.currentTarget.dataset.orig;
+                    if (orig != null && orig !== e.currentTarget.value) {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      props.onUpdate(l.key, { nama: orig === l.b.namabarang ? undefined : orig });
+                    }
+                  }
+                }}
+                className={GRID_INPUT}
+              />
             ) : (
               <>
                 {namaBaris(l)}
@@ -881,7 +893,7 @@ function TransaksiIsi({ mode, order = false }: { mode: Mode; order?: boolean }) 
     let batal = false;
     const t = setTimeout(() => {
       promoKeranjang(tgl, lines.map((l) => ({
-        kodebarang: l.b.kodebarang, namabarang: l.b.namabarang, kodesatuan: l.b.kodesatuan || l.units[0].satuan,
+        kodebarang: l.b.kodebarang, namabarang: namaBaris(l).trim() || l.b.namabarang, kodesatuan: l.b.kodesatuan || l.units[0].satuan,
         satuanjual: l.units[l.ui].satuan, konversi: l.units[l.ui].konversi, jmljual: l.jml, harga: l.harga,
       }))).then((r) => { if (!batal) setPromo(r); }).catch(() => { if (!batal) setPromo(null); });
     }, 120);
@@ -1030,7 +1042,7 @@ function TransaksiIsi({ mode, order = false }: { mode: Mode; order?: boolean }) 
   const jmlBesar = (l: Line) => l.jml >= JML_BESAR;
 
   const itemsInput = () => lines.map((l) => ({
-    kodebarang: l.b.kodebarang, namabarang: namaBaris(l), kodesatuan: l.b.kodesatuan || l.units[0].satuan,
+    kodebarang: l.b.kodebarang, namabarang: namaBaris(l).trim() || l.b.namabarang, kodesatuan: l.b.kodesatuan || l.units[0].satuan,
     satuanjual: l.units[l.ui].satuan, konversi: l.units[l.ui].konversi, jmljual: l.jml, harga: l.harga,
   }));
 
@@ -1987,7 +1999,7 @@ function BayarDialog(props: { mode: Mode; tgl: string; kontak: string; sales: st
       catatan: props.catatan,
       hargajual: jual ? undefined : props.lines.map((l) => ({ kodebarang: l.b.kodebarang, hrgjual: hrgJualBaris(l) / l.units[l.ui].konversi })),
       items: props.lines.map((l) => ({
-        kodebarang: l.b.kodebarang, namabarang: namaBaris(l), kodesatuan: l.b.kodesatuan || l.units[0].satuan,
+        kodebarang: l.b.kodebarang, namabarang: namaBaris(l).trim() || l.b.namabarang, kodesatuan: l.b.kodesatuan || l.units[0].satuan,
         satuanjual: l.units[l.ui].satuan, konversi: l.units[l.ui].konversi, jmljual: l.jml, harga: l.harga, disknilai: l.pdp,
       })),
       diskonpersen: diskonNilai > 0 ? 0 : diskonPersen,
