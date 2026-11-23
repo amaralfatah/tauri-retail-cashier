@@ -131,3 +131,9 @@ CREATE TABLE IF NOT EXISTS pendingjualdetil (
   nopending TEXT REFERENCES pendingjual(nopending) ON DELETE CASCADE, nourut INTEGER, kodebarang TEXT, satuanjual TEXT, jmljual REAL DEFAULT 0, hrgterjual REAL DEFAULT 0
 );
 CREATE INDEX IF NOT EXISTS ix_pendingjualdetil_no ON pendingjualdetil(nopending);
+-- Sesi masuk per komputer (mode Komputer Pusat). Token aslinya tidak disimpan, hanya sidik SHA-256.
+CREATE TABLE IF NOT EXISTS sesi_perangkat (token_hash TEXT PRIMARY KEY NOT NULL, idperangkat TEXT NOT NULL DEFAULT '', iduser TEXT, mulai INTEGER NOT NULL, terakhir INTEGER NOT NULL);
+-- Komputer kasir yang sudah disambungkan ke Pusat. Token aslinya tidak disimpan, hanya sidik SHA-256.
+CREATE TABLE IF NOT EXISTS perangkat (id INTEGER PRIMARY KEY AUTOINCREMENT, nama_komputer TEXT NOT NULL, token_hash TEXT NOT NULL UNIQUE, dibuat INTEGER NOT NULL, terakhir_terlihat INTEGER NOT NULL, aktif INTEGER NOT NULL DEFAULT 1, otomatis INTEGER NOT NULL DEFAULT 0);
+-- Hasil perintah simpan dari komputer kasir, dikenali dari idPermintaan. Dipakai supaya simpan yang diulang tidak tercatat dua kali.
+CREATE TABLE IF NOT EXISTS permintaan_selesai (id TEXT PRIMARY KEY NOT NULL, perintah TEXT NOT NULL, hasil_json TEXT NOT NULL, waktu INTEGER NOT NULL);

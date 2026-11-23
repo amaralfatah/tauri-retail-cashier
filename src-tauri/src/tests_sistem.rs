@@ -104,3 +104,128 @@ fn impor_update_data_dan_stok_barang() {
     assert!(impor::impor(&mut c, "stokbarang", s.to_str().unwrap(), false, &folder).is_err(), "tanpa user tidak bisa mencatat opname");
     let _ = std::fs::remove_dir_all(d);
 }
+
+#[test]
+fn login_akun_senama_beda_huruf() {
+    use crate::auth::{hash, masuk};
+    let (c, d) = setup();
+    let ins = |id: &str, sandi: &str, level: &str, aktif: i64| {
+        c.execute(
+            "INSERT INTO mduser (iduser, pswduser, kodekaryawan, \"level\", aktif) VALUES (?1, ?2, '-', ?3, ?4)",
+            rusqlite::params![id, hash(sandi).unwrap(), level, aktif],
+        )
+        .unwrap();
+    };
+    ins("ADMIN", "sandiBesar", "Manager", 1);
+    ins("Admin", "sandiKecil", "Supervisor", 1);
+    // Ketik huruf kecil semua: masuk ke akun yang passwordnya cocok.
+    assert_eq!(masuk(&c, "admin", "sandiBesar").unwrap().iduser, "ADMIN");
+    assert_eq!(masuk(&c, "admin", "sandiKecil").unwrap().iduser, "Admin");
+    // Huruf persis sama didahulukan; password akun lain tetap diterima lewat ketikan itu.
+    assert_eq!(masuk(&c, "Admin", "sandiKecil").unwrap().iduser, "Admin");
+    assert_eq!(masuk(&c, "ADMIN", "sandiBesar").unwrap().iduser, "ADMIN");
+    let salah = masuk(&c, "admin", "ngawur").err().unwrap();
+    assert!(salah.contains("password salah"), "{salah}");
+    assert_eq!(verifikasi_pengelola(&c, "admin", "sandiKecil").unwrap().iduser, "Admin");
+    assert_eq!(verifikasi_pengelola(&c, "admin", "sandiBesar").unwrap().iduser, "ADMIN");
+    assert!(verifikasi_pengelola(&c, "admin", "ngawur").is_err());
+
+    // Akun nonaktif dilewati; pesan "dinonaktifkan" hanya bila semua akun yang cocok nonaktif.
+    c.execute("UPDATE mduser SET aktif = 0 WHERE iduser = 'ADMIN'", []).unwrap();
+    assert!(masuk(&c, "admin", "sandiBesar").err().unwrap().contains("dinonaktifkan"));
+    assert!(masuk(&c, "admin", "ngawur").err().unwrap().contains("password salah"));
+    assert_eq!(masuk(&c, "admin", "sandiKecil").unwrap().iduser, "Admin");
+    assert!(verifikasi_pengelola(&c, "admin", "sandiBesar").is_err());
+    c.execute("UPDATE mduser SET aktif = 0", []).unwrap();
+    assert!(masuk(&c, "admin", "sandiKecil").err().unwrap().contains("dinonaktifkan"));
+    assert!(verifikasi_pengelola(&c, "admin", "sandiKecil").is_err());
+    let _ = std::fs::remove_dir_all(d);
+}
+
+fn tambah_akun(c: &Connection, id: &str, sandi: Option<&str>, level: &str, aktif: i64) {
+    use crate::auth::hash;
+    let h = sandi.map(|s| hash(s).unwrap());
+    c.execute(
+        "INSERT INTO mduser (iduser, pswduser, kodekaryawan, \"level\", aktif) VALUES (?1, ?2, '-', ?3, ?4)",
+        rusqlite::params![id, h, level, aktif],
+    )
+    .unwrap();
+}
+
+#[test]
+fn password_sementara_tidak_menangkap_login_akun_senama() {
+    use crate::auth::masuk;
+    let (c, d) = setup();
+    c.execute("DELETE FROM mduser", []).unwrap(); // buang akun bawaan 'admin'
+    tambah_akun(&c, "ADMIN", None, "Manager", 1);
+    tambah_akun(&c, "Admin", Some("rahasia"), "Supervisor", 1);
+    // Nama beda huruf dengan akun kosong: password sementara tidak diterima, akun ber-password yang menang.
+    assert_eq!(masuk(&c, "admin", "rahasia").unwrap().iduser, "Admin");
+    assert_eq!(masuk(&c, "Admin", "rahasia").unwrap().iduser, "Admin");
+    assert!(masuk(&c, "Admin", "admin").err().unwrap().contains("password salah"));
+    assert!(masuk(&c, "admin", "admin").err().unwrap().contains("password salah"));
+    // Hurufnya persis sama dengan akun kosong: password sementara diterima.
+    let u = masuk(&c, "ADMIN", "admin").unwrap();
+    assert_eq!((u.iduser.as_str(), u.must_change), ("ADMIN", true));
+    // Pengelola: sama, password sementara tidak menangkap lewat nama beda huruf.
+    assert!(verifikasi_pengelola(&c, "Admin", "admin").is_err());
+    assert_eq!(verifikasi_pengelola(&c, "admin", "rahasia").unwrap().iduser, "Admin");
+    // Password kosong ("") diperlakukan sama dengan NULL.
+    c.execute("UPDATE mduser SET pswduser = '' WHERE iduser = 'ADMIN'", []).unwrap();
+    assert!(masuk(&c, "aDMIN", "admin").is_err());
+    assert_eq!(masuk(&c, "ADMIN", "admin").unwrap().iduser, "ADMIN");
+    // Satu-satunya akun bernama itu: ketik huruf apa pun tetap bisa (perilaku lama).
+    c.execute("DELETE FROM mduser WHERE iduser = 'Admin'", []).unwrap();
+    assert_eq!(masuk(&c, "admin", "admin").unwrap().iduser, "ADMIN");
+    assert_eq!(masuk(&c, "Admin", "admin").unwrap().iduser, "ADMIN");
+    // Dua akun kosong: hanya yang hurufnya persis sama.
+    tambah_akun(&c, "Admin", None, "Supervisor", 1);
+    assert_eq!(masuk(&c, "Admin", "admin").unwrap().iduser, "Admin");
+    assert_eq!(masuk(&c, "ADMIN", "admin").unwrap().iduser, "ADMIN");
+    assert!(masuk(&c, "admin", "admin").is_err());
+    let _ = std::fs::remove_dir_all(d);
+}
+
+#[test]
+fn pesan_dinonaktifkan_hanya_bila_password_cocok() {
+    use crate::auth::masuk;
+    let (c, d) = setup();
+    c.execute("DELETE FROM mduser", []).unwrap(); // buang akun bawaan 'admin'
+    tambah_akun(&c, "ADMIN", Some("sandiBesar"), "Manager", 0);
+    tambah_akun(&c, "Admin", Some("sandiKecil"), "Supervisor", 1);
+    assert!(masuk(&c, "ADMIN", "sandiBesar").err().unwrap().contains("dinonaktifkan"));
+    assert!(masuk(&c, "admin", "sandiBesar").err().unwrap().contains("dinonaktifkan"));
+    // Password tidak cocok dengan akun mana pun: pesan biasa, nama tidak bocor.
+    assert!(masuk(&c, "ADMIN", "ngawur").err().unwrap().contains("password salah"));
+    assert!(masuk(&c, "ADMIN", "sandiKecil").is_ok(), "password akun aktif senama tetap diterima");
+    // Akun nonaktif tunggal.
+    tambah_akun(&c, "budi", Some("pb"), "Kasir", 0);
+    assert!(masuk(&c, "budi", "pb").err().unwrap().contains("dinonaktifkan"));
+    assert!(masuk(&c, "budi", "salah").err().unwrap().contains("password salah"));
+    assert!(masuk(&c, "tidakada", "x").err().unwrap().contains("password salah"));
+    // Nonaktif tanpa password: pesan dinonaktifkan hanya dengan password sementara dan nama yang sah.
+    tambah_akun(&c, "siti", None, "Kasir", 0);
+    assert!(masuk(&c, "siti", "admin").err().unwrap().contains("dinonaktifkan"));
+    assert!(masuk(&c, "siti", "lain").err().unwrap().contains("password salah"));
+    let _ = std::fs::remove_dir_all(d);
+}
+
+#[test]
+fn verifikasi_pengelola_pilih_akun_yang_levelnya_memenuhi() {
+    let (c, d) = setup();
+    c.execute("DELETE FROM mduser", []).unwrap(); // buang akun bawaan 'admin'
+    tambah_akun(&c, "ADMIN", Some("sama"), "Kasir", 1);
+    tambah_akun(&c, "Admin", Some("sama"), "Supervisor", 1);
+    assert_eq!(verifikasi_pengelola(&c, "admin", "sama").unwrap().iduser, "Admin");
+    assert_eq!(verifikasi_pengelola(&c, "ADMIN", "sama").unwrap().iduser, "Admin");
+    // Akun pengelola nonaktif tidak dihitung.
+    c.execute("UPDATE mduser SET aktif = 0 WHERE iduser = 'Admin'", []).unwrap();
+    let m = verifikasi_pengelola(&c, "admin", "sama").unwrap_err();
+    assert!(m.contains("berlevel Kasir"), "{m}");
+    // Semua akun yang cocok berlevel Kasir.
+    c.execute("UPDATE mduser SET aktif = 1, \"level\" = 'Lainnya' WHERE iduser = 'Admin'", []).unwrap();
+    assert!(verifikasi_pengelola(&c, "admin", "sama").unwrap_err().contains("berlevel Kasir"));
+    // Password tidak cocok: pesan salah biasa.
+    assert!(verifikasi_pengelola(&c, "admin", "x").unwrap_err().contains("kata sandi salah"));
+    let _ = std::fs::remove_dir_all(d);
+}

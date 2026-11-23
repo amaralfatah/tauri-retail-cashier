@@ -7,7 +7,7 @@ use crate::trans::{check_date, next_id, next_number};
 use rusqlite::{params, Connection};
 use serde::Deserialize;
 use serde_json::{json, Value};
-use tauri::State;
+use perintah_macro::perintah;
 
 #[derive(Deserialize)]
 pub struct StokAwalItem {
@@ -24,7 +24,7 @@ pub fn stok_awal(conn: &mut Connection, user: &User, tgl: &str, catatan: &str, i
         return Err("Belum ada barang yang diisi. Silakan tambahkan barang dulu.".into());
     }
     check_date(tgl)?;
-    let tx = conn.transaction().map_err(e)?;
+    let tx = conn.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate).map_err(e)?;
     let notrans = next_number(&tx, "transaksi", "notrans", "SA", tgl)?;
     tx.execute(
         "INSERT INTO transaksi (tid,notrans,tgltrans,kode,jenis,kodekaryawan,catatan,tahun,bulan,tglupload,jamupload)
@@ -64,8 +64,8 @@ fn dengan_kasir(user: &User, kodekasir: Option<String>) -> User {
     u
 }
 
-#[tauri::command]
-pub fn save_stok_awal(db: State<Db>, session: State<Session>, tgl: String, catatan: String, items: Vec<StokAwalItem>, kodekasir: Option<String>) -> Res<Value> {
+#[perintah]
+pub fn save_stok_awal(db: &Db, session: &Session, tgl: String, catatan: String, items: Vec<StokAwalItem>, kodekasir: Option<String>) -> Res<Value> {
     let user = session.user()?;
     let mut conn = db.lock()?;
     crate::auth::require_menu(&conn, &user, "mnInvStokAwal")?;
@@ -85,7 +85,7 @@ pub struct OpnameBaris {
 /// jasa, atau baris ganda. Trigger menambahkan `jml` ke `mdbarang.stokopname` lalu menghitung ulang stok akhir.
 pub fn opname(conn: &mut Connection, user: &User, tgl: &str, catatan: &str, items: &[OpnameBaris]) -> Res<Value> {
     check_date(tgl)?;
-    let tx = conn.transaction().map_err(e)?;
+    let tx = conn.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate).map_err(e)?;
     let notrans = next_number(&tx, "transaksi", "notrans", "OP", tgl)?;
     tx.execute(
         "INSERT INTO transaksi (tid,notrans,tgltrans,kode,jenis,kodekaryawan,catatan,tahun,bulan,tglupload,jamupload)
@@ -121,8 +121,8 @@ pub fn opname(conn: &mut Connection, user: &User, tgl: &str, catatan: &str, item
     Ok(json!({ "notrans": notrans, "jumlah": n }))
 }
 
-#[tauri::command]
-pub fn save_opname_stok(db: State<Db>, session: State<Session>, tgl: String, catatan: String, items: Vec<OpnameBaris>, kodekasir: Option<String>) -> Res<Value> {
+#[perintah]
+pub fn save_opname_stok(db: &Db, session: &Session, tgl: String, catatan: String, items: Vec<OpnameBaris>, kodekasir: Option<String>) -> Res<Value> {
     let user = session.user()?;
     let mut conn = db.lock()?;
     crate::auth::require_menu(&conn, &user, "mnInvStokOpname")?;
@@ -142,8 +142,8 @@ pub fn label_find(conn: &Connection, code: &str) -> Res<Option<Value>> {
     .next())
 }
 
-#[tauri::command]
-pub fn label_barang_find(db: State<Db>, code: String) -> Res<Option<Value>> {
+#[perintah]
+pub fn label_barang_find(db: &Db, code: String) -> Res<Option<Value>> {
     label_find(&*db.lock()?, &code)
 }
 
@@ -165,8 +165,8 @@ pub fn label_data(conn: &Connection, kodes: &[String], tgl: &str) -> Res<Vec<Val
     Ok(out)
 }
 
-#[tauri::command]
-pub fn barang_label(db: State<Db>, kodes: Vec<String>, tgl: String) -> Res<Vec<Value>> {
+#[perintah]
+pub fn barang_label(db: &Db, kodes: Vec<String>, tgl: String) -> Res<Vec<Value>> {
     label_data(&*db.lock()?, &kodes, &tgl)
 }
 
@@ -189,8 +189,8 @@ pub fn katalog(conn: &Connection, search: &str) -> Res<Vec<Value>> {
     )
 }
 
-#[tauri::command]
-pub fn katalog_barang(db: State<Db>, search: Option<String>) -> Res<Vec<Value>> {
+#[perintah]
+pub fn katalog_barang(db: &Db, search: Option<String>) -> Res<Vec<Value>> {
     katalog(&*db.lock()?, &search.unwrap_or_default())
 }
 

@@ -9,6 +9,7 @@ import { autoBackup } from "../api/cadangan";
 import { dbApi, folderBackup } from "../api/keuangan";
 import { useApp } from "../appContext";
 import { useMsgBox } from "../vb/VbGrid";
+import { KunciPusat, useKunciPusat } from "../components/KunciPusat";
 
 /** Pengaturan Database (FrmZDatabase): lokasi file SQLite, folder backup, dan auto-backup saat keluar. */
 export function Database() {
@@ -17,6 +18,7 @@ export function Database() {
   const [lokasi, setLokasi] = useState("");
   const [backup, setBackup] = useState("");
   const [otomatis, setOtomatis] = useState(autoBackup.get());
+  const kunci = useKunciPusat();
 
   const muat = () => dbApi.info().then((i) => {
     setLokasi(i?.path ?? "");
@@ -44,6 +46,20 @@ export function Database() {
     autoBackup.set(otomatis);
     msg.alert("Pengaturan database sudah disimpan.");
   });
+
+  if (kunci.terkunci) {
+    return (
+      <div className="vb-modern flex h-full flex-col justify-between gap-4 bg-background p-4 font-sans text-xs text-foreground" data-form="FrmZDatabase">
+        <KunciPusat />
+        <div className="flex justify-end border-t border-border pt-3">
+          <Button type="button" variant="outline" size="sm" data-vb="cTutup" className="h-8 gap-1.5 border-foreground/20 bg-background px-2.5 font-medium text-foreground shadow-xs" onClick={() => go("home")}>
+            <span>Tutup</span>
+            <Kbd className="border border-border bg-muted text-foreground">Esc</Kbd>
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="vb-modern flex h-full flex-col justify-between gap-4 bg-background p-4 font-sans text-xs text-foreground" data-form="FrmZDatabase">

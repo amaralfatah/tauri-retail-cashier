@@ -7,7 +7,7 @@ use crate::trans::{check_date, insert_kas_oleh, nama};
 use rusqlite::{params, Connection, Transaction};
 use serde::Deserialize;
 use serde_json::{json, Value};
-use tauri::State;
+use perintah_macro::perintah;
 
 /// Catat satu pembayaran ke satu kartu. Sisa yang habis menandai kartu lunas.
 pub fn bayar_kartu(tx: &Transaction, user: &User, tgl: &str, nopiutang: &str, jumlah: f64, catatan: &str) -> Res<()> {
@@ -41,8 +41,8 @@ fn kolom(jenis: &str) -> Res<(&'static str, &'static str, &'static str)> {
 }
 
 /// Pelanggan atau pemasok yang masih punya tagihan, beserta totalnya.
-#[tauri::command]
-pub fn kartu_kontak(db: State<Db>, jenis: String) -> Res<Vec<Value>> {
+#[perintah]
+pub fn kartu_kontak(db: &Db, jenis: String) -> Res<Vec<Value>> {
     let (kol, tabel, nm) = kolom(&jenis)?;
     let conn = db.lock()?;
     rows(
@@ -97,8 +97,8 @@ pub fn kartu_ke_json(conn: &Connection, jenis: &str, kode: &str) -> Res<Vec<Valu
     )
 }
 
-#[tauri::command]
-pub fn kartu_list(db: State<Db>, jenis: String, kode: String) -> Res<Vec<Value>> {
+#[perintah]
+pub fn kartu_list(db: &Db, jenis: String, kode: String) -> Res<Vec<Value>> {
     let conn = db.lock()?;
     kartu_ke_json(&conn, &jenis, &kode)
 }
@@ -133,8 +133,8 @@ pub struct PelunasanInput {
     pub kartu: Vec<String>,
 }
 
-#[tauri::command]
-pub fn save_pelunasan(db: State<Db>, session: State<Session>, input: PelunasanInput) -> Res<Value> {
+#[perintah]
+pub fn save_pelunasan(db: &Db, session: &Session, input: PelunasanInput) -> Res<Value> {
     let user = session.user()?;
     let mut conn = db.lock()?;
     crate::auth::require_menu(&conn, &user, if input.jenis == "Hutang" { "mnTRPelunasanHutang" } else { "mnTRPelunasanPiutang" })?;
@@ -175,7 +175,7 @@ pub fn pelunasan(conn: &mut Connection, user: &User, input: &PelunasanInput) -> 
     check_date(&input.tgl)?;
     let (kol, tabel, nm) = kolom(&input.jenis)?;
     let piutang = input.jenis == "Piutang";
-    let tx = conn.transaction().map_err(e)?;
+    let tx = conn.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate).map_err(e)?;
     let kartu = muat_kartu(&tx, &input.jenis, &input.kode)?;
     let total: f64 = kartu.iter().map(|k| k.kekurangan).sum();
 

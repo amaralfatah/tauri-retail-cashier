@@ -18,7 +18,7 @@ use std::collections::hash_map::RandomState;
 use std::hash::{BuildHasher, Hasher};
 use std::sync::{Mutex, OnceLock};
 use std::time::{Duration, Instant};
-use tauri::State;
+use perintah_macro::perintah;
 
 /// Awal pesan error yang artinya "perlu izin supervisor"; layar kasir mengenalinya lalu membuka Verifikasi Admin.
 pub const TANDA: &str = "[izin] ";
@@ -68,8 +68,8 @@ pub fn brankas() -> &'static Brankas {
 }
 
 /// Layar Verifikasi Admin: cocokkan nama user dan kata sandi pengelola, lalu terbitkan tanda izin.
-#[tauri::command]
-pub fn verifikasi_admin(db: State<Db>, session: State<Session>, iduser: String, password: String) -> Res<String> {
+#[perintah]
+pub fn verifikasi_admin(db: &Db, session: &Session, iduser: String, password: String) -> Res<String> {
     let pemohon = session.user()?;
     let conn = db.lock()?;
     auth::verifikasi_pengelola(&conn, &iduser, &password)?;

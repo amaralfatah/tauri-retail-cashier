@@ -1,6 +1,6 @@
 # Rancangan teknis: mode Komputer Pusat
 
-Status: rancangan, belum dikerjakan. Ditulis 23 November 2026 berdasarkan kode di branch `fitur/pindah-data-lama`.
+Status: rancangan; Tahap 1 sampai 8 sudah dikerjakan (lihat "Sudah dikerjakan" di tiap bab). Ditulis 23 November 2026 berdasarkan kode di branch `fitur/pindah-data-lama`.
 
 ## Ringkasan
 
@@ -112,7 +112,14 @@ Nama argumen JSON mengikuti aturan Tauri (snake_case di Rust dibaca camelCase da
 Tauri hanya mendaftarkan sedikit perintah:
 
 - `jalankan(perintah, args)`: pintu untuk semua perintah data.
-- Perintah yang selalu lokal atau khusus (lihat 2.3): `cetak`, `lama_cari`, `lama_pindahkan`, dan perintah baru untuk mode Pusat.
+- Perintah baru untuk mode Pusat yang tidak lewat dispatcher (lihat 2.3).
+
+`cetak`, `lama_cari`, dan `lama_pindahkan` **tetap masuk `daftar_perintah!`** (jadi bisa dipanggil lewat `jalankan` dan ikut tes
+dispatcher), tetapi ketiganya bukan perintah data biasa. `cetak` mencetak di komputer yang sedang dipakai; `lama_cari` dan
+`lama_pindahkan` membaca folder dan file di komputer Pusat. **Catatan untuk Tahap 3 dan 4:** golongan perintah (lokal, Pusat,
+diteruskan ke Pusat) harus menandai `cetak` sebagai "khusus lokal" (selalu dijalankan di komputer ini, tidak pernah diteruskan
+lewat jaringan), serta `lama_cari` dan `lama_pindahkan` sebagai "khusus Pusat" (hanya dijalankan di Pusat; Kasir tidak
+meneruskannya dan tidak boleh menjalankannya sendiri).
 
 **Alasan.** Perintah sudah seragam, jadi perubahan tanda tangan bisa dikerjakan dengan cari-ganti dan diperiksa compiler.
 Tes yang sekarang memanggil fungsi murni tidak berubah. Pusat dan mode Tunggal memakai jalur yang sama persis dengan Kasir,
@@ -156,10 +163,10 @@ Di Rust, `jalankan` memeriksa mode:
 
 | Golongan | Perintah | Di mode Kasir |
 |---|---|---|
-| Data | semua di `master`, `trans`, `order`, `retur`, `pelunasan`, `report` (kecuali `simpan_laporan`), `kas`, `poin`, `nontunai`, `inventori`, `promo`, `impor`, `alat`, `izin`, `auth` (kecuali `restore_session`), `foto_baca`, `foto_hapus`, `db_path`, `db_info` | dikirim ke Pusat |
+| Data | semua di `master`, `trans`, `order`, `retur`, `pelunasan`, `report` (kecuali `simpan_laporan`), `kas`, `poin`, `nontunai`, `inventori`, `promo`, `impor_jenis`, `alat` (kecuali `alat_sql`), `izin`, `auth` (kecuali `restore_session`), `foto_baca`, `foto_hapus`, `foto_simpan_data`, `db_path`, `db_info` | dikirim ke Pusat |
 | Lokal | `cetak`, `ekspor_nama`, `simpan_file`, `simpan_xlsx`, `simpan_laporan`, `baca_gambar`, plugin dialog, updater, process | jalan di komputer Kasir |
 | Diolah dulu di Kasir | `foto_simpan` (file gambar dibaca di Kasir, dikirim sebagai data ke perintah baru `foto_simpan_data` di Pusat; `hapus_asal` menghapus file di Kasir setelah berhasil) | campuran |
-| Khusus Pusat | `db_daftar_backup`, `db_backup`, `db_cek`, `db_perbaiki`, `db_restore`, `backup_otomatis`, `lama_cari`, `lama_pindahkan`, `alat_sql` | ditolak dengan pesan "Menu ini hanya bisa dibuka di komputer Pusat" |
+| Khusus Pusat | `db_daftar_backup`, `db_backup`, `db_cek`, `db_perbaiki`, `db_restore`, `backup_otomatis`, `lama_cari`, `lama_pindahkan`, `alat_sql`, `impor_baca`, `impor_proses` | ditolak dengan pesan "Menu ini hanya bisa dibuka di komputer Pusat" |
 | Hanya pengembangan | `restore_session` | selalu ditolak lewat jaringan |
 
 Perintah lokal yang memeriksa izin (`simpan_file`, `simpan_xlsx`, `simpan_laporan` memanggil `session.user()`) membaca salinan
@@ -186,6 +193,22 @@ Pembagian ini disimpan sebagai daftar konstan di `src-tauri/src/jaringan/golonga
   dikenali tampilan. Kasir meneruskan teks yang sama, jadi alur Verifikasi Admin dan konfirmasi batas kredit tidak berubah.
 - Batas ukuran badan permintaan 20 MB (foto maksimal 10 MB dalam base64).
 
+**Sudah dikerjakan (Tahap 3)**, kode di `src-tauri/src/jaringan/` (`mode.rs`, `server.rs`, `kendali.rs`, `perangkat.rs`, `batas.rs`, `golongan.rs`):
+
+- Versi: `axum` 0.8.9 (fitur `http1`, `json`, `tokio` saja), `tokio` 1.54.1 (sama dengan Tauri), `if-addrs` 0.15 (alamat dan awalan kartu jaringan).
+  `tower` tidak ditambah sebagai dependensi langsung: axum sudah membawanya (0.5.3). `reqwest` 0.13.5 hanya `dev-dependency` (tes) dengan `rustls` 0.23 `ring` untuk memasang
+  penyedia kripto, karena `reqwest` di proyek ini berasal dari plugin updater dan dibangun tanpa penyedia. Klien Kasir (Tahap 4) memasang penyedia yang sama, lihat di bawah.
+- Semua jawaban berbentuk `{ ok, hasil }` atau `{ ok: false, pesan, kode }`, termasuk `/halo`. Kesalahan dari perintah itu sendiri berstatus 200 dengan `kode: "perintah"`;
+  401 untuk token perangkat atau sesi yang tidak sah, 403 untuk perintah yang tidak boleh lewat jaringan, 404 untuk perintah tidak dikenal, 429 untuk terkunci, 503 untuk perawatan.
+- Hanya golongan Data yang dilayani server. `restore_session` ditolak 403 di server (selain pemeriksaan `Asal::Jaringan` di dalam perintahnya).
+  Nama perintah yang tidak ada di `golongan.rs` ditolak; tes memaksa setiap perintah baru didaftarkan di tepat satu golongan.
+- Perintah Tauri langsung (bukan lewat `jalankan`): `pusat_status`, `pusat_atur_mode`, `pusat_kode_baru`, `pusat_terima_otomatis`, `pusat_perangkat`, `pusat_putuskan`. Semuanya hanya untuk Manager yang masuk di jendela ini.
+  Layar pertama kali (sebelum ada Manager yang masuk) dan pemberitahuan "komputer tersambung" menyusul di Tahap 7.
+- `TOKOPRO_PORT` menimpa port di `pusat.json`. `GET /foto/{kode}` belum dibuat.
+- Batas: kode sambung salah 5 kali berturut-turut dari satu IP mengunci `/sambung` 5 menit (percobaan tanpa kode tidak dihitung); kode dibatalkan setelah 20 tebakan salah dari alamat mana pun;
+  login dan `verifikasi_admin` salah 5 kali berturut-turut mengunci dua perintah itu untuk perangkat tersebut 5 menit.
+- Temuan keamanan: `impor_baca`, `impor_proses`, dan beberapa `alat_*` menerima `path` atau `folder` di komputer Pusat. Ditutup di Tahap 6 (lihat "Sudah dikerjakan (Tahap 6)" di bab 9).
+
 **Pilihan yang ditolak.** WebSocket untuk semua perintah: belum ada fitur yang butuh kiriman dari Pusat ke Kasir, dan HTTP biasa
 lebih mudah diuji serta dipulihkan setelah putus. Status koneksi cukup dengan `GET /halo` berkala. WebSocket baru dipertimbangkan
 bila nanti ada kebutuhan seperti "daftar pending diperbarui di semua kasir".
@@ -209,6 +232,16 @@ bila nanti ada kebutuhan seperti "daftar pending diperbarui di semua kasir".
 - Tanda izin Verifikasi Admin (`izin::brankas()`) tetap di memori Pusat. Tanda itu dicocokkan dengan `iduser` pemohon dan
   hanya diterima lewat sesi yang sedang masuk, jadi aman dipakai bersama.
 - `restore_session` selalu ditolak bila permintaan datang lewat jaringan, juga di build debug.
+- **Sudah dikerjakan (Tahap 2).** `src-tauri/src/sesi.rs`: `DaftarSesi` (berkunci sidik SHA-256 token; `"lokal"` berkunci apa adanya),
+  `buat`, `cari`, `catat`, `cabut`, `bersihkan`, `muat`. `Konteks` punya `asal: Asal` (`Lokal` bawaan, `Jaringan` lewat
+  `.dari_jaringan()`); server Pusat tinggal memanggilnya. `jalankan` mengambil sesi `"lokal"` dari `DaftarSesi`.
+  Sesi `"lokal"` sengaja tidak disimpan di `sesi_perangkat` (mode Tunggal tetap seperti sebelumnya: buka aplikasi, masuk lagi).
+  Sesi bertoken disimpan lewat `catat` setelah setiap perintah (`catat_setelah_perintah`), bukan di dalam `login`/`logout`, jadi `auth.rs` tidak berubah.
+  Logout mengosongkan `iduser` tetapi barisnya tetap. `idperangkat` berupa teks bebas sampai tabel `perangkat` ada di Tahap 3.
+  Migrasi langkah 2 membuat tabel `sesi_perangkat`.
+- **Sudah dikerjakan (Tahap 3).** Tabel `perangkat` (migrasi langkah 3, kolom tambahan `otomatis` untuk tanda "diterima otomatis"), `idperangkat` di
+  `sesi_perangkat` berisi id perangkat itu. `/sambung` mengembalikan token perangkat dan token sesi pertama; sesi harus milik perangkat pengirim
+  (`DaftarSesi::pemilik`). Rute tambahan `POST /sesi` (butuh token perangkat) memberi sesi baru bila sesi lama sudah dihapus karena diam 12 jam.
 - Sesi yang tidak dipakai 12 jam dihapus. Logout di Kasir menghapus `User` dari sesinya, tetapi token sesi tetap.
 
 ### 3.2 Pilihan yang ditolak
@@ -239,6 +272,21 @@ Pengaman tambahan (Tahap 5):
   lalu `let conn = db.lock()?`). Pemeriksaan izin di antara dua kunci itu aman; yang tidak boleh adalah membaca nilai bisnis
   (stok, saldo, nomor) di kunci pertama lalu menulis berdasarkan nilai itu di kunci kedua.
 
+**Sudah dikerjakan (Tahap 5).**
+
+- Semua perintah tulis memakai `conn.transaction_with_behavior(TransactionBehavior::Immediate)` (`alat`, `auth`, `impor`, `inventori`, `kas`, `master`, `order`, `pelunasan`, `poin`, `promo`, `retur`, `trans`).
+  Yang tidak diubah: `migrasi.rs` (jalan saat membuka database, sebelum ada penulis lain) dan `pindah_lama.rs` (impor massal ke file baru, tanpa penulis lain).
+- Penulisan yang berurutan dibuktikan oleh `tests_data::beban_*`: 4 kasir x 50 `save_penjualan` lewat HTTP ke satu Pusat menghasilkan `TJ2611-00001` sampai `TJ2611-00200` tanpa lompatan, `stokakhir` = awal - total jumlah,
+  `SUM(masuk)` dan saldo kas terakhir sesuai; dan 4 kasir x 15 penjualan untuk stok 30 (`izinstokmin = 0`) menghasilkan tepat 30 berhasil dan stok 0.
+- **Hasil audit pola dua kunci** (setiap fungsi `#[perintah]` di semua modul dihitung jumlah `db.lock()`-nya, lalu yang lebih dari satu dibaca):
+  - Hanya tujuh fungsi yang memegang kunci lebih dari sekali: `db_info`, `db_daftar_backup`, `db_backup`, `db_cek`, `db_perbaiki` (`database.rs`), `master_save` (`master.rs`), dan `pindahkan` (`pindah_lama.rs`).
+    Pada lima yang pertama dan `master_save`, kunci pertama hanya memeriksa izin (`izin_database_atau_alat`, `require_menu`), tidak membaca nilai bisnis. `pindahkan` khusus Pusat dan membangun database sendiri.
+  - Perintah simpan lain (`save_penjualan`, `save_pembelian`, `save_opname*`, `save_order`, `save_pending`, retur, pelunasan, kas, poin, stok awal, impor, alat) mengambil satu kunci, memeriksa izin, lalu semua pembacaan nilai
+    bisnis (stok, batas kredit, saldo kas, nomor, `MAX(tid)`) terjadi di dalam transaksi yang sama (`next_number`, `next_id`, `periksa_penjualan`, saldo di `insert_kas_paksa`). Tidak ada yang berisiko; tidak ada kode yang diubah untuk ini.
+  - `kas_delete` memakai tanda izin sekali pakai (`izin::tanda_sah` lalu `habiskan` setelah menghapus). Itu bukan nilai bisnis, dan dua penghapusan berurutan tetap tidak bisa memakai tanda yang sama.
+  - Satu hal yang sengaja dibiarkan: perintah baca dan tulis yang terpisah di tampilan (mis. `preview_notrans` lalu `save_penjualan`) memang bisa menampilkan nomor yang berbeda dari yang akhirnya tersimpan. Nomor resmi selalu
+    dari `next_number` di dalam transaksi simpan, dan layar membaca nomor dari hasil simpan.
+
 ### 4.2 Simpan ganda saat jaringan putus
 
 Masalahnya: Kasir mengirim `save_penjualan`, Pusat menyimpan, lalu jawaban hilang di jalan. Kalau kasir menekan simpan lagi,
@@ -258,16 +306,54 @@ Celahnya: Pusat mati tepat di antara `commit` transaksi dan penulisan `permintaa
 (Tahap 5, opsional) menulis `permintaan_selesai` di dalam transaksi perintah itu sendiri lewat `Konteks::catat_selesai(&tx)`.
 Ini butuh perubahan kecil di setiap perintah simpan, jadi dikerjakan setelah versi pertama berjalan.
 
+**Sudah dikerjakan (Tahap 5)**, di `jaringan/server.rs` (`Pusat::sekali`), `jaringan/klien.rs`, `jaringan/golongan.rs` (`perintah_simpan`), migrasi langkah 4, dan `tests_data.rs`:
+
+- Tabel `permintaan_selesai (id TEXT PRIMARY KEY, perintah, hasil_json, waktu)` (migrasi langkah 4 dan `schema.sql`). `waktu` dalam detik Unix. Baris lebih dari 7 hari dihapus saat server Pusat dimulai.
+- Perintah ber-ID ditentukan `golongan::perintah_simpan`: `save_*`, `delete_*`, `master_save/delete`, `kas_save/delete`, `poin_tukar/koreksi`, `impor_proses`, `alat_hapus_*`/`alat_hitung_*`/`alat_sinkron_*`/`alat_item_hapus`,
+  `nt_*_save/delete`, `promo_save/delete`, `pending_selesai`, `foto_hapus`. `login`, `logout`, dan `verifikasi_admin` tidak ber-ID.
+- Pusat: permintaan ber-ID menunggu giliran pada satu kunci khusus (`kunci_simpan`), memeriksa tabel, menjalankan perintah bila belum ada, lalu menulis hasilnya sebelum menjawab. Dua permintaan ber-ID sama yang bersamaan
+  menyimpan satu transaksi. Hanya hasil yang berhasil diingat; perintah yang ditolak boleh dicoba lagi dengan ID yang sama. ID yang sama untuk perintah lain ditolak.
+- Kasir: `Klien::jalankan_id` menerima `idPermintaan` dari tampilan (`invoke(cmd, args, idPermintaan?)` di `src/lib/panggil.ts`, perintah Tauri `jalankan` menerima `idPermintaan`). Bila tidak ada, Rust membuat sendiri (32 karakter heksa acak),
+  dan ID yang sama dipakai di semua percobaan satu permintaan.
+- Penyimpangan dari rancangan: Kasir **sekarang boleh mengulang sendiri satu kali** bila jawaban hilang sebelum waktu habis (mis. sambungan diputus), karena ID yang sama membuatnya aman. Waktu habis (30 detik) tidak diulang otomatis.
+- ~~Penyimpangan lain: Rust mengingat ID simpan yang hasilnya belum pasti berdasarkan isi perintah selama 10 menit.~~ **Dihapus (perbaikan D3).** Pengingatan berdasarkan isi membuat penjualan berikutnya yang isinya identik mendapat hasil lama,
+  sehingga transaksi hilang tanpa tanda. Sekarang tidak ada lagi sidik isi, di Rust (`Klien`) maupun di tampilan (`src/lib/panggil.ts`). ID yang sama dipakai ulang hanya (a) oleh pengulangan otomatis satu kali di dalam satu panggilan, dan (b) oleh dialog Coba Lagi,
+  yang berada di dalam satu panggilan `invoke` yang sama dan mengirim ID yang sama. Menekan Simpan lagi sesudah dialog ditutup adalah simpan baru dengan ID baru, jadi pesan di layar saat hasilnya belum pasti meminta pengguna melihat dulu daftar transaksi.
+- Pesan 7.3 untuk "Pusat terputus" dan "hasil tidak pasti" sudah dipakai di Rust (`PESAN_BELUM_TERSIMPAN`, `PESAN_BELUM_PASTI`). Tombol "Coba Lagi" itu sendiri menunggu Tahap 7.
+- Celah "Pusat mati di antara `commit` dan penulisan `permintaan_selesai`" **belum ditutup** (langkah opsional `Konteks::catat_selesai(&tx)`); tetap di daftar tahap lanjutan. Karena itu pesan 7.3 tidak lagi berjanji "tidak akan tercatat dua kali"
+  (perbaikan D4): "Tekan Coba Lagi. Toko Pro akan memeriksa dulu apakah transaksi ini sudah tersimpan." Itu yang memang dikerjakan: Pusat memeriksa `permintaan_selesai` dengan ID yang sama. Bila Pusat mati tepat di celah itu, pemeriksaan tidak menemukan apa-apa dan transaksi bisa ganda; risikonya ada di bab 11.
+- Perbaikan D5: jawaban Pusat yang bukan JSON (mis. halaman galat dari perantara) untuk perintah simpan diperlakukan sebagai hasil belum pasti (penanda yang sama dengan jawaban yang hilang), bukan sebagai gagal pasti.
+- Perbaikan S6: batas waktu 10 detik berlaku untuk semua perintah yang bukan simpan. `perintah_baca` (`golongan.rs`) diturunkan dari `perintah_simpan`, jadi satu daftar saja. Dulu `master_list`, `kas_list`, `poin_member`, `katalog_barang`, `foto_baca`, dan lainnya
+  salah dianggap simpan (batas 30 detik dan pesan "transaksi belum tersimpan" di layar yang hanya membaca).
+- Tes: `simpan_diulang_dengan_id_sama_tidak_menggandakan_data`, `id_sama_bersamaan_hanya_satu_transaksi`, `jawaban_hilang_sesudah_tersimpan_lalu_ulang_dengan_id_sama_tidak_menggandakan_data` (hook tes di server: data tersimpan, jawabannya sengaja tidak dikirim, lalu permintaan diulang dengan ID yang sama),
+  `d3_simpan_identik_berikutnya_tidak_memakai_id_lama`, `d5_jawaban_bukan_json_untuk_simpan_dianggap_belum_pasti`, `s6_*` (`tests_perbaikan.rs`), `npm run tes:simpan` (daftar perintah simpan di tampilan sama dengan di Rust),
+  `simpan_yang_ditolak_tidak_diingat`, `hasil_simpan_lebih_dari_tujuh_hari_dibersihkan`, dan tes migrasi langkah 4 di `tests_migrasi.rs`.
+
 ### 4.3 Tanggal dan jam
 
 Aplikasi lama memakai jam server (`GETSERVERDATE`). Di rancangan ini:
 
-- `GET /halo` mengembalikan jam Pusat. Rust Kasir menghitung selisih jam lalu menyediakannya lewat perintah lokal `jam_pusat`.
+- `GET /halo` mengembalikan jam dinding Pusat (`jamDinding`, `YYYY-MM-DD HH:MM:SS`, tanpa zona). Rust Kasir menghitung selisih jam dinding lalu menyediakannya lewat perintah lokal `jam_pusat`.
   `today()` di `src/format.ts` memakai selisih ini di mode Kasir.
 - Bila selisih lebih dari 2 menit, bilah atas menampilkan peringatan "Jam di komputer ini berbeda dengan Pusat".
 - `tglupload`/`jamupload` sudah memakai jam Pusat (`date('now','localtime')` dijalankan di Pusat).
 - Pusat tidak menolak `input.tgl` yang berbeda dengan tanggal Pusat, karena layar transaksi memang mengizinkan tanggal
   diubah oleh pengguna yang berhak. Aturan itu tetap seperti sekarang.
+
+**Sudah dikerjakan (Tahap 5).**
+
+- `Klien` menghitung selisih jam (jam Pusat dikurangi jam lokal, pada titik tengah perjalanan `/halo`) setiap `/halo` berhasil, bersama zona waktu Pusat. Perintah Tauri `jam_pusat` mengembalikan
+  `{ tanggal, jam, selisihDetik, selisihMs, berbeda, dariPusat, offsetDetik }`. `berbeda` = selisih lebih dari 2 menit (bahan peringatan di bilah atas; tampilan peringatannya Tahap 7).
+  Di mode Tunggal dan Pusat, atau sebelum ada `/halo`, jam komputer ini dipakai dan `dariPusat` = `false`.
+- Tampilan: `today()` dan `sekarang()` di `src/format.ts` memakai `aturSelisihJam`; `sinkronJamPusat()` (`src/api/pusat.ts`) dipanggil saat aplikasi dibuka dan setiap event `status-pusat`. Jam di status bar (`App.tsx`) ikut jam Pusat.
+- Karena tanggal transaksi (dan `KODE+yymm` di `next_number`) berasal dari `today()` atau dari tanggal yang dipilih pengguna, nomor transaksi di Kasir mengikuti bulan di Pusat. Server tetap tidak menolak `input.tgl` lain.
+- ~~Batasan: kalender dihitung di zona waktu komputer Kasir.~~ **Diperbaiki (D1).** Zona waktu Windows di komputer kasir sering salah (bawaan Pacific, jam diatur manual supaya tampil WIB). Selisih epoch lalu dirender di zona Pacific membuat tanggal mundur sehari selama sekitar 15 jam per hari.
+  Sekarang selisihnya dihitung sebagai **jam dinding**, tanpa zona: Pusat mengirim tanggal dan jam lokalnya sebagai teks; Rust menghitung `jamDindingPusat - jamDindingKasir` dan mengirim `dinding` (jam dinding Pusat saat ini) ke tampilan; tampilan menghitung
+  `selisih = parseSebagaiLokalNaif(dinding) - Date.now()` (`terapkanJamPusat` di `src/format.ts`). `today()` dan `sekarang()` memformat `new Date(Date.now() + selisih)` dengan komponen lokal, jadi kalender kasir selalu sama dengan kalender Pusat, apa pun zonanya.
+  `offsetDetik` dan selisih epoch dibuang. `berbeda` (peringatan jam) memakai selisih jam dinding, jadi komputer berzona salah tetapi berjam benar tidak diperingatkan. Semua tanggal yang dibuat di Pusat memakai `date('now','localtime')` Pusat, jadi sudah benar.
+- Perbaikan D2: selisih dibuang (`selisih_jam = None`) saat mode berganti dari Kasir atau nama Pusat diganti; `jam_pusat` hanya mengembalikan `dariPusat: true` di mode Kasir; `sinkronJamPusat` mengembalikan selisih ke nol bila bukan `dariPusat`.
+- Tes: `selisih_jam_dinding_dan_tanggal_pusat_lewat_tengah_malam`, `zona_waktu_kasir_salah_tidak_menggeser_tanggal`, `klien_menghitung_selisih_jam_dari_halo_pusat` (klien sungguhan ke server sungguhan), `d2_selisih_jam_dibuang_saat_mode_bukan_kasir`,
+  dan `npm run tes:jam` (`tools/jam-pusat.test.mjs`, zona `America/Los_Angeles`, `Asia/Jakarta`, dan lainnya diganti lewat `process.env.TZ` di dalam tes).
 
 ### 4.4 Laporan berat tidak boleh menahan kasir
 
@@ -279,6 +365,13 @@ Satu `Mutex` berarti laporan setahun di komputer Manager membuat kasir menunggu.
    Perintah tulis tetap memakai koneksi tulis dengan `BEGIN IMMEDIATE`.
 
 Ini sengaja tidak dikerjakan di awal, karena menambah satu jenis kesalahan baru (membaca dari koneksi baca lalu menulis).
+
+**Keputusan (Tahap 5): tidak dikerjakan, menunggu ukuran dari Tahap 10.** Alasannya:
+
+- Langkah 1 (mengukur) memang baru bisa dilakukan di Tahap 10, dengan data toko terbesar; tanpa angka itu koneksi kedua belum tentu perlu.
+- Ini tidak sederhana: `Db(Mutex<Connection>)` dipakai di ±110 perintah dan semua tes membuat `Db(Mutex::new(conn))` langsung. Mengubahnya menjadi dua koneksi berarti memilah setiap perintah menjadi baca atau tulis, dan database
+  uji di memori (`:memory:`) tidak bisa berbagi data antara dua koneksi tanpa mode cache bersama.
+- Pengaman yang dibutuhkan nanti sudah siap: penulisan sudah `BEGIN IMMEDIATE` (4.1) dan WAL sudah aktif, jadi koneksi baca terpisah bisa ditambahkan tanpa mengubah perilaku penulisan.
 
 ## 5. Penemuan Pusat dan koneksi
 
@@ -396,6 +489,24 @@ sudah dipakai, Pusat menampilkan pesan dan tidak membuka server, tetapi jendela 
 - Lima kode salah berturut-turut dari satu IP mengunci `/sambung` selama 5 menit.
 - Layar Komputer Pusat menampilkan daftar komputer tersambung, pengguna yang sedang masuk, dan tombol "Putuskan" untuk mencabut token.
 
+**Perbaikan dari tinjauan (S1 sampai S5)**, di `jaringan/server.rs`, `jaringan/batas.rs`, `sesi.rs`, dan `tests_jaringan.rs`:
+
+- **S1, masa terima otomatis dibatasi.** Selama masa terima otomatis (sesudah pindah dari Toko Pro lama; sampai 23.59), perangkat satu subnet bisa `/sambung` tanpa kode. Kalau login pengguna dimatikan (`tseting.aktiflogin = 0`), perangkat yang tersambung
+  langsung menjadi Manager "Administrator" lewat `login_bawaan`, seperti aplikasi lama (login dimatikan = semua komputer langsung masuk). Perilaku itu dipertahankan; celahnya diperkecil:
+  (a) paling banyak `MAKS_TERIMA_OTOMATIS` = 10 perangkat per masa terima, lalu masa terima ditutup sendiri (membuka masa terima lagi memulai hitungan dari nol);
+  (b) layar Komputer Pusat menandai perangkat yang diterima otomatis ("Tanpa kode") dengan keterangan dan tombol Putuskan, dan menampilkan "x dari 10" selama masanya terbuka;
+  (c) tombol "Selesai menyambungkan" (perintah `pusat_terima_otomatis` dengan `buka = false`) menutup masa terima lebih awal. Masa terima tetap berakhir pukul 23.59.
+  Risiko yang tersisa ada di bab 11.
+- **S2, batas login per alamat dan per perangkat.** Percobaan `login` dan `verifikasi_admin` dihitung per perangkat **dan** per alamat IP pengirim (`pembatas_login`, `pembatas_login_ip`); salah satunya terkunci berarti ditolak 429. Satu IP yang salah 5 kali terkunci walau memakai perangkat baru.
+  `/sambung` tanpa kode: satu perangkat per IP per masa terima. Sambung kedua dari IP yang sama **mengganti** yang lama (yang lama dicabut, hitungan perangkat tidak bertambah), supaya komputer kasir yang kehilangan tokennya (mis. dipasang ulang) tetap bisa menyambung tanpa
+  menambah jumlah perangkat dari alamat itu. Keputusan ini diambil sendiri; alternatifnya menolak, tetapi itu memaksa kode sambung untuk kasus yang wajar.
+- **S3, reservasi percobaan.** `Pembatas::coba` memeriksa kunci dan mencatat percobaan dalam satu langkah **sebelum** perintah dijalankan; `berhasil` tidak menghapus kunci yang sedang berlaku. 30 permintaan `login` paralel menghasilkan paling banyak 5 yang diproses, sisanya 429.
+- **S4, sesi diam.** `DaftarSesi::pemilik` menolak (dan mencabut) sesi yang `terakhir`-nya lewat 12 jam di setiap `/jalankan`, jadi Pusat yang menyala berhari-hari tidak mempertahankan sesi lama. Jawabannya sama dengan sesi tak dikenal (401, kode `sesi`); Kasir meminta sesi baru dan pengguna masuk lagi.
+- **S5, token dulu, badan kemudian.** Handler memakai `Body` mentah, bukan `Json`: `/jalankan` memeriksa token (dan versi serta mode perawatan) dari header sebelum membaca badan; panjang yang diumumkan `Content-Length` diperiksa lebih dulu.
+  Batas badan: 16 KB untuk `/sambung`, `/sesi` tidak membaca badan, dan 20 MB hanya untuk `/jalankan` yang sudah lolos token. Badan terlalu besar dijawab 413 (`terlalu-besar`).
+- Tes: `s1_*`, `s2_*`, `s3_*`, `s4_*`, `s5_*`, `kode_masih_berlaku_setelah_sembilan_belas_tebakan_salah`, `kode_dibatalkan_setelah_dua_puluh_tebakan_salah_dari_alamat_mana_pun` (batas `MAKS_SALAH_PER_KODE`), dan `pembatas_coba_mereservasi_...`. Di tes, header `x-uji-ip` (hanya build tes)
+  menggantikan alamat pengirim, supaya beberapa "komputer" bisa ditiru dari satu mesin.
+
 Lalu lintas pada versi pertama **tidak terenkripsi** (HTTP biasa), sama seperti koneksi Firebird 2.5 di aplikasi lama. Kata
 sandi saat login bisa disadap oleh perangkat lain di jaringan yang sama. Ini diterima untuk versi pertama karena jaringan toko
 tertutup dan risikonya tidak lebih buruk dari aplikasi lama. Tahap lanjutan: TLS dengan sertifikat buatan Pusat (`rcgen` +
@@ -417,13 +528,38 @@ Tanpa pengamanan sama sekali: siapa pun di Wi-Fi toko (termasuk Wi-Fi tamu yang 
 - Sesi kasir bertahan saat Pusat dinyalakan ulang (lihat 3.1).
 - Tidak ada antrean simpan luring di Kasir. Kalau ada, stok dan nomor transaksi bisa bentrok, dan itu yang ditolak sejak awal.
 
+**Sudah dikerjakan (Tahap 4)**, kode di `src-tauri/src/jaringan/klien.rs` (`Klien`), `pindah_lama::nama_komputer_lama`, dan `src/api/pusat.ts`:
+
+- `Klien` berbagi satu `Pengaturan` (`pusat.json`) dengan `Kendali`, jadi tidak ada yang saling menimpa. Bagian `kasir` berisi `pusat` (nama atau IP yang diketik), `namaPusat`
+  (nama yang dijawab Pusat saat pertama tersambung), `ipTerakhir`, `token`, dan `sesi`. Port Pusat yang dituju memakai `port` dan `TOKOPRO_PORT`, seperti di Pusat.
+- `reqwest` jadi dependensi langsung. Penyedia kripto **memang perlu** walau lalu lintasnya `http`: `Client::new()` panik tanpanya. `klien_http()` memasang `rustls` `ring` sekali per proses
+  (efek sampingnya, klien updater di proses yang sama ikut mendapat penyedia).
+- Urutan alamat: alamat yang terakhir menjawab (di memori), nama atau IP yang diketik (semua hasil resolver, IPv4 dulu), lalu `ipTerakhir`. Alamat dipakai bila `/halo` menjawab nama
+  komputer yang sama dengan `namaPusat`. IPv6 link-local (`fe80::`) tidak dicoba.
+- `Klien::jalankan` memakai `golongan.rs`: Lokal dikerjakan oleh penutup `lokal` yang diberikan `jalankan` Tauri (thread terpisah), Data dikirim ke Pusat, Khusus Pusat, `foto_simpan`
+  (sampai Tahap 6), dan perintah tak dikenal ditolak di Kasir, `restore_session` dijawab kosong. Setelah `login`, `login_bawaan`, `current_user`, `logout`, dan `change_password` berhasil, salinan `User`
+  di sesi `"lokal"` ikut diperbarui. Salinan dikosongkan bila Pusat menjawab sesi tidak dikenal (pengguna masuk lagi).
+- Kasir tidak membuka database. Bila `pusat.json` berisi mode Kasir saat aplikasi dibuka, `lib.rs` tidak memanggil `db::open`; yang dipasang hanya `Db` kosong di memori (tanpa file) karena
+  `Konteks` selalu membawa `&Db`, dan perintah lokal tidak menyentuhnya. Berpindah dari Kasir ke Tunggal atau Pusat baru bisa dipakai setelah aplikasi dibuka ulang
+  (`pusat_status.perluMulaiUlang`; `jalankan` menolak dengan pesan yang jelas).
+- Kesalahan yang berasal dari sambungan atau keadaan Pusat berawalan `[pusat] ` (Pusat tidak terjangkau, belum disambungkan, perangkat dicabut, perawatan, kode salah). Kesalahan dari perintah
+  itu sendiri (`kode: "perintah"`) diteruskan apa adanya, jadi `[izin]`, `[konfirmasi]`, dan "kata sandi salah" tidak berubah. "Sesi Anda sudah berakhir" juga tanpa awalan.
+- Gagal tersambung (permintaan belum terkirim) dicoba sekali lagi dengan mencari alamat ulang. Habis waktu tidak diulang; jawaban yang hilang sebelum waktu habis diulang sekali hanya untuk perintah simpan ber-ID (Tahap 5). Untuk perintah simpan pesannya "belum tahu apakah transaksi ini sudah tersimpan"
+  (sejak Tahap 5 dengan janji "tidak akan tercatat dua kali", lihat 4.2). Batas waktu: 10 detik untuk perintah baca (`list_`, `get_`, `laporan_`, dan sejenisnya), 30 detik untuk yang lain.
+- Pemeriksa `/halo` berjalan di latar hanya di mode Kasir yang sudah disambungkan: 15 detik saat tersambung, 3 detik saat terputus lalu naik pelan ke 10 detik. Status: `belum-sambung` (tambahan di luar
+  daftar awal), `menyambung`, `tersambung`, `terputus`, `versi-beda`, `perawatan`, `ditolak`. Perubahan dikirim sebagai event `status-pusat`. `ditolak` bertahan sampai disambungkan ulang.
+  `versi-beda` awalnya hanya melapor; sejak Tahap 6 perintah data diblokir (6.4).
+- Perintah Tauri: `kasir_atur(pusat, port?)` (Manager yang masuk, atau komputer yang sudah Kasir), `kasir_sambung(kode?)`, `kasir_nama_lama()`, dan `pusat_status` kini memuat `kasir`.
+  `pusat_atur_mode` menerima `kasir`, tetapi tidak mengisi nama Pusat. Pembungkusnya di `src/api/pusat.ts`; tampilannya Tahap 7.
+- `TOKOPRO_DATA_DIR` (hanya build debug) sekarang dibaca: folder data aplikasi, tempat `pusat.json`, `foto/`, dan `tokopro.db` bila `TOKOPRO_DB` kosong.
+
 ## 6. Fitur yang perlu perlakuan khusus
 
 ### 6.1 Backup, restore, dan auto-backup saat keluar
 
 - Backup, restore, cek, dan perbaiki database hanya dari komputer Pusat (golongan "Khusus Pusat"). Alasannya, argumen `folder`
   adalah folder di komputer yang memegang data, dan folder backup disimpan per komputer di `localStorage`.
-- Auto-backup saat keluar (`cadanganSaatKeluar`) **tidak jalan** di mode Kasir, karena data tidak ada di komputer itu.
+- Auto-backup saat keluar (`cadanganSaatKeluar`) **tidak jalan** di mode Kasir (Rust Kasir menjawab `backup_otomatis` kosong tanpa mengirimnya, jadi tidak ada pesan error), karena data tidak ada di komputer itu.
   Di Pusat tetap seperti sekarang (10 file terakhir).
 - Karena Pusat bisa menyala berhari-hari, Pusat juga membuat backup harian otomatis pada jam pertama setelah tengah malam
   (memakai `backup_otomatis` yang sama). Ini tahap lanjutan.
@@ -469,6 +605,8 @@ jadi kecocokan sebagian tidak bisa dijamin.
 - Foto disimpan di Pusat (`app_data_dir/foto`), satu salinan untuk semua komputer.
 - `foto_simpan` di Kasir membaca file gambar di komputer Kasir (aturan ekstensi dan 10 MB yang sama dengan `gambar_data`),
   lalu mengirim isinya ke perintah `foto_simpan_data(kode, data)` di Pusat. Izin (`izin_foto`) diperiksa di Pusat.
+- Foto dari Toko Pro lama (`src/lib/fotoLama.ts`) dikirim dengan `hanyaBaru: true` (perbaikan D9). Pusat memeriksa "barang ini sudah punya foto?" di `berkas::foto_tulis_opsi` **di dalam kunci yang sama dengan penulisannya**
+  (`KUNCI_FOTO`, satu kunci untuk semua penulisan foto), dan foto yang sudah ada tidak ditimpa; file asal di komputer kasir tidak dihapus. Daftar `foto_perlu_kirim` hanya penyaring awal. Foto yang dipilih pengguna sendiri di layar Data Barang tetap mengganti foto lama.
 - `foto_baca` tetap mengembalikan data URI. Kalau ternyata lambat untuk daftar barang bergambar, tahap lanjutan menambah
   `GET /foto/{kode}` dengan cache di Kasir.
 
@@ -510,6 +648,10 @@ Istilah baku:
   > - **Sambungkan ke Pusat.** Pilih ini kalau di toko Anda sudah ada komputer Pusat.
 
 - Pilihan yang sama ada di Pengaturan → Alat Bantu → **Komputer Pusat** (khusus Manager), untuk mengubah mode kapan saja.
+- Syarat "database kosong" (perbaikan D7) dipakai bersama oleh layar pilihan awal (`perlu_pilihan`) dan cadangan sebelum jadi Kasir (`cadangan_sebelum_kasir`) lewat satu fungsi, `database::database_berisi(conn)`. Fungsi itu menghitung barang, transaksi (termasuk order),
+  pelanggan, supplier, karyawan, kas, piutang, poin, penjualan tertunda, promo, kategori dan kelompok, pengguna selain akun `admin` bawaan (atau `admin` yang kata sandinya sudah diatur), serta jenis non tunai dan satuan yang berbeda dari data bawaan. Gagal memeriksa dianggap berisi.
+- Ringkasan sesudah pindah dari Toko Pro lama (perbaikan D8) hanya berkata pengaturan lama sudah dipakai bila memang diterapkan. Bila `lama.pengaturan()` gagal, ringkasan menyebut pengaturan belum bisa dibaca; pilihan lama yang tidak ada lagi dan diganti `rapikan()` (mis. port COM menjadi USB)
+  disebut satu per satu di daftar "Yang perlu Anda tahu" (`pilihanDiganti` di `src/pages/localSettings.ts`, dihitung sebelum pengaturan diterapkan).
 
 Layar "Jadikan komputer ini Pusat":
 
@@ -556,7 +698,7 @@ Mode Tunggal tidak menampilkan ikon.
 |---|---|
 | Pusat tidak terjangkau saat membuka data | Komputer Pusat (TOKO-PC) tidak bisa dihubungi. Pastikan komputer itu menyala dan Toko Pro terbuka di sana. |
 | Simpan gagal karena Pusat terputus | Transaksi belum tersimpan karena Pusat tidak terjangkau. Isian Anda masih ada. Tekan **Coba Lagi** setelah Pusat menyala. |
-| Hasil simpan tidak diketahui (waktu habis) | Toko Pro belum tahu apakah transaksi ini sudah tersimpan. Tekan **Coba Lagi**; transaksi tidak akan tercatat dua kali. |
+| Hasil simpan tidak diketahui (waktu habis, jawaban hilang, atau jawaban bukan JSON) | Toko Pro belum tahu apakah transaksi ini sudah tersimpan. Tekan **Coba Lagi**. Toko Pro akan memeriksa dulu apakah transaksi ini sudah tersimpan. (Bila dialog ditutup: "...Lihat dulu daftar transaksi sebelum menyimpan lagi.") |
 | Versi berbeda, Pusat lebih baru | Toko Pro di komputer ini (versi 1.3.0) lebih lama dari Pusat (versi 1.4.0). Perbarui sekarang supaya bisa tersambung lagi. |
 | Versi berbeda, Kasir lebih baru | Toko Pro di komputer Pusat masih versi 1.3.0. Perbarui Toko Pro di komputer Pusat dulu, lalu buka lagi komputer ini. |
 | Kode sambung salah | Kode sambung salah atau sudah tidak berlaku. Buat kode baru di komputer Pusat. |
@@ -611,6 +753,12 @@ Instalasi baru yang sudah dipakai tidak pernah dipindai ulang.
    > [ Sambungkan ] [ Atur sendiri ]
 
    "Atur sendiri" membuka pertanyaan tiga pilihan (7.1). Tidak ada pertanyaan soal jaringan, port, atau kode.
+
+**Perbaikan D6: komputer data lama yang salah dianggap Kasir.** Bila IP komputer data berubah atau namanya diganti, `NamaKomputer` di `Settings.ini` tidak lagi dikenali sebagai komputer ini, jadi komputer itu dianggap Kasir dan menunggu Pusat yang tidak akan pernah ada.
+Pemasang lama selalu menaruh `app\_data\datapos.fdb` kosong di semua komputer, jadi keberadaan file itu tidak menentukan peran dan tabel di atas tidak diubah. Gantinya, layar "menunggu Pusat" menampilkan petunjuk dan tombol sesudah 45 detik Pusat tidak ditemukan:
+"Komputer Pusat belum ditemukan. Kalau data toko ada di komputer ini, jadikan komputer ini Pusat." Tombol "Jadikan komputer ini Pusat" menjalankan alur Pusat dengan `lama_pusat_mulai(paksa: true)` (`data_untuk_pusat` di `pindah_otomatis.rs`): peran dari `Settings.ini` diabaikan dan file data lama dicari
+di komputer ini; bila tidak ada, pesannya meminta pengguna memilih "Atur sendiri". Cadangan tetap dibuat sebelum data diambil. Tes: `d6_*` di `tests_pindah_otomatis.rs`; tes penentuan peran tidak berubah.
+Pengaturan dari `Settings.ini` sudah dipakai sebagai kasir saat layar menunggu dibuka, jadi tombol ini memanggil `lupakanPengaturanLama()` lebih dulu. Dengan begitu pengaturan itu dipakai lagi sebagai Pusat (`AktifBackup` dan `LokasiBackup` ikut terbawa), dan ringkasannya tidak salah menulis "sudah dipindahkan sebelumnya". Tes: `tes:pengaturan`. Sudah dilihat di browser dev lewat `?simulasiPusat=lama-kasir&pusatMati=1`.
 
 **Alasan satu layar konfirmasi, bukan diam-diam.** Mengambil data membuat cadangan dan butuh Toko Pro lama ditutup; menjadikan
 komputer Pusat memunculkan dialog izin Windows. Pengguna perlu tahu sebabnya sebelum dialog itu muncul.
@@ -737,7 +885,8 @@ membuka layar login. Urutan pasang tidak penting: Pusat dulu atau Kasir dulu has
   ia meminta kode sambung seperti biasa (5.4).
 - Setiap komputer yang diterima otomatis muncul di daftar Komputer Pusat dengan tanda "diterima otomatis", dan Pusat menampilkan
   pemberitahuan "Komputer KASIR-2 tersambung ke Pusat". Manager bisa memutusnya kapan saja.
-- Manager bisa menutup masa terima otomatis lebih awal, atau membukanya lagi untuk 1 jam (tombol "Terima komputer kasir baru tanpa kode").
+- Manager bisa menutup masa terima otomatis lebih awal dengan tombol "Selesai menyambungkan" di layar Komputer Pusat (S1). Masa itu juga tertutup sendiri setelah 10 perangkat diterima, dan satu alamat IP hanya mendapat satu perangkat per masa
+  (yang kedua dari alamat yang sama menggantikan yang pertama, S2). Perintah `pusat_terima_otomatis` masih bisa membukanya lagi untuk 1 jam (belum ada tombolnya di layar).
 
 Alasan: tujuan pemilik adalah pasang tanpa isian apa pun. Di kabel langsung tanpa router, satu-satunya perangkat lain di jaringan
 adalah komputer kasir itu sendiri. Di jaringan dengan router, perangkat asing harus mencoba tepat pada hari pindah, dari jaringan
@@ -746,7 +895,8 @@ yang sama, dan tetap butuh login pengguna Toko Pro untuk membaca data.
 Risiko yang diterima: selama masa itu, perangkat lain di jaringan toko (mis. ponsel di Wi-Fi yang sama) bisa mendapat token
 perangkat. Token saja tidak membuka data karena setiap perintah tetap butuh login pengguna (3.1), tetapi perangkat itu bisa
 mencoba menebak kata sandi. Penanganan: batas percobaan login per perangkat (5 kali salah → jeda 5 menit), daftar perangkat yang
-terlihat, dan masa yang pendek.
+terlihat, dan masa yang pendek. Sejak perbaikan S1 sampai S3: paling banyak 10 perangkat per masa, satu perangkat per alamat, batas login per perangkat **dan** per alamat dengan reservasi (30 percobaan paralel tetap paling banyak 5 yang diproses),
+tombol "Selesai menyambungkan", dan perangkat otomatis diberi tanda "Tanpa kode" dengan tombol Putuskan di layar Komputer Pusat.
 
 Pilihan yang ditolak: *tanpa kode selamanya* (perangkat asing bisa masuk kapan saja), dan *rahasia bersama dari data lama*
 (komputer kasir tidak punya database, dan password Firebird lama adalah bawaan `masterkey` yang tidak rahasia).
@@ -791,17 +941,18 @@ Vektor tes Rust (data bawaan installer, publik):
 1. Fungsi Rust murni `lama_buka_password(byte) -> Option<String>` di `pindah_lama.rs` membalik enkripsi, lalu **memeriksa
    hasilnya**: panjang kelipatan 6, keenam ulangan sama persis, dan semua karakter ASCII yang bisa dicetak (32–126). Bila satu
    syarat gagal, hasilnya `None`.
-2. **Pengecekan bolak-balik.** Password yang terbaca dienkripsi lagi dengan algoritma lama (`lama_enkripsi_password`), lalu
-   dibandingkan byte per byte dengan `pswduser` lama. Hanya bila sama persis, `pswduser` baru diisi `auth::hash(password)`
-   (Argon2, sama dengan password baru). Bila `None` atau tidak sama, `pswduser` diisi `NULL`, sehingga akun itu memakai password
-   sementara `admin` dan diminta membuat password baru (`must_change`), seperti sekarang. Dengan begitu salah baca tidak pernah
-   membuat pengguna terkunci: hasil terburuknya sama dengan perilaku hari ini.
+2. Hanya bila lolos validasi itu, `pswduser` baru diisi `auth::hash(password)` (Argon2, sama dengan password baru). Bila `None`,
+   `pswduser` diisi `NULL`, sehingga akun itu memakai password sementara `admin` dan diminta membuat password baru
+   (`must_change`), seperti sekarang. Dengan begitu salah baca tidak pernah membuat pengguna terkunci: hasil terburuknya sama
+   dengan perilaku hari ini. Kode juga mengenkripsi ulang hasil baca dan membandingkannya dengan data lama, tetapi itu hanya
+   pengaman tambahan: karena enkripsi lama bisa dibalik penuh, pengecekan itu secara matematis tidak pernah gagal. Pengaman
+   yang sebenarnya adalah syarat enam ulangan yang sama dan huruf ASCII 32-126.
 3. Password lama hanya ada di memori selama satu baris diproses, tidak pernah ditulis ke file, log, atau event kemajuan.
 4. Pengguna masuk dengan password lamanya sejak hari pertama, tanpa diminta membuat password baru.
 
 Alasan memilih membaca saat pindah, bukan mencocokkan saat login: algoritmanya terbukti bisa dibalik, jadi tidak perlu kolom
 `pswdlama`, tidak perlu kode enkripsi lama di `auth.rs`, dan bentuk lemahnya tidak disimpan di database baru sama sekali.
-Pemeriksaan enam ulangan dan pengecekan bolak-balik membuat salah baca berakhir sebagai password sementara, bukan password salah.
+Pemeriksaan enam ulangan dan rentang ASCII membuat salah baca berakhir sebagai password sementara, bukan password salah.
 
 Pilihan yang ditolak: *menyimpan `pswduser` lama lalu mencocokkannya saat login*. Ini rencana sebelum algoritma terbukti. Sekarang
 cara itu hanya menambah kolom, kode, dan masa simpan data lemah tanpa manfaat tambahan.
@@ -840,9 +991,16 @@ Keputusan:
 
 - Fungsi baru `calon_login(conn, iduser) -> Vec<(Option<String>, User, i64)>` mengembalikan **semua** akun dengan
   `UPPER(iduser) = UPPER(?)`, diurutkan: huruf persis sama lebih dulu, lalu `iduser` (supaya urutannya tetap).
-- `login` dan `verifikasi_pengelola` memeriksa password setiap calon berurutan dan memakai **akun pertama yang passwordnya cocok**.
-  Akun nonaktif dilewati. Bila tidak ada yang cocok, pesannya tetap "Nama pengguna atau password salah" (tidak membocorkan bahwa
-  ada beberapa akun). Bila satu-satunya akun yang cocok sedang nonaktif, pesan "Akun ini sedang dinonaktifkan" tetap dipakai.
+- `login` memakai **akun aktif pertama yang passwordnya cocok**. Aturan kecocokan:
+  - Akun yang punya password asli dicocokkan tanpa membedakan huruf besar-kecil nama.
+  - Akun tanpa password (NULL atau kosong) menerima password sementara `admin` hanya bila nama yang diketik **persis sama
+    hurufnya** dengan akun itu, atau akun itu **satu-satunya** akun dengan nama tersebut. Tanpa aturan ini, `ADMIN` (Manager,
+    tanpa password) akan menangkap login `Admin`/`admin` yang ditujukan ke `Admin` (Supervisor, ber-password).
+- Pesan "Akun ini sedang dinonaktifkan" hanya muncul bila password yang diketik cocok dengan akun nonaktif bernama sama dan tidak
+  ada akun aktif yang cocok. Password yang tidak cocok dengan akun mana pun mendapat pesan salah password biasa, jadi orang tidak
+  bisa menebak ada tidaknya sebuah nama.
+- `verifikasi_pengelola` memilih akun aktif pertama yang passwordnya cocok **dan** levelnya bukan Kasir/Lainnya. Pesan
+  "berlevel Kasir" hanya dipakai bila ada akun aktif yang cocok tetapi tak satu pun levelnya memenuhi.
 - Pemakaian `load` lain (`change_password`, `simpan_user`, `hapus_user`, `daftar_akses`/`simpan_akses`, `restore_session`)
   menerima `iduser` persis dari sesi atau daftar pengguna, jadi tetap memakai `load`. Urutan "huruf persis sama lebih dulu" sudah
   menjamin akun yang benar.
@@ -891,11 +1049,94 @@ Kode ditulis oleh subagent; setiap tahap selesai bila `cargo test`, `npx tsc --n
 | 3. Server Pusat | Mode di `pusat.json`, server axum (`/halo`, `/sambung`, `/jalankan`), tabel `perangkat`, kode sambung, masa terima otomatis (8.5), batas percobaan kode dan login per perangkat, golongan perintah dan penolakan "Khusus Pusat". | Tes integrasi Rust: server di port acak, klien `reqwest` tersambung dengan kode, perintah tanpa token ditolak 401, perintah khusus Pusat ditolak; `/sambung` tanpa kode diterima hanya selama masa terima otomatis dan dari subnet yang sama. |
 | 4. Klien Kasir | `nama_komputer_lama()` dari `Settings.ini` (memakai fungsi di `pindah_lama.rs`), urutan percobaan nama lalu IP terakhir, `jalankan` meneruskan lewat `reqwest`, perintah lokal tetap lokal, salinan `User` untuk izin lokal, pemeriksa `/halo`, event `status-pusat`, awalan error `[pusat] `, Kasir tidak membuka database. | Tes unit `nama_komputer_lama`: `localhost`, nama sendiri, `SERVER/3050`, IP, kosong. Dua proses di satu mesin (lihat 10.2): login, jual, cetak struk dari Kasir; matikan Pusat, lihat status berubah dan tersambung lagi. |
 | 5. Kebenaran data | `idPermintaan` + tabel `permintaan_selesai`, `BEGIN IMMEDIATE`, audit pola dua kunci, `jam_pusat` + `today()`. | Tes beban (10.1) lulus: nomor unik dan berurutan, stok sesuai; simpan diulang dengan ID sama tidak menggandakan. |
-| 6. Fitur khusus | Mode perawatan untuk restore dan pindah lama, auto-backup dimatikan di Kasir, `foto_simpan_data`, kunci versi dan pembaruan ke versi Pusat, cadangan database lama saat komputer dijadikan Kasir. | Tes restore saat Kasir tersambung: Kasir diminta masuk lagi, data baru terlihat. Foto dari Kasir tampil di Pusat. |
+| 6. Fitur khusus | Mode perawatan untuk restore dan pindah lama, auto-backup dimatikan di Kasir, `foto_simpan_data`, kunci versi dan pembaruan ke versi Pusat, cadangan database lama saat komputer dijadikan Kasir. | Tes restore saat Kasir tersambung: Kasir diminta masuk lagi, data baru terlihat. Foto dari Kasir tampil di Pusat. Kunci versi, keamanan alamat file, dan auto-backup di Kasir diuji (tests_tahap6.rs). |
 | 7. Tampilan | Layar pilihan awal, layar Komputer Pusat (kode sambung, daftar perangkat, Putuskan), ikon status, dialog Coba Lagi, konfirmasi menutup Pusat, menu khusus Pusat dikunci di Kasir. Teks ditinjau dengan `writing-4c`. | Dicek di browser dev (`tauriMock` meniru setiap status) dan di aplikasi, mode terang dan gelap. |
-| 8. Pindah otomatis | `cari()` mengembalikan folder instalasi dan isi `Settings.ini`; penentuan peran (8.1); layar konfirmasi Pusat/Kasir/menunggu Pusat; alur Pusat tanpa pilih file (8.2); salin foto, logo, latar (8.3); perintah `lama_pengaturan` + pemetaan dan `rapikan()` dipindah ke `localSettings.ts` (8.4); Kasir mengirim fotonya yang belum ada di Pusat; ringkasan dan daftar sisa (8.7); `lama_buka_password` + pengecekan bolak-balik + `pswduser` diisi hash Argon2 saat pindah (8.6), dan login yang mencoba semua akun senama tanpa beda huruf (8.6a). Keduanya bisa dikerjakan lebih dulu dan terpisah, dengan 8.6a sebelum atau bersamaan 8.6. | Tes Rust dengan folder instalasi tiruan: peran Pusat/Kasir/tidak jelas untuk `localhost`, nama sendiri, IP sendiri, `SERVER/3050`, nama lain; foto `<kode>.jpg` tersalin dan yang tidak cocok dihitung; tes Rust `lama_buka_password` dengan vektor `admin`/`kasir` dari 8.6 dan data rusak (panjang bukan kelipatan 6, ulangan berbeda) → `None`; pengecekan bolak-balik yang gagal → `pswduser` NULL dan `must_change`; login dengan password lama setelah pindah; tes `auth` 8.6a: akun `ADMIN` dan `Admin` dengan password berbeda, ketik `admin` + password masing-masing → masuk ke akun yang benar, password salah → ditolak, akun nonaktif dilewati, `verifikasi_pengelola` berperilaku sama; tes TS pemetaan setiap kunci di tabel 8.4 (termasuk `-1`/`True`, `PilihanHome` berupa indeks). Uji di dua komputer Windows dengan Toko Pro lama terpasang: pasang Kasir dulu lalu Pusat, dan sebaliknya; keduanya siap tanpa isian. |
+| 8. Pindah otomatis | `cari()` mengembalikan folder instalasi dan isi `Settings.ini`; penentuan peran (8.1); layar konfirmasi Pusat/Kasir/menunggu Pusat; alur Pusat tanpa pilih file (8.2); salin foto, logo, latar (8.3); perintah `lama_pengaturan` + pemetaan dan `rapikan()` dipindah ke `localSettings.ts` (8.4); Kasir mengirim fotonya yang belum ada di Pusat; ringkasan dan daftar sisa (8.7); `lama_buka_password` (validasi enam ulangan + ASCII) + `pswduser` diisi hash Argon2 saat pindah (8.6), dan login yang mencoba semua akun senama tanpa beda huruf (8.6a). Keduanya bisa dikerjakan lebih dulu dan terpisah, dengan 8.6a sebelum atau bersamaan 8.6. | Tes Rust dengan folder instalasi tiruan: peran Pusat/Kasir/tidak jelas untuk `localhost`, nama sendiri, IP sendiri, `SERVER/3050`, nama lain; foto `<kode>.jpg` tersalin dan yang tidak cocok dihitung; tes Rust `lama_buka_password` dengan vektor `admin`/`kasir` dari 8.6 dan data rusak (panjang bukan kelipatan 6, ulangan berbeda) → `None`; data rusak satu byte → `pswduser` NULL dan `must_change`; login dengan password lama setelah pindah; tes `auth` 8.6a: akun `ADMIN` dan `Admin` dengan password berbeda, ketik `admin` + password masing-masing → masuk ke akun yang benar, password salah → ditolak, akun nonaktif dilewati, `verifikasi_pengelola` berperilaku sama; tes TS pemetaan setiap kunci di tabel 8.4 (termasuk `-1`/`True`, `PilihanHome` berupa indeks). Uji di dua komputer Windows dengan Toko Pro lama terpasang: pasang Kasir dulu lalu Pusat, dan sebaliknya; keduanya siap tanpa isian. |
 | 9. Firewall dan panduan | `netsh` dengan UAC untuk semua profil, aturan dibuat ulang bila lokasi program berubah, hook uninstall NSIS, alamat IP Pusat di layar Komputer Pusat, bab baru di Panduan Penggunaan dan README (alamat `169.254.x.x` bisa berubah, Wi-Fi tamu). | Uji di dua komputer Windows bersih dengan kabel RJ45 langsung (profil Public), lalu lewat router: Jadikan Pusat → kasir tersambung tanpa membuka pengaturan firewall manual. |
 | 10. Uji lapangan | Toko sungguhan atau salinannya: satu server dan dua kasir Toko Pro lama dengan kabel RJ45 langsung, dipindah dengan alur bagian 8. Ukur waktu laporan (4.4). | Satu hari simulasi toko tanpa selisih stok/kas; keputusan perlu atau tidaknya koneksi baca kedua. |
+
+**Sudah dikerjakan (Tahap 5):** `idPermintaan` dan `permintaan_selesai` (4.2), `BEGIN IMMEDIATE` dan hasil audit (4.1), `jam_pusat` dan `today()` (4.3), keputusan 4.4 (ditunda ke hasil ukur Tahap 10),
+dan tes beban di `tests_data.rs`. Yang tersisa dari bab 4: penulisan `permintaan_selesai` di dalam transaksi perintah, dan koneksi baca kedua.
+
+**Sudah dikerjakan (Tahap 6)**, kode di `jaringan/server.rs` (`dengan_perawatan`, `HEADER_VERSI`), `jaringan/klien.rs`, `jaringan/perangkat.rs`, `berkas.rs`, `alat.rs`, `database.rs`, `pembaruan_pusat.rs`, `lib.rs`; tes di `tests_tahap6.rs`:
+
+- **Mode perawatan (6.1).** `db_restore` dan `lama_pindahkan` yang dijalankan dari jendela Pusat dibungkus `Pusat::dengan_perawatan` (daftar `golongan::PERAWATAN`). Selama berjalan, `/jalankan` dijawab 503
+  dan `/halo` melapor `perawatan`. Bila berhasil, semua sesi Kasir dihapus: perintah Kasir berikutnya mendapat "Sesi Anda sudah berakhir. Silakan masuk lagi." (jalur `sesi` yang sudah ada di Tahap 4).
+  Tabel `perangkat` bukan data toko: isinya disalin sebelum dan dikembalikan sesudah, jadi Kasir tidak perlu kode sambung baru. Bila perintahnya gagal, sesi dibiarkan.
+- **Auto-backup (6.1).** Rust Kasir menjawab `backup_otomatis` dengan nilai kosong tanpa menghubungi Pusat. `cadanganSaatKeluar` menerima hasil kosong.
+- **Foto (6.5).** `foto_simpan` tetap golongan Campuran: Kasir membaca file gambarnya (ekstensi dan 10 MB sama seperti sebelumnya), mengirim `foto_simpan_data(kode, ekstensi, data)` dengan isi base64, lalu menghapus file asal bila `hapusAsal`.
+  Pusat menyimpan lewat `foto_tulis` (nama file dari kode yang sudah dibersihkan, ekstensi dibatasi). Alamat file dari Kasir tidak pernah dikirim. Agar `foto_baca`/`foto_simpan_data` bisa jalan lewat server (tanpa jendela),
+  `Data` punya `folder_data()` dan `Konteks::dengan_folder_data`; sebelumnya `foto_baca` lewat jaringan gagal karena `Konteks` server tidak punya `AppHandle`.
+- **Kunci versi (6.4).** Kasir mengirim header `x-versi-kasir` di setiap `/jalankan`. Pusat menjawab 409 (`versi-beda`, memuat `versiPusat`) bila header kosong atau berbeda. Klien Kasir memberi status `versi-beda`
+  (dari `/halo` atau dari jawaban 409) dan tidak lagi mengirim perintah data. Pesannya dua macam: Kasir lebih lama ("Perbarui sekarang") atau Pusat lebih lama ("Perbarui Toko Pro di komputer Pusat dulu").
+- **Pembaruan ke versi Pusat (6.4).** Dicek di kode sumber `tauri-plugin-updater` 2.14.1 (Context7 tidak memuat plugin ini): `check()` di JS tidak bisa mengganti `endpoints`, hanya `updater_builder().endpoints()` di Rust yang bisa,
+  dan secara bawaan hanya menawarkan versi yang lebih tinggi (tidak pernah turun). Karena itu komputer Kasir memakai perintah Tauri `pembaruan_pusat_cek` dan `pembaruan_pusat_pasang` (`pembaruan_pusat.rs`) dengan alamat
+  `.../releases/download/v<versi-pusat>/latest.json`, diturunkan dari alamat di `tauri.conf.json`. `latest.json` ikut diunggah di setiap tag (`uploadUpdaterJson: true`), tetapi rilisnya harus sudah dipublikasikan, bukan draf.
+  Di Kasir semua akun boleh memasang (dialog tidak lagi meminta Manager). Pusat dan Tunggal tidak berubah. **Belum diuji dengan rilis sungguhan.**
+- **Cadangan database lama (6.2).** `kasir_atur` dan `pusat_atur_mode(kasir)` memanggil `database::cadangan_sebelum_kasir` sebelum berpindah dari Tunggal atau Pusat: bila ada barang atau transaksi, salinan `sebelum-jadi-kasir-*.db` dibuat di folder `backup`
+  di samping database (gagal berarti komputer belum dijadikan Kasir). `tokopro.db` dibiarkan. Lokasi cadangan dikembalikan di field `cadangan`.
+- **Audit alamat file dan folder.** Di golongan Data, hanya perintah berikut yang punya parameter mirip alamat:
+  `impor_baca(path)` dan `impor_proses(path, folder)` membaca atau menulis file di Pusat, jadi **dipindah ke Khusus Pusat** (impor Excel hanya dari komputer Pusat; Kasir mendapat pesan "hanya bisa dibuka di komputer Pusat").
+  `alat_sinkron_harga_beli`, `alat_sinkron_jual`, `alat_hapus_transaksi`, dan `alat_hapus_data` menerima `folder` untuk cadangan pengaman: dari jaringan `folder` diabaikan dan cadangan masuk ke folder bawaan Pusat (`alat::folder_aman`).
+  `foto_baca`, `foto_hapus`, dan `foto_simpan_data` hanya menerima kode barang yang dibersihkan menjadi huruf, angka, `-`, `_`. `db_path` dan `db_info` hanya mengembalikan alamat (bukan menerima), dan hanya untuk Manager atau pengelola; dibiarkan.
+  Perintah lain golongan Data tidak punya parameter alamat. Satu tes memeriksa semua parameter golongan Data supaya perintah baru dengan parameter mirip alamat tidak lolos tanpa tinjauan.
+- Penyimpangan dari rancangan awal: `impor` pindah dari Data ke Khusus Pusat (tabel 2.3 diperbarui); rancangan Tahap 6 menyebut "Kasir mengirim isi file" untuk impor, tetapi impor dari komputer Kasir belum dikerjakan (keputusan paling sederhana, dicatat sebagai tahap lanjutan).
+
+**Sudah dikerjakan (Tahap 7)**, kode di `src/pages/PilihanAwal.tsx`, `src/pages/KomputerPusat.tsx`, `src/components/{PilihanPeran,StatusPusat,KunciPusat,CobaLagiDialog}.tsx`, `src/lib/{statusPusat,cobaLagi,panggil}.ts`, `src/api/pusat.ts`, `App.tsx`, dan `tauriMock.ts`:
+
+- **Layar pilihan awal.** Tampil sebelum login bila `pusat_status.perluPilihan`: belum ada `pusat.json` dan database kosong, atau komputer sudah dipilih sebagai kasir tetapi belum pernah tersambung (supaya pilihannya bisa diubah). Pilihan bawaan "Hanya di komputer ini". "Nama komputer Pusat" terisi dari `kasir_nama_lama`; kode sambung opsional. Perintah baru `awal_pilih(mode, pusat?)` (`lib.rs`) menyimpan pilihan sebelum ada yang masuk, dan menolak bila `perluPilihan` sudah salah. Instalasi yang sudah punya data tidak pernah ditanya (Tunggal).
+- **Layar Komputer Pusat** (`KomputerPusat`): dialog dari ikon status, dan tab "Komputer Pusat" di Alat Bantu (tab baru, bukan menu baru, karena menu VB berasal dari `menu.json`). Di Pusat: nama dan alamat IP dengan tombol Salin, kode sambung dengan hitung mundur, daftar komputer kasir dengan Putuskan. Di Kasir: keadaan sambungan, ubah Pusat dan sambungkan ulang, tombol "Perbarui Sekarang" bila Pusat lebih baru. "Ubah cara pakai" (Manager) memakai pilihan yang sama dengan layar awal.
+- **Ikon status** di bilah atas (Lucide, titik hijau/kuning/merah dari token tema), ikon jam kuning terpisah, teks lengkap di tooltip dan status bar. `pusat_status` kini memuat `kasirTersambung` (ada pengguna masuk atau terlihat dalam 3 menit; `perangkat::jumlah_tersambung`) dan `perluPilihan`. Status dibaca ulang tiap 5 detik di Pusat, dan lewat event `status-pusat` di Kasir.
+- **Coba Lagi.** `invoke` di `panggil.ts` memberi `idPermintaan` pada perintah simpan (daftar yang sama dengan `perintah_simpan` di Rust). Bila Pusat menjawab error `[pusat] ` yang memuat "Coba Lagi", dialog tampil dan layar pemanggil menunggu; Coba Lagi memakai ID yang sama, Tutup (Esc) melempar error ke layar itu. ID simpan yang belum pasti diingat 10 menit, supaya Simpan ditekan lagi nanti tidak menggandakan. `errText` membuang awalan `[pusat] `.
+- **Menutup Pusat** saat ada kasir tersambung: konfirmasi di Keluar dan di tombol X jendela (`onCloseRequested`; izin `core:window:allow-destroy` ditambahkan di capabilities).
+- **Menu khusus Pusat di Kasir:** tab Backup, Restore, Import, Perbaiki, dan SQL Editor di Alat Bantu, serta dialog Pengaturan Database, diganti pesan "Menu ini hanya bisa dibuka di komputer Pusat (nama)".
+- **Peringatan** di atas layar kerja: versi berbeda (pesan dari Rust, plus tombol Perbarui Sekarang bila Pusat lebih baru) dan jam berbeda.
+- `tauriMock`: `?simulasiPusat=` pusat, tersambung, menyambung, terputus, versi-beda, perawatan, ditolak, belum-sambung, awal, belum-pasti; `&jamBeda=1`. Pada `terputus`, simpan gagal dua kali lalu berhasil.
+- Penyimpangan (diselesaikan di Tahap 9): kalimat "Windows akan meminta izin..." di 7.1, tombol "Beri izin", dan pesan port terpakai khusus (7.3) dikerjakan di Tahap 9; pesan galat server dari Rust ditampilkan apa adanya. Pemberitahuan "komputer tersambung" belum ada. Belum diuji di jendela Tauri asli: penutupan jendela dengan konfirmasi.
+
+**Sudah dikerjakan (Tahap 8, tanpa 8.6 dan 8.6a yang sudah selesai lebih dulu)**, kode di `src-tauri/src/pindah_otomatis.rs` (baru), `pindah_lama.rs` (`Instalasi`, `Temuan.instalasi`), `jaringan/klien.rs` (`tunggu_pusat`), `lib.rs`, `src/pages/PilihanAwal.tsx`, `src/pages/localSettings.ts`, `src/lib/fotoLama.ts`, `src/api/pusat.ts`, `App.tsx`, `tauriMock.ts`; tes di `tests_pindah_otomatis.rs` dan `tools/pengaturan-lama.test.mjs` (`npm run tes:pengaturan`, `node --test` dengan `--experimental-strip-types` bawaan Node 24, tanpa dependensi baru):
+
+- **`cari()`** kini juga mengembalikan `instalasi` (folder dan isi `Settings.ini`): `Settings.ini` paling baru diubah yang punya bagian `[Database]`.
+- **Aturan peran** (`tentukan_peran`): `NamaKomputer` dibersihkan (spasi dan port dibuang). Bila kosong, `localhost`, loopback, nama komputer ini, atau salah satu IP komputer ini: **Pusat** bila file data ada (`LokasiData`, lalu `<folder>\_data\DATAPOS.FDB`), selain itu **tidak jelas** (pertanyaan tiga pilihan). Nama atau IP lain: **Kasir**, meski file data ada. Perbandingan tanpa beda huruf besar-kecil.
+- **Perintah baru.** Perintah Tauri biasa (tanpa sesi, hanya selama `perluPilihan`): `lama_deteksi`, `lama_terbuka`, `lama_pusat_mulai`, `kasir_tunggu_pusat`. Lewat dispatcher: `lama_pengaturan` dan `lama_foto_daftar` (Lokal), `foto_perlu_kirim` (Data, perlu pengguna masuk).
+- **Pusat (8.2).** Tampilan menunggu `lama_terbuka` salah (cek `tasklist` terhadap file `.exe` di folder lama, tiap 2 detik), lalu `lama_pusat_mulai`: `pindahkan` dengan file dari `Settings.ini` (cadangan "sebelum-restore" oleh `pulihkan`), salin foto yang namanya cocok dengan `kodebarang`, jadikan Pusat, buka masa terima otomatis sampai 23.59. Hasilnya ringkasan (jumlah, foto tersalin, tidak cocok, gagal).
+- **Foto, logo, latar (8.3).** `salin_foto` (`.jpg/.jpeg/.bmp/.gif`, tanpa beda huruf besar-kecil, file asli tetap). `lama_pengaturan` menyalin logo dan latar ke `gambar/` dan mengganti nilainya dengan alamat baru. Path relatif dihitung dari folder instalasi lama.
+- **Pengaturan (8.4).** `lama_pengaturan` mengembalikan peta kunci huruf kecil tanpa nama bagian (`[Application]` didahulukan, kunci database dari `[Database]`). `LokasiBackup` hanya dikembalikan bila alamat lengkap, ada, bisa ditulis, dan di luar folder lama. Pemetaan dan `rapikan()` (beserta daftar pilihannya) ada di `src/pages/localSettings.ts`; `terapkanPengaturanLama` berjalan sekali (`tokopro.dariLama`).
+- **Kasir (8.5).** Konfirmasi "Sambungkan" memanggil `awal_pilih`, memetakan pengaturan, lalu menyambung tanpa kode tiap 5 detik (`kasir_tunggu_pusat`). Pusat dalam perawatan menampilkan pesan khusus. Bila Pusat menjawab perlu kode, layar pilihan awal tampil dengan kolom kode. Penanda `tokopro.menungguPusat` membuat layar menunggu muncul lagi setelah aplikasi dibuka ulang. Layar pilihan awal tetap tampil sampai tombol terakhirnya ditekan (`awalBuka` di `App.tsx`).
+- **Foto Kasir (8.3).** Setelah ada yang masuk, `kirimFotoLama` memakai `lama_foto_daftar`, `foto_perlu_kirim`, lalu `foto_simpan`, hanya untuk kode yang belum punya foto di Pusat. Bila gagal (mis. akun tanpa hak Data Barang), penanda `tokopro.fotoKirim` dibiarkan dan dicoba lagi saat pengguna lain masuk.
+- **Ringkasan dan daftar sisa (8.7)**: dua layar ringkasan (Pusat dan Kasir) berisi butir yang berlaku (foto tidak cocok, printer, laci bila `PakaiDrawer` aktif, laporan buatan sendiri bila `LokasiReport` terisi, Pusat harus menyala).
+- Penyimpangan: (1) butir password (password sementara) tidak ditampilkan, sesuai keputusan pemilik. (2) Butir izin Windows tidak ditampilkan karena firewall baru dibuat di Tahap 9, jadi `lama_pusat_mulai` belum membuat aturan firewall. (3) Pembacaan registry (`reg.exe`) untuk kunci yang ternyata tidak ada di `Settings.ini` belum dibuat, menunggu hasil Tahap 0. (4) Pemberitahuan "Komputer KASIR-2 tersambung ke Pusat" belum ada. (5) `rapikan()` dan daftar pilihan dipindah ke `src/pages/localSettings.ts` (file yang sudah ada), bukan `src/lib`. (6) `lama_pindahkan` tetap khusus Manager; alur pertama memakai `lama_pusat_mulai` yang tidak butuh sesi. **Belum diuji** di Windows dengan Toko Pro lama sungguhan: pemeriksaan proses `tasklist`, jalur `\\`/drive, dan dua komputer.
+
+**Sudah dikerjakan (Tahap 9)**, kode di `src-tauri/src/jaringan/firewall.rs` (baru), `jaringan/kendali.rs`, `jaringan/server.rs`, `lib.rs`, `pindah_otomatis.rs`, `src-tauri/windows/hooks.nsh` (baru), `tauri.conf.json`, `src/pages/{KomputerPusat,PilihanAwal,Panduan}.tsx`, `src/components/{PilihanPeran,StatusPusat}.tsx`, `src/api/pusat.ts`, `tauriMock.ts`, README, CLAUDE.md; tes di `tests_firewall.rs`:
+
+- **Aturan firewall (5.3).** Satu aturan bernama `Toko Pro Pusat`, persis perintah di 5.3: masuk, TCP, hanya port Pusat, `profile=private,public,domain`, `remoteip=localsubnet`, `program=<exe>` (`argumen_tambah`). Dibuat lewat `powershell -Command Start-Process powershell -Verb RunAs -Wait -PassThru -EncodedCommand ...` (dialog UAC). Skrip yang naik hak menghapus aturan lama lalu menambah yang baru (`argumen_hapus`, `argumen_tambah`; `netsh --%` supaya tanda kutip dan spasi di alamat program tidak berubah), dan keluar dengan kode `netsh`. Tanpa UAC (ditolak) atau gagal: pesan "Izin dari Windows belum diberikan..." (7.3). Pemeriksaan (`argumen_cek`, `netsh ... show rule ... verbose`) tidak butuh hak administrator; hasilnya dibandingkan hanya nilainya (port dan alamat program), karena label `netsh` mengikuti bahasa Windows. Hasilnya `ada`, `belum`, atau `berbeda` (port atau lokasi program lain), diingat 20 detik. Di macOS/Linux semuanya `tidak-perlu` dan tidak melakukan apa-apa (`#[cfg(windows)]` hanya di modul `sistem`; sisanya dikompilasi di mana saja supaya bisa dites).
+- **Kapan dibuat.** Saat komputer dijadikan Pusat: tampilan memanggil perintah baru `pusat_beri_izin` sesudah `awal_pilih` atau `pusat_atur_mode(pusat)` (perintah Tauri sinkron berjalan di thread utama, jadi menunggu UAC tidak dimasukkan ke dalamnya); `lama_pusat_mulai` (Tahap 8) memanggilnya langsung dan melapor di field `izinWindows`. Aplikasi tidak menampilkan UAC sendiri saat dibuka. Bila lokasi program atau port berubah (mis. setelah pembaruan ke folder lain), `pusat_status.izinFirewall` menjadi `berbeda`, ikon status Pusat menjadi kuning, dan layar Komputer Pusat menampilkan pesan dengan tombol **Beri izin** (aturan lama dihapus, yang baru dibuat). Bila UAC ditolak, komputer tetap menjadi Pusat dan status `belum` menampilkan hal yang sama.
+- **Port terpakai (5.2, 7.3).** `server::mulai` memberi pesan khusus untuk `AddrInUse`/`PermissionDenied`: "Toko Pro belum bisa menerima komputer kasir karena ada program lain yang memakai jalurnya (port N). Tutup program itu, lalu buka lagi Toko Pro." Rancangan 7.3 menyebut "ubah nomor jalur di Pengaturan lanjutan", tetapi layar itu tidak ada (port hanya lewat `TOKOPRO_PORT`), jadi kalimatnya dibuang.
+- **Hook uninstall (5.3).** `bundle.windows.nsis.installerHooks = "./windows/hooks.nsh"` (dicek di dokumentasi Tauri 2 lewat Context7) dengan macro `NSIS_HOOK_POSTUNINSTALL`: bila aturan ada (`netsh ... show rule`), dihapus dengan `ExecShell "runas"` karena installer berjalan tanpa hak administrator (UAC muncul sekali saat uninstall). Dilewati saat `/UPDATE` (`$UpdateMode = 1`, aturan masih dipakai) dan uninstall senyap (`/S`). **Belum diuji**: `makensis` tidak ada di mesin pengembang; hook baru dikompilasi saat build Windows di CI.
+- **Tampilan.** Kalimat 7.1 ("Windows akan meminta izin...") di pilihan Pusat, butir izin Windows di 8.7 (peringatan di layar konfirmasi pindah Pusat, dan butir sisa bila UAC ditolak). Alamat IP sudah ada sejak Tahap 7; penjelasan `169.254.x.x` **tetap hanya di panduan**, sesuai 5.1 ("Tidak ada keterangan jenis jaringan di layar"). Bab "Komputer Pusat dan komputer kasir" di Panduan dan bagian di README; CLAUDE.md memuat peta file dan aturan golongan perintah.
+- Penyimpangan: tidak ada fungsi "hapus aturan" di aplikasi (hanya di skrip penambahan dan hook NSIS), karena mengganti mode dari Pusat tidak boleh memunculkan UAC; aturan yang tertinggal hanya membuka port yang tidak didengarkan program mana pun. **Belum diuji**: UAC, `netsh`, dan sambungan sungguhan di Windows (dua komputer, kabel langsung profil Public, lalu router), sesuai kolom "Selesai bila" Tahap 9.
+
+**Perbaikan dari tinjauan (sesudah Tahap 9).** Ringkasan per temuan; rinciannya ada di bagian yang disebut.
+
+| Kode | Perbaikan | Bagian |
+|---|---|---|
+| S1 | Masa terima otomatis: maksimal 10 perangkat, tombol "Selesai menyambungkan", perangkat "Tanpa kode" tampil dengan tombol Putuskan, risiko `login_bawaan` dicatat | 5.4, 8.5, 11 |
+| S2 | Batas login per perangkat dan per IP; satu perangkat per IP per masa terima (yang baru menggantikan yang lama) | 5.4 |
+| S3 | Reservasi percobaan login (`Pembatas::coba`) | 5.4 |
+| S4 | Sesi diam lebih dari 12 jam ditolak di setiap perintah | 5.4 |
+| S5 | Token diperiksa sebelum badan dibaca; badan `/sambung` 16 KB, `/jalankan` 20 MB setelah token lolos | 5.4 |
+| S6 | `perintah_baca` diturunkan dari `perintah_simpan` | 4.2 |
+| D1, D2 | Selisih jam dinding tanpa zona; dibuang saat mode berganti | 4.3 |
+| D3 | Tidak ada lagi ingatan ID berdasarkan isi perintah | 4.2 |
+| D4 | Pesan "belum pasti" yang jujur; celah commit tetap tahap lanjutan | 4.2, 7.3, 11 |
+| D5 | Jawaban bukan JSON untuk simpan = belum pasti | 4.2 |
+| D6 | Tombol "Jadikan komputer ini Pusat" di layar menunggu Pusat | 8.1 |
+| D7 | `database_berisi` bersama | 7.1 |
+| D8 | Ringkasan pindah jujur soal pengaturan lama | 7.1 |
+| D9 | `hanyaBaru` untuk foto dari Toko Pro lama, di bawah kunci penulisan | 6.5 |
+
+Celah tes yang ditutup: langkah migrasi 2 sampai 4 diuji sendiri tanpa pelengkap `schema.sql` (`tests_migrasi.rs`), tes jawaban hilang yang pasti (hook `hilangkan_jawaban` di server), tes `MAKS_SALAH_PER_KODE`,
+dan `folder_cadangan_dari_kasir_tidak_dipakai_pusat` tidak lagi menelan galat (`.ok()` dihapus, setiap panggilan benar-benar berjalan). Tes baru ada di `tests_jaringan.rs`, `tests_perbaikan.rs`, `tests_data.rs`, dan `tools/{jam-pusat,perintah-simpan}.test.mjs`.
 
 Tahap lanjutan (setelah rilis pertama, sesuai kebutuhan): TLS dengan sertifikat tersemat, koneksi baca kedua, backup harian di Pusat, `GET /foto/{kode}` dengan cache, Pusat tetap berjalan di system tray saat jendela ditutup,
 penulisan `permintaan_selesai` di dalam transaksi perintah.
@@ -915,35 +1156,40 @@ yang sudah dibawa Tauri. Setiap pustaka dicek versinya dan dokumentasinya sebelu
 - **Tes bersamaan**: 4 klien × 50 `save_penjualan` untuk barang yang sama secara serentak (thread terpisah). Periksa:
   50×4 `notrans` unik dan berurutan tanpa lompatan, `stokakhir` = stok awal − total jumlah, saldo kas sesuai, dan
   `IZINSTOKMIN = 0` menolak penjualan yang melebihi stok tepat pada batasnya.
-- **Tes idempotensi**: kirim simpan, putus sebelum jawaban dibaca (klien menutup koneksi), kirim lagi dengan `idPermintaan` sama;
-  hanya satu transaksi tercatat dan kedua jawaban berisi `notrans` yang sama.
+- **Tes idempotensi**: kirim simpan, jawabannya sengaja tidak pernah dikirim (hook `hilangkan_jawaban` di server, hanya build tes), kirim lagi dengan `idPermintaan` sama;
+  hanya satu transaksi tercatat dan jawaban kedua berisi `notrans` yang lama.
+- **Tes tampilan (Node)**: `npm run tes:pengaturan`, `npm run tes:jam` (jam dinding Pusat di beberapa zona waktu), `npm run tes:simpan` (daftar perintah simpan sama dengan di Rust).
 - **Tes E2E siklus toko** (`tests_e2e.rs`) dijalankan dua kali: sekali langsung lewat dispatcher, sekali lewat HTTP, dengan
   hasil yang harus sama.
 
-### 10.2 Beberapa klien di satu mesin pengembang
+### 10.2 Dua proses di satu mesin pengembang
 
-Tambahkan dua variabel lingkungan (hanya dibaca di build debug):
+Variabel lingkungan (hanya dibaca di build debug, kecuali `TOKOPRO_PORT` yang selalu dibaca):
 
-- `TOKOPRO_DATA_DIR`: folder data aplikasi (tempat `pusat.json`, `foto/`, dan database bila `TOKOPRO_DB` tidak diisi).
-- `TOKOPRO_PORT`: port server Pusat.
+- `TOKOPRO_DATA_DIR`: folder data aplikasi (`pusat.json`, `foto/`, dan database bila `TOKOPRO_DB` tidak diisi). **Wajib berbeda untuk setiap proses**, kalau tidak keduanya membaca `pusat.json` yang sama.
+- `TOKOPRO_DB`: file database. Hanya dipakai Pusat; Kasir tidak membuka database.
+- `TOKOPRO_PORT`: port server Pusat (di Pusat) atau port Pusat yang dituju (di Kasir). Pakai nilai yang sama di keduanya bila bukan 47210.
 
-Langkahnya:
-
-```bash
-npm run tauri dev   # jendela 1; jadikan Pusat
-```
+Langkahnya (biner debug memuat tampilan dari server Vite, jadi jalankan `npm run dev` dulu; port bawaan 1420):
 
 ```bash
-TOKOPRO_DATA_DIR=/tmp/tokopro-kasir1 ./src-tauri/target/debug/tokopro-app   # jendela 2; sambungkan ke localhost
+# jendela 1: Pusat
+TOKOPRO_DATA_DIR=/tmp/tokopro-pusat TOKOPRO_PORT=47211 npm run tauri dev
 ```
+
+Masuk sebagai Manager, lalu jadikan komputer ini Pusat (layar Komputer Pusat dikerjakan di Tahap 7; sementara ini lewat `pusat_atur_mode` dari console, atau tulis `{"mode":"pusat"}` ke
+`/tmp/tokopro-pusat/pusat.json` sebelum membuka). Buat kode sambung.
 
 ```bash
-TOKOPRO_DATA_DIR=/tmp/tokopro-kasir2 ./src-tauri/target/debug/tokopro-app   # jendela 3
+# jendela 2: Kasir (setelah build debug ada di src-tauri/target/debug)
+TOKOPRO_DATA_DIR=/tmp/tokopro-kasir1 TOKOPRO_PORT=47211 ./src-tauri/target/debug/tokopro-app
 ```
 
-Biner debug memuat tampilan dari server Vite yang sama (port 1420), jadi tidak perlu Vite kedua. Catatan: ketiga jendela memakai
-`localStorage` yang sama (identitas aplikasi sama), jadi pengaturan per komputer akan saling menimpa saat uji ini. Ini hanya
-terjadi di mesin pengembang.
+Di jendela Kasir, atur Pusat ke `127.0.0.1` lalu sambung dengan kode (Tahap 7; sementara lewat `kasir.atur("127.0.0.1")` dan `kasir.sambung("123456")` dari `src/api/pusat.ts`). Nama
+komputer Kasir dan Pusat sama di satu mesin, itu wajar. Bila `pusat.json` Kasir berisi `"mode":"kasir"`, `/tmp/tokopro-kasir1` tidak akan berisi `tokopro.db`.
+
+Catatan: kedua jendela memakai `localStorage` yang sama (identitas aplikasi sama), jadi pengaturan per komputer saling menimpa. Ini hanya terjadi di mesin pengembang.
+Tes otomatisnya (`src-tauri/src/tests_klien.rs`) menjalankan Pusat dan Kasir di satu proses tanpa semua ini.
 
 Uji manual yang wajib: dua kasir menekan Bayar hampir bersamaan; matikan Pusat saat kasir di tengah transaksi lalu nyalakan lagi;
 restore di Pusat saat kasir masuk; ubah hak menu seorang pengguna di Pusat lalu periksa menunya di Kasir setelah masuk lagi.
@@ -970,7 +1216,7 @@ Matriks jaringan yang wajib diuji (minimal dua laptop Windows sungguhan untuk ba
 | Risiko | Akibat | Penanganan |
 |---|---|---|
 | Komputer Pusat mati atau Toko Pro di Pusat ditutup | Semua kasir tidak bisa menyimpan | Pesan jelas, keranjang tetap ada, konfirmasi saat menutup Pusat; tahap lanjutan: tetap jalan di system tray. Dicatat di panduan: Pusat harus menyala selama toko buka (sama dengan aplikasi lama). |
-| Simpan ganda saat jaringan putus | Stok dan kas salah | `idPermintaan` + `permintaan_selesai` (4.2), tanpa pengulangan otomatis |
+| Simpan ganda saat jaringan putus | Stok dan kas salah | `idPermintaan` + `permintaan_selesai` (4.2), satu pengulangan otomatis dengan ID yang sama. **Risiko tersisa:** bila Pusat mati tepat di antara `commit` dan penulisan `permintaan_selesai`, pengulangan dengan ID yang sama tidak dikenali dan data bisa ganda. Pesan ke pengguna tidak berjanji lebih dari "memeriksa dulu"; penutupnya (`Konteks::catat_selesai(&tx)`) tetap tahap lanjutan |
 | Laporan berat menahan kasir | Antrean lambat | Ukur di Tahap 10, koneksi baca kedua bila perlu (4.4) |
 | Perubahan tanda tangan ±110 perintah | Perintah salah argumen saat dipanggil | Compiler memeriksa tipe; tes nama perintah dari `src/api`; tes lama tetap lulus; macro cadangan berupa tabel manual |
 | Lalu lintas tanpa enkripsi | Kata sandi bisa disadap di LAN | Diterima untuk versi pertama (setara aplikasi lama); TLS tersemat di tahap lanjutan |
@@ -979,14 +1225,18 @@ Matriks jaringan yang wajib diuji (minimal dua laptop Windows sungguhan untuk ba
 | Kabel langsung tanpa router: nama tidak ditemukan, alamat `169.254.x.x` berubah | Kasir gagal tersambung | Nama sama dengan yang sudah jalan di aplikasi lama; IP bisa diketik di isian yang sama; alamat tampil di layar Pusat (5.1) |
 | IP Pusat berubah (DHCP) | Kasir gagal tersambung | Nama komputer dulu, lalu IP terakhir; nama di `/halo` dicocokkan |
 | Versi Kasir dan Pusat berbeda | Perintah gagal dengan cara yang membingungkan | Kunci versi ketat dan pembaruan ke versi Pusat (6.4) |
-| Jam Kasir salah | Tanggal transaksi salah | `today()` memakai jam Pusat, peringatan selisih jam |
+| Jam Kasir salah | Tanggal transaksi salah | `today()` memakai jam dinding Pusat, peringatan selisih jam |
 | Restore saat kasir bekerja | Kasir memakai sesi dari data lama | Mode perawatan, semua sesi diakhiri (6.1) |
 | Password lama tidak terbaca untuk sebagian pengguna (mis. huruf non-ASCII) | Pengguna itu tidak bisa masuk dengan password lamanya | Pemeriksaan enam ulangan menghasilkan `None`, lalu password sementara `admin` (8.6) |
 | Nama pengguna hanya beda huruf besar-kecil (`ADMIN`/`Admin`) | Setelah password lama ikut pindah, pengguna ditolak padahal passwordnya benar | Login mencoba semua akun senama dan memilih yang passwordnya cocok (8.6a), dikerjakan sebelum atau bersamaan dengan 8.6 |
 | Perangkat asing tersambung selama masa terima otomatis | Perangkat itu bisa mencoba menebak kata sandi | Masa hanya sampai akhir hari pindah dan satu subnet; login tetap wajib, batas percobaan login per perangkat, daftar perangkat dengan tanda "diterima otomatis" (8.5) |
 | Peran salah ditebak dari `Settings.ini` (mis. komputer kasir yang `NamaKomputer`-nya `localhost` dan kebetulan punya `DATAPOS.FDB` lama) | Dua Pusat di satu toko | Layar konfirmasi menyebut perannya dan menyediakan "Atur sendiri"; Kasir yang menemukan Pusat lain di `/halo` dengan nama toko sama memberi peringatan |
 | Data berubah di Toko Pro lama setelah diambil | Transaksi hilang | Layar konfirmasi meminta semua Toko Pro lama ditutup; pindah dilakukan serentak dalam satu hari (12) |
-| Kode sambung ditebak | Perangkat asing masuk | 6 angka, 10 menit, sekali pakai, kunci setelah 5 salah, daftar perangkat bisa diputus |
+| Kode sambung ditebak | Perangkat asing masuk | 6 angka, 10 menit, sekali pakai, kunci setelah 5 salah per alamat dan 20 salah dari alamat mana pun (kode dibatalkan), daftar perangkat bisa diputus |
+| Login pengguna dimatikan (`aktiflogin = 0`) di toko yang memakai Komputer Pusat | Setiap perangkat yang tersambung masuk sebagai Manager "Administrator" tanpa kata sandi (perilaku aplikasi lama, `login_bawaan`) | **Diterima oleh toko yang mematikan login:** setiap komputer yang tersambung ke Pusat masuk sebagai Administrator. Dikurangi dengan masa terima otomatis yang dibatasi 10 perangkat, satu per alamat, bisa ditutup dengan "Selesai menyambungkan", daftar perangkat bertanda "Tanpa kode" dengan tombol Putuskan, dan catatan di panduan (S1) |
+| Zona waktu Windows di komputer kasir salah | Tanggal transaksi mundur sehari sekitar 15 jam per hari | Selisih jam dihitung sebagai jam dinding tanpa zona (4.3, D1) |
+| Foto dari Toko Pro lama menimpa foto yang sudah ada di Pusat | Foto yang diganti pengguna hilang | `hanyaBaru` diperiksa di Pusat dalam kunci yang sama dengan penulisan (6.5, D9) |
+| Database yang hanya berisi pelanggan, supplier, kas, dan sejenisnya dianggap kosong | Layar pilihan awal muncul, atau tidak ada cadangan sebelum jadi Kasir | `database_berisi` menghitung semua tabel isian pengguna, selain data bawaan (7.1, D7) |
 
 ## 12. Pilihan yang ditolak sejak awal
 

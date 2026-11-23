@@ -10,14 +10,14 @@ const JUDUL = "Versi Baru Toko Pro";
 
 /** Dialog pembaruan: menjelaskan, mengunduh dengan kemajuan, lalu memasang dan membuka ulang aplikasi. Dipasang sekali di App. */
 export function PembaruanDialog() {
-  const { baru, dialog } = usePembaruan();
+  const { baru, dialog, kasir } = usePembaruan();
   const { user } = useApp();
   const [fase, setFase] = useState<"tanya" | "unduh" | "gagal">("tanya");
   const [k, setK] = useState<Kemajuan>({ unduh: 0, total: null });
   const sedang = useRef(false);
   if (!dialog || !baru) return null;
 
-  const manager = user.level === "Manager";
+  const manager = user.level === "Manager" || kasir; // Komputer Kasir hanya bisa naik ke versi Pusat, jadi semua akun boleh.
   const tutup = () => { setFase("tanya"); tutupPembaruan(); };
   const mulai = async () => {
     if (sedang.current) return;
@@ -90,7 +90,9 @@ export function PembaruanDialog() {
         {manager ? (
           <div className="flex flex-col gap-1 rounded-md bg-muted p-3 text-xs">
             <p>Aplikasi akan tertutup sebentar, lalu terbuka lagi sendiri.</p>
-            <p>Data toko Anda aman. Program menyimpan salinannya otomatis sebelum memperbarui.</p>
+            {kasir
+              ? <p>Versi ini disamakan dengan komputer Pusat. Data toko tetap aman di sana.</p>
+              : <p>Data toko Anda aman. Program menyimpan salinannya otomatis sebelum memperbarui.</p>}
             <p className="font-semibold">Selesaikan dulu transaksi yang sedang berjalan.</p>
           </div>
         ) : (

@@ -61,6 +61,22 @@ python3 -I tools/import_firebird.py --container tokopro-fb --fdb /data/DATAPOS.F
 Skrip menolak menimpa file yang sudah ada kecuali diberi `--force`. Password user lama tidak bisa dibaca (dienkripsi `ModEncrypt`),
 jadi semua user hasil impor masuk dengan password sementara `admin` lalu membuat password baru.
 
+## Mode Komputer Pusat
+
+Toko dengan lebih dari satu komputer kasir bisa menjadikan satu komputer sebagai Pusat. Pusat menyimpan semua data toko, dan komputer kasir lain tersambung ke Pusat lewat jaringan, jadi stok dan nomor transaksi selalu sama. Komputer yang tidak memilih apa pun tetap berdiri sendiri seperti biasa. Rancangan lengkapnya ada di `docs/rancangan-komputer-pusat.md`.
+
+**Menjadikan komputer sebagai Pusat.** Manager membuka Pengaturan, Alat Bantu, tab Komputer Pusat, lalu memilih "Jadikan komputer ini Pusat". Windows meminta izin administrator (UAC) untuk satu aturan firewall bernama "Toko Pro Pusat". Aturan itu hanya membuka port 47210 (TCP) untuk Toko Pro, hanya bagi komputer di subnet yang sama, di profil Private, Public, dan Domain. Kalau izin ditolak, tombol "Beri izin" tersedia di tab yang sama. Aturan dibuat ulang bila lokasi program berubah, dan dihapus saat Toko Pro di-uninstall.
+
+**Menyambungkan komputer kasir.** Di Pusat, klik "Tambah komputer kasir" untuk mendapat kode sambung 6 angka (berlaku 10 menit, sekali pakai). Di komputer kasir, pilih "Sambungkan ke Pusat", ketik nama komputer Pusat (atau alamat IP-nya), lalu kodenya. Pusat menampilkan nama dan alamat IP-nya dengan tombol Salin.
+
+**Jaringan.** Kabel RJ45 langsung tanpa router, switch, router, dan Wi-Fi sama-sama bisa dipakai. Pada kabel langsung, Windows memberi alamat `169.254.x.x` yang bisa berubah setelah komputer dinyalakan ulang. Pakai nama komputer, atau pasang IP tetap. Wi-Fi tamu dan isolasi klien di router memblokir sambungan antarkomputer. Port bisa diubah lewat `TOKOPRO_PORT` saat pengembangan.
+
+**Bila Pusat mati.** Komputer kasir menampilkan status Terputus, isian transaksi tetap ada, dan tombol Coba Lagi menyimpan ulang setelah Pusat menyala, dan Pusat memeriksa dulu apakah transaksinya sudah tersimpan. Tidak ada antrean simpan di komputer kasir.
+
+Panduan untuk pengguna toko ada di aplikasi: Bantuan, Panduan Penggunaan, bab "Komputer Pusat dan komputer kasir".
+
+Dua proses di satu komputer untuk pengembangan (lihat bagian 10.2 rancangan), dan uji aturan firewall hanya bisa di Windows. CI rilis (`.github/workflows/release.yml`) mengompilasi kode Windows dan menjalankan `cargo test`.
+
 ## Tes
 
 ```bash

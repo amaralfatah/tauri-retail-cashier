@@ -1,4 +1,4 @@
-import { invoke } from "@tauri-apps/api/core";
+import { invoke } from "@/lib/panggil";
 import type { Row, TransInput } from "../api";
 
 /** Awal pesan error dari server yang artinya "perlu izin supervisor" (hanya untuk menghapus data). */

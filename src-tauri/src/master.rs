@@ -5,7 +5,7 @@ use crate::auth::Session;
 use crate::db::{e, one, rows, to_sql, Db, Res};
 use rusqlite::{params, params_from_iter};
 use serde_json::{json, Map, Value};
-use tauri::State;
+use perintah_macro::perintah;
 
 pub struct Table {
     pub name: &'static str,
@@ -51,8 +51,8 @@ fn q(col: &str) -> String {
     format!("\"{col}\"")
 }
 
-#[tauri::command]
-pub fn master_list(db: State<Db>, table_name: String, search: Option<String>, limit: Option<i64>, offset: Option<i64>, only_active: Option<bool>,
+#[perintah]
+pub fn master_list(db: &Db, table_name: String, search: Option<String>, limit: Option<i64>, offset: Option<i64>, only_active: Option<bool>,
     kelompok: Option<String>, kategori: Option<String>, sort: Option<String>, hanya_kode_nama: Option<bool>) -> Res<Value> {
     let t = table(&table_name)?;
     let conn = db.lock()?;
@@ -95,8 +95,8 @@ pub fn master_list(db: State<Db>, table_name: String, search: Option<String>, li
     Ok(json!({ "rows": data, "total": total }))
 }
 
-#[tauri::command]
-pub fn master_save(db: State<Db>, session: State<Session>, table_name: String, data: Map<String, Value>, original_key: Option<String>) -> Res<()> {
+#[perintah]
+pub fn master_save(db: &Db, session: &Session, table_name: String, data: Map<String, Value>, original_key: Option<String>) -> Res<()> {
     let user = session.user()?;
     if user.level == "Kasir" {
         return Err("Akun kasir tidak bisa mengubah master data. Minta supervisor untuk mengubahnya.".into());
@@ -118,7 +118,7 @@ pub fn simpan_master(conn: &mut rusqlite::Connection, t: &Table, data: &Map<Stri
         Value::String(s) => rusqlite::types::Value::Text(s.trim().to_string()),
         v => to_sql(v),
     }).collect();
-    let tx = conn.transaction().map_err(e)?;
+    let tx = conn.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate).map_err(e)?;
     match original_key {
         None => {
             if t.name == "mdbarang" && kode_dipakai(&tx, key_val, None)? {
@@ -169,8 +169,8 @@ pub fn simpan_master(conn: &mut rusqlite::Connection, t: &Table, data: &Map<Stri
     tx.commit().map_err(e)
 }
 
-#[tauri::command]
-pub fn master_delete(db: State<Db>, session: State<Session>, table_name: String, key: String) -> Res<()> {
+#[perintah]
+pub fn master_delete(db: &Db, session: &Session, table_name: String, key: String) -> Res<()> {
     let user = session.user()?;
     if user.level == "Kasir" {
         return Err("Akun kasir tidak bisa menghapus master data.".into());
@@ -252,14 +252,14 @@ pub fn pelanggan_jatuh_tempo_daftar(conn: &rusqlite::Connection, search: &str) -
     )
 }
 
-#[tauri::command]
-pub fn pelanggan_jatuh_tempo(db: State<Db>, session: State<Session>, search: String) -> Res<Vec<Value>> {
+#[perintah]
+pub fn pelanggan_jatuh_tempo(db: &Db, session: &Session, search: String) -> Res<Vec<Value>> {
     session.user()?;
     pelanggan_jatuh_tempo_daftar(&*db.lock()?, &search)
 }
 
-#[tauri::command]
-pub fn barang_find(db: State<Db>, code: String) -> Res<Option<Value>> {
+#[perintah]
+pub fn barang_find(db: &Db, code: String) -> Res<Option<Value>> {
     let conn = db.lock()?;
     one(
         &conn,
@@ -268,8 +268,8 @@ pub fn barang_find(db: State<Db>, code: String) -> Res<Option<Value>> {
     )
 }
 
-#[tauri::command]
-pub fn barang_search(db: State<Db>, search: String, limit: Option<i64>, stok_min: Option<bool>) -> Res<Vec<Value>> {
+#[perintah]
+pub fn barang_search(db: &Db, search: String, limit: Option<i64>, stok_min: Option<bool>) -> Res<Vec<Value>> {
     let conn = db.lock()?;
     cari_barang_opsi(&conn, &search, limit.unwrap_or(50), stok_min.unwrap_or(false))
 }
@@ -290,8 +290,8 @@ pub fn cari_barang_opsi(conn: &rusqlite::Connection, search: &str, limit: i64, s
     rows(conn, &sql, [pola])
 }
 
-#[tauri::command]
-pub fn jenis_nontunai(db: State<Db>) -> Res<Vec<Value>> {
+#[perintah]
+pub fn jenis_nontunai(db: &Db) -> Res<Vec<Value>> {
     let conn = db.lock()?;
     rows(&conn, "SELECT j.kode, j.namajenis, i.namaitem FROM mdjenisnontunai j LEFT JOIN mdjenisnontunaiitem i ON i.kode = j.kode ORDER BY j.kode, i.namaitem", [])
 }

@@ -9,12 +9,16 @@ use rusqlite::{params, Connection};
 use serde::Deserialize;
 use serde_json::{json, Map, Value};
 use std::path::{Path, PathBuf};
-use tauri::State;
+use crate::konteks::{Asal, Konteks};
+use perintah_macro::perintah;
 
-fn folder_aman(conn: &Connection, folder: Option<&str>) -> Res<PathBuf> {
+/// Folder cadangan pengaman. Alamat folder dari komputer lain tidak pernah dipakai: folder itu ada di komputer Kasir,
+/// bukan di Pusat, dan membiarkannya berarti Kasir bisa menyuruh Pusat menulis ke folder sembarang. Dari jaringan,
+/// cadangan selalu masuk ke folder bawaan di samping database.
+fn folder_aman(k: &Konteks, conn: &Connection, folder: Option<&str>) -> Res<PathBuf> {
     match folder.map(str::trim).filter(|f| !f.is_empty()) {
-        Some(f) => Ok(PathBuf::from(f)),
-        None => folder_bawaan(conn),
+        Some(f) if k.asal == Asal::Lokal => Ok(PathBuf::from(f)),
+        _ => folder_bawaan(conn),
     }
 }
 
@@ -58,7 +62,7 @@ pub fn hitung_ulang_stok(conn: &Connection) -> Res<usize> {
 /// Harga beli di baris penjualan yang kosong atau lebih besar dari harga jual diganti harga beli di master barang.
 /// Nilai beli di kepala transaksi ikut dihitung ulang.
 pub fn sinkron_harga_beli(conn: &mut Connection) -> Res<usize> {
-    let tx = conn.transaction().map_err(e)?;
+    let tx = conn.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate).map_err(e)?;
     let kena: Vec<String> = {
         let mut st = tx.prepare(
             "SELECT DISTINCT d.notrans FROM transaksidetil d JOIN mdbarang b ON b.kodebarang = d.kodebarang
@@ -84,7 +88,7 @@ pub fn sinkron_harga_beli(conn: &mut Connection) -> Res<usize> {
 
 /// Hapus transaksi penjualan yang tidak punya baris barang (sisa penyimpanan yang terputus), beserta kas dan piutangnya.
 pub fn sinkron_jual(conn: &mut Connection) -> Res<usize> {
-    let tx = conn.transaction().map_err(e)?;
+    let tx = conn.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate).map_err(e)?;
     let kosong: Vec<String> = {
         let mut st = tx.prepare(
             "SELECT t.notrans FROM transaksi t WHERE t.kode = 'TJ' AND NOT EXISTS (SELECT 1 FROM transaksidetil d WHERE d.notrans = t.notrans)",
@@ -334,7 +338,7 @@ pub fn hapus_transaksi(conn: &mut Connection, daftar: &[String], folder: &Path) 
         return Err("Pilih dulu transaksi yang akan dihapus.".into());
     }
     let cadangan = backup_ke(conn, folder, "sebelum-hapus-transaksi")?;
-    let tx = conn.transaction().map_err(e)?;
+    let tx = conn.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate).map_err(e)?;
     for no in daftar {
         match no.strip_prefix(AWAL_KUNCI_BAYAR).and_then(|n| n.parse::<i64>().ok()) {
             Some(xid) => hapus_pelunasan(&tx, xid)?,
@@ -383,7 +387,7 @@ pub fn hapus_data(conn: &mut Connection, iduser_aktif: &str, item: &[String], da
         }
     }
     let cadangan = backup_ke(conn, folder, "sebelum-hapus-data")?;
-    let tx = conn.transaction().map_err(e)?;
+    let tx = conn.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate).map_err(e)?;
     let mau = |k: &str| item.iter().any(|x| x == k);
     let mut hasil = Map::new();
     let mut stok_berubah = false;
@@ -506,7 +510,7 @@ pub fn jalankan_sql(conn: &mut Connection, sql: &str, folder: &Path) -> Res<Valu
         return Ok(json!({ "kolom": kolom, "baris": baris, "terpotong": terpotong, "cadangan": null }));
     }
     let cadangan = backup_ke(conn, folder, "sebelum-sql")?;
-    let tx = conn.transaction().map_err(e)?;
+    let tx = conn.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate).map_err(e)?;
     tx.execute_batch(s).map_err(e)?;
     tx.commit().map_err(e)?;
     Ok(json!({ "kolom": [], "baris": [], "terpotong": false, "cadangan": cadangan.display().to_string() }))
@@ -514,51 +518,51 @@ pub fn jalankan_sql(conn: &mut Connection, sql: &str, folder: &Path) -> Res<Valu
 
 /* ---------------- Perintah Tauri ---------------- */
 
-#[tauri::command]
-pub fn alat_item_hapus(session: State<Session>) -> Res<Vec<Value>> {
+#[perintah]
+pub fn alat_item_hapus(session: &Session) -> Res<Vec<Value>> {
     hanya_pengelola(&session.user()?)?;
     Ok(ITEM_HAPUS.iter().map(|(k, n)| json!({ "kunci": k, "nama": n })).collect())
 }
 
-#[tauri::command]
-pub fn alat_hitung_stok(db: State<Db>, session: State<Session>) -> Res<Value> {
+#[perintah]
+pub fn alat_hitung_stok(db: &Db, session: &Session) -> Res<Value> {
     hanya_manager(&session.user()?)?;
     Ok(json!({ "berubah": hitung_ulang_stok(&*db.lock()?)? }))
 }
 
-#[tauri::command]
-pub fn alat_hitung_kas(db: State<Db>, session: State<Session>) -> Res<Value> {
+#[perintah]
+pub fn alat_hitung_kas(db: &Db, session: &Session) -> Res<Value> {
     hanya_manager(&session.user()?)?;
     Ok(json!({ "berubah": hitung_ulang_saldo(&*db.lock()?)? }))
 }
 
-#[tauri::command]
-pub fn alat_sinkron_harga_beli(db: State<Db>, session: State<Session>, folder: Option<String>) -> Res<Value> {
+#[perintah]
+pub fn alat_sinkron_harga_beli(k: &Konteks, db: &Db, session: &Session, folder: Option<String>) -> Res<Value> {
     hanya_manager(&session.user()?)?;
     let mut conn = db.lock()?;
-    let aman = backup_ke(&conn, &folder_aman(&conn, folder.as_deref())?, "sebelum-sinkron")?;
+    let aman = backup_ke(&conn, &folder_aman(k, &conn, folder.as_deref())?, "sebelum-sinkron")?;
     Ok(json!({ "berubah": sinkron_harga_beli(&mut conn)?, "cadangan": aman.display().to_string() }))
 }
 
-#[tauri::command]
-pub fn alat_sinkron_jual(db: State<Db>, session: State<Session>, folder: Option<String>) -> Res<Value> {
+#[perintah]
+pub fn alat_sinkron_jual(k: &Konteks, db: &Db, session: &Session, folder: Option<String>) -> Res<Value> {
     hanya_manager(&session.user()?)?;
     let mut conn = db.lock()?;
-    let aman = backup_ke(&conn, &folder_aman(&conn, folder.as_deref())?, "sebelum-sinkron")?;
+    let aman = backup_ke(&conn, &folder_aman(k, &conn, folder.as_deref())?, "sebelum-sinkron")?;
     Ok(json!({ "dihapus": sinkron_jual(&mut conn)?, "cadangan": aman.display().to_string() }))
 }
 
-#[tauri::command]
-pub fn alat_daftar_transaksi(db: State<Db>, session: State<Session>, jenis: String, no: String, dari: String, sampai: String) -> Res<Vec<Value>> {
+#[perintah]
+pub fn alat_daftar_transaksi(db: &Db, session: &Session, jenis: String, no: String, dari: String, sampai: String) -> Res<Vec<Value>> {
     hanya_manager(&session.user()?)?;
     daftar_transaksi(&*db.lock()?, &jenis, &no, &dari, &sampai)
 }
 
-#[tauri::command]
-pub fn alat_hapus_transaksi(db: State<Db>, session: State<Session>, daftar: Vec<String>, folder: Option<String>) -> Res<Value> {
+#[perintah]
+pub fn alat_hapus_transaksi(k: &Konteks, db: &Db, session: &Session, daftar: Vec<String>, folder: Option<String>) -> Res<Value> {
     hanya_manager(&session.user()?)?;
     let mut conn = db.lock()?;
-    let f = folder_aman(&conn, folder.as_deref())?;
+    let f = folder_aman(k, &conn, folder.as_deref())?;
     hapus_transaksi(&mut conn, &daftar, &f)
 }
 
@@ -572,19 +576,19 @@ pub struct HapusInput {
     pub folder: Option<String>,
 }
 
-#[tauri::command]
-pub fn alat_hapus_data(db: State<Db>, session: State<Session>, input: HapusInput) -> Res<Value> {
+#[perintah]
+pub fn alat_hapus_data(k: &Konteks, db: &Db, session: &Session, input: HapusInput) -> Res<Value> {
     let user: User = session.user()?;
     hanya_manager(&user)?;
     let mut conn = db.lock()?;
-    let f = folder_aman(&conn, input.folder.as_deref())?;
+    let f = folder_aman(k, &conn, input.folder.as_deref())?;
     hapus_data(&mut conn, &user.iduser, &input.item, &input.dari, &input.sampai, &f)
 }
 
-#[tauri::command]
-pub fn alat_sql(db: State<Db>, session: State<Session>, sql: String, folder: Option<String>) -> Res<Value> {
+#[perintah]
+pub fn alat_sql(k: &Konteks, db: &Db, session: &Session, sql: String, folder: Option<String>) -> Res<Value> {
     hanya_manager(&session.user()?)?;
     let mut conn = db.lock()?;
-    let f = folder_aman(&conn, folder.as_deref())?;
+    let f = folder_aman(k, &conn, folder.as_deref())?;
     jalankan_sql(&mut conn, &sql, &f)
 }

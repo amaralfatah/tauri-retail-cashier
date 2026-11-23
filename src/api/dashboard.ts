@@ -1,4 +1,4 @@
-import { invoke } from "@tauri-apps/api/core";
+import { invoke } from "@/lib/panggil";
 import type { Row } from "../api";
 
 export const dashApi = {

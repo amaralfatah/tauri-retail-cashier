@@ -1,3 +1,4 @@
+import { sekarang } from "@/format";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ChevronDownIcon, ChevronRight, CircleArrowDownIcon, MoonIcon, SunIcon, XIcon } from "lucide-react";
 import { cn } from "cn";
@@ -39,6 +40,13 @@ import { ModalFrame } from "./vb/VbGrid";
 import {
   allowedFor, DEFAULT_CAPTION, DIALOG_FORM, isDialog, MENU, MenuNode, Page, TARGETS, TOOLBAR, ToolBtn,
 } from "./vb/shell";
+import { CobaLagiDialog } from "./components/CobaLagiDialog";
+import { IkonStatusPusat, PeringatanPusat, ringkasStatus } from "./components/StatusPusat";
+import { KomputerPusat } from "./pages/KomputerPusat";
+import { PilihanAwal } from "./pages/PilihanAwal";
+import { toast } from "sonner";
+import { adaFotoLama, kirimFotoLama } from "./lib/fotoLama";
+import { kasirTersambungSekarang, muatStatusPusat, useStatusPusat } from "./lib/statusPusat";
 import "./vb/vb.css";
 import { cadanganSaatKeluar } from "./api/cadangan";
 import { PembaruanDialog } from "./components/PembaruanDialog";
@@ -161,8 +169,24 @@ export default function App() {
   const [ready, setReady] = useState(false);
   const tinggiJudul = useTinggiJudul();
   const { baru: versiBaru } = usePembaruan();
+  const { komputer, dimuat: statusDimuat } = useStatusPusat();
+  const [bukaPusat, setBukaPusat] = useState(false);
+  const kasirTersambung = komputer?.mode === "kasir" && komputer.kasir.status === "tersambung";
+  /** Jumlah komputer kasir yang masih tersambung saat Anda mau menutup Pusat (0 di komputer lain). */
+  const [kasirMasihAda, setKasirMasihAda] = useState(0);
+  const izinTutup = useRef(false);
+  /** Naik setiap kali pilihan awal selesai: sesi dan pengaturan dibaca ulang dari tempat yang baru dipilih. */
+  const [mulaiKe, setMulaiKe] = useState(0);
+  /** Layar pilihan awal tetap tampil sampai pengguna menekan tombol terakhirnya (ringkasan pindah dari Toko Pro lama), walau pilihannya sudah tersimpan. */
+  const [awalBuka, setAwalBuka] = useState(false);
+  useEffect(() => { if (komputer?.perluPilihan) setAwalBuka(true); }, [komputer?.perluPilihan]);
   // Cek versi baru diam-diam di latar belakang; gagal (mis. tidak ada internet) tidak mengganggu siapa pun.
   useEffect(() => mulaiCekOtomatis(), []);
+  // Komputer kasir bekas Toko Pro lama: kirim fotonya yang belum ada di Pusat, sekali setelah ada yang masuk (rancangan 8.3).
+  useEffect(() => {
+    if (!user || !kasirTersambung || !adaFotoLama()) return;
+    void kirimFotoLama().then((n) => { if (n > 0) toast.success(`${n} foto barang dari komputer ini sudah dikirim ke Pusat.`); });
+  }, [user, kasirTersambung]);
   // Layar pembuka hanya saat program baru dibuka, tidak saat halaman dimuat ulang.
   const [splash, setSplash] = useState(() => {
     try { return !sessionStorage.getItem(SPLASH_KEY); } catch { return true; }
@@ -185,7 +209,7 @@ export default function App() {
       if (!u) u = await api.loginBawaan().catch(() => null);
       if (u) { setUser(u); if (saved.child && !isDialog(saved.child.page)) { seq.current = saved.child.seq; setChild(saved.child); } }
     })().finally(() => setReady(true));
-  }, []);
+  }, [mulaiKe]);
 
   useEffect(() => {
     if (!ready) return;
@@ -206,7 +230,21 @@ export default function App() {
   }, [iduser]);
 
   const reloadSetting = useCallback(async () => setSetting((await api.getSettings()) ?? {}), []);
-  useEffect(() => { reloadSetting().catch(() => undefined); api.dbPath().then(setDbPath).catch(() => undefined); }, [reloadSetting]);
+  useEffect(() => { reloadSetting().catch(() => undefined); api.dbPath().then(setDbPath).catch(() => undefined); }, [reloadSetting, mulaiKe]);
+
+  // Menutup jendela (tombol X) di komputer Pusat saat masih ada kasir tersambung: tanya dulu.
+  useEffect(() => {
+    let lepas: (() => void) | null = null;
+    let batal = false;
+    try {
+      getCurrentWindow().onCloseRequested(async (ev) => {
+        if (izinTutup.current) return;
+        const n = await kasirTersambungSekarang();
+        if (n > 0) { ev.preventDefault(); setKasirMasihAda(n); setKonfirmKeluar(true); }
+      }).then((f) => { if (batal) f(); else lepas = f; }).catch(() => undefined);
+    } catch { /* bukan di jendela Tauri */ }
+    return () => { batal = true; lepas?.(); };
+  }, []);
 
   const open = useCallback((page: Page, caption?: string, tab?: MasterTable | Tab) => {
     const cur = childRef.current.page;
@@ -261,7 +299,10 @@ export default function App() {
   }, [popup]);
 
   if (splash) return <Splash namaUsaha={setting.namausaha} />;
-  if (!ready) return null;
+  if (!ready || !statusDimuat) return null;
+  if (komputer?.perluPilihan || awalBuka) {
+    return <PilihanAwal namaUsaha={setting.namausaha} onSelesai={() => { setAwalBuka(false); setReady(false); setMulaiKe((n) => n + 1); }} />;
+  }
   if (!user) {
     return <Login namaUsaha={setting.namausaha} onLogin={(u) => { setUser(u); open("home"); }} />;
   }
@@ -273,8 +314,9 @@ export default function App() {
   const ada = (k: Kasir) => !!hidup[k] || page === k;
   const kasirBelumBayar = () => (["jual", "beli"] as const).some((k) => (isiKasir.current[k] ?? 0) > 0);
   const mintaLogoff = () => { if (kasirBelumBayar()) setKonfirmLogoff(true); else void logout(); };
-  const mintaKeluar = () => setKonfirmKeluar(true);
+  const mintaKeluar = async () => { setKasirMasihAda(await kasirTersambungSekarang()); setKonfirmKeluar(true); };
   const keluar = async () => {
+    izinTutup.current = true;
     for (const langkah of sebelumKeluar) await langkah().catch(() => undefined);
     try { await getCurrentWindow().close(); } catch { window.close(); }
   };
@@ -382,6 +424,7 @@ export default function App() {
         <nav className="mdi-toolbar no-print @container/nav flex h-11 items-center gap-0.5 overflow-x-auto border-b border-border bg-muted px-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" aria-label="Menu utama" ref={toolbarRef}>
           {mainButtons.map((b, i) => renderToolBtn(b, i > 0 && !!b.sepBefore))}
           <span className="flex-1" />
+          <IkonStatusPusat onBuka={() => { void muatStatusPusat(); setBukaPusat(true); }} />
           {versiBaru && (
             <Button
               type="button"
@@ -430,6 +473,7 @@ export default function App() {
         )}
         <main className="mdi-workspace min-h-0 overflow-hidden bg-background">
           <section className="flex h-full min-h-0 flex-col">
+            <PeringatanPusat onBuka={() => { void muatStatusPusat(); setBukaPusat(true); }} />
             <div className="mdi-child-body">
               {page === "home" && <Home key={child.seq} />}
               {page === "panduan" && <Panduan />}
@@ -481,7 +525,12 @@ export default function App() {
           </span>
           <Separator orientation="vertical" className="h-3.5 bg-border" />
           <span className="flex-1" />
-          <span className="truncate text-foreground/75" title={dbPath ? `Lokasi data: ${dbPath}` : undefined}>Data tersimpan di komputer ini</span>
+          {(() => {
+            const r = ringkasStatus(komputer);
+            return r
+              ? <span className="truncate text-foreground/75" title={r.teks} data-slot="status-pusat">{r.teks}</span>
+              : <span className="truncate text-foreground/75" title={dbPath ? `Lokasi data: ${dbPath}` : undefined}>Data tersimpan di komputer ini</span>;
+          })()}
           <Separator orientation="vertical" className="h-3.5 bg-border" />
           <Jam />
         </footer>
@@ -511,6 +560,12 @@ export default function App() {
         );
       })}
       <PembaruanDialog />
+      <CobaLagiDialog />
+      {bukaPusat && (
+        <ModalFrame title="Komputer Pusat" width={640} height={600} onClose={() => setBukaPusat(false)}>
+          <div className="p-4"><KomputerPusat /></div>
+        </ModalFrame>
+      )}
       <Notifikasi aktif diKasir={adaKasir(page)} onBuka={() => open("piutang", undefined, "jatuhtempo" as Tab)} />
       {info && (
         <Modal title="Informasi" onClose={() => setInfo("")} footer={<Button autoFocus onClick={() => setInfo("")}>OK</Button>}>
@@ -519,10 +574,15 @@ export default function App() {
       )}
       {konfirmKeluar && (
         <Modal title="Keluar" onClose={() => setKonfirmKeluar(false)}
-          footer={<><Button variant="outline" onClick={() => setKonfirmKeluar(false)}>Tidak</Button><Button autoFocus onClick={keluar}>Ya, keluar</Button></>}>
-          <p>{kasirBelumBayar()
-            ? "Masih ada transaksi yang belum dibayar di kasir. Tetap keluar dari program?"
-            : "Anda yakin ingin keluar dari program?"}</p>
+          footer={<><Button variant="outline" onClick={() => setKonfirmKeluar(false)}>Tidak</Button><Button autoFocus variant={kasirMasihAda > 0 ? "destructive" : "default"} onClick={keluar}>Ya, keluar</Button></>}>
+          {kasirMasihAda > 0 && (
+            <p className="font-semibold">Masih ada {kasirMasihAda} komputer kasir yang tersambung. Kalau Anda menutup Toko Pro di sini, kasir tidak bisa menyimpan transaksi. Tetap tutup?</p>
+          )}
+          {(kasirBelumBayar() || kasirMasihAda === 0) && (
+            <p>{kasirBelumBayar()
+              ? "Masih ada transaksi yang belum dibayar di kasir. Tetap keluar dari program?"
+              : "Anda yakin ingin keluar dari program?"}</p>
+          )}
         </Modal>
       )}
       {konfirmLogoff && (
@@ -537,9 +597,9 @@ export default function App() {
 
 /** Tanggal dan jam di status bar, supaya kasir tidak perlu melihat jam komputer. */
 function Jam() {
-  const [now, setNow] = useState(() => new Date());
+  const [now, setNow] = useState(() => sekarang());
   useEffect(() => {
-    const t = setInterval(() => setNow(new Date()), 15000);
+    const t = setInterval(() => setNow(sekarang()), 15000);
     return () => clearInterval(t);
   }, []);
   const tgl = now.toLocaleDateString("id-ID", { weekday: "short", day: "numeric", month: "short", year: "numeric" });

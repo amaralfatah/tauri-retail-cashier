@@ -133,6 +133,57 @@ const transaksi = new Map<string, { header: Row; detail: Row[] }>();
 const orders = new Map<string, { header: Row; detail: Row[]; jual: boolean }>();
 const pendings = new Map<string, { header: Row; detail: Row[] }>();
 
+
+/* ---- Komputer Pusat (Tahap 7) ----
+ * `?simulasiPusat=` memilih keadaan awal: pusat, tersambung, menyambung, terputus, versi-beda, perawatan, ditolak,
+ * belum-sambung, awal (layar pilihan awal), belum-pasti (simpan pertama hasilnya belum pasti). Tanpa parameter: mode Tunggal.
+ * `&terimaOtomatis=1` (pada `pusat`) membuka masa terima tanpa kode. `&jamBeda=1` menambah peringatan jam berbeda 5 menit. Pada `pusat`: `&izinBelum=1` atau `&izinBeda=1` menampilkan izin Windows belum ada (tombol Beri izin), `&izinTolak=1` membuat Beri izin gagal. Pada `terputus`, simpan gagal dua kali lalu berhasil (untuk Coba Lagi). */
+const simPusat = new URLSearchParams(window.location.search).get("simulasiPusat") ?? "";
+const KASIR_STATUS: Record<string, string> = { tersambung: "tersambung", "belum-pasti": "tersambung", menyambung: "menyambung", terputus: "terputus", "versi-beda": "versi-beda", perawatan: "perawatan", ditolak: "ditolak", "belum-sambung": "belum-sambung" };
+const pusatKomputer = {
+  mode: simPusat === "pusat" ? "pusat" : simPusat in KASIR_STATUS ? "kasir" : "tunggal",
+  berjalan: simPusat === "pusat",
+  perluMulaiUlang: false,
+  port: 47210,
+  galat: null as string | null,
+  namaKomputer: "TOKO-PC",
+  kodeSambung: null as string | null,
+  kodeSisaDetik: null as number | null,
+  terimaOtomatisSisaDetik: (simPusat === "pusat" && new URLSearchParams(window.location.search).has("terimaOtomatis") ? 3000 : null) as number | null,
+  terimaOtomatisDiterima: (simPusat === "pusat" && new URLSearchParams(window.location.search).has("terimaOtomatis") ? 1 : null) as number | null,
+  terimaOtomatisMaks: (simPusat === "pusat" && new URLSearchParams(window.location.search).has("terimaOtomatis") ? 10 : null) as number | null,
+  alamatIp: ["192.168.10.1", "169.254.20.7"],
+  izinFirewall: (simPusat === "pusat" && new URLSearchParams(window.location.search).has("izinBelum") ? "belum" : simPusat === "pusat" && new URLSearchParams(window.location.search).has("izinBeda") ? "berbeda" : "ada") as string,
+  perluPilihan: simPusat === "awal" || simPusat.startsWith("lama-"),
+  kasirTersambung: 2,
+  kasir: {
+    status: KASIR_STATUS[simPusat] ?? "belum-sambung", pesan: null as string | null, pusat: simPusat in KASIR_STATUS ? "TOKO-PC" : null as string | null, namaPusat: simPusat in KASIR_STATUS ? "TOKO-PC" : null as string | null,
+    alamat: simPusat in KASIR_STATUS ? "192.168.10.1" : null as string | null, versiPusat: null as string | null, sudahDisambung: simPusat in KASIR_STATUS && simPusat !== "belum-sambung",
+  } as Row,
+};
+const PESAN_KASIR: Record<string, string> = {
+  menyambung: "", terputus: "Komputer Pusat (TOKO-PC) tidak bisa dihubungi. Pastikan komputer itu menyala dan Toko Pro terbuka di sana.",
+  "versi-beda": "Toko Pro di komputer ini (versi 0.1.0) lebih lama dari Pusat (versi 9.9.9). Perbarui sekarang supaya bisa tersambung lagi.",
+  perawatan: "Pusat sedang memulihkan data. Tunggu sebentar, lalu masuk lagi.",
+  ditolak: "Komputer ini sudah diputus dari Pusat. Minta pemilik toko membuat kode sambung baru.",
+};
+pusatKomputer.kasir.pesan = PESAN_KASIR[pusatKomputer.kasir.status] || null;
+if (pusatKomputer.kasir.status === "versi-beda") pusatKomputer.kasir.versiPusat = "9.9.9";
+let perangkatMock: Row[] = [
+  { id: 1, namaKomputer: "KASIR-01", dibuat: Math.floor(Date.now() / 1000) - 86400 * 3, terakhirTerlihat: Math.floor(Date.now() / 1000) - 20, otomatis: false, pengguna: "rina" },
+  { id: 2, namaKomputer: "KASIR-02", dibuat: Math.floor(Date.now() / 1000) - 86400, terakhirTerlihat: Math.floor(Date.now() / 1000) - 1500, otomatis: true, pengguna: null },
+];
+let lamaTerbuka = new URLSearchParams(window.location.search).has("terbuka") ? 2 : 0;
+let lamaTunggu = 0;
+let gagalSimpan = simPusat === "terputus" ? 2 : simPusat === "belum-pasti" ? 1 : 0;
+const PERINTAH_SIMPAN = /^(save_|delete_|master_save|master_delete|kas_save|kas_delete|poin_tukar|poin_koreksi|promo_save|promo_delete|nt_(jenis|item)_(save|delete)|alat_(hapus|hitung|sinkron)_)/;
+const statusKomputer = () => ({ ...pusatKomputer, kasirTersambung: perangkatMock.length, kasir: { ...pusatKomputer.kasir } });
+const ubahKasir = (status: string, pesan: string | null = null) => {
+  pusatKomputer.kasir.status = status;
+  pusatKomputer.kasir.pesan = pesan;
+  void emit("status-pusat", { ...pusatKomputer.kasir });
+};
+
 const cocok = (b: Row, code: string) =>
   String(b.kodebarang).toUpperCase() === code.toUpperCase() || String(b.barcode).toUpperCase() === code.toUpperCase();
 const cari = (q: string, stokMin = false) =>
@@ -144,8 +195,16 @@ const cari = (q: string, stokMin = false) =>
 // Penanda untuk kode lain: mockIPC juga membuat __TAURI_INTERNALS__, jadi itu saja tidak cukup untuk mengenali jendela Tauri asli.
 (window as unknown as Record<string, unknown>).__TOKOPRO_MOCK__ = true;
 mockWindows("main");
-mockIPC((cmd, args) => {
-  const a = (args ?? {}) as Record<string, any>;
+// Semua perintah data datang sebagai `jalankan({ perintah, args })` (lihat src/lib/panggil.ts); perintah plugin datang apa adanya.
+mockIPC((cmdAsli, argsAsli) => {
+  const bungkus = (argsAsli ?? {}) as Record<string, any>;
+  const cmd: string = cmdAsli === "jalankan" ? String(bungkus.perintah) : cmdAsli;
+  const a = (cmdAsli === "jalankan" ? bungkus.args ?? {} : bungkus) as Record<string, any>;
+  if (cmdAsli === "jalankan" && PERINTAH_SIMPAN.test(cmd) && gagalSimpan > 0) {
+    gagalSimpan -= 1;
+    if (simPusat === "belum-pasti") throw "[pusat] Toko Pro belum tahu apakah transaksi ini sudah tersimpan. Tekan Coba Lagi. Toko Pro akan memeriksa dulu apakah transaksi ini sudah tersimpan.";
+    throw "[pusat] Transaksi belum tersimpan karena Pusat tidak terjangkau. Isian Anda masih ada. Tekan Coba Lagi setelah Pusat menyala.";
+  }
   switch (cmd) {
     /* ---- Jendela ---- */
     // Pratinjau browser: tiru zoom webview Tauri dengan CSS zoom supaya Ukuran tampilan bisa dicek.
@@ -158,6 +217,75 @@ mockIPC((cmd, args) => {
       st.height = z === 1 ? "" : `${100 / z}vh`;
       return null;
     }
+    /* ---- Komputer Pusat ---- */
+    case "pusat_status": return statusKomputer();
+    case "awal_pilih": {
+      pusatKomputer.mode = a.mode;
+      if (a.mode === "kasir") { pusatKomputer.kasir.pusat = String(a.pusat ?? ""); pusatKomputer.kasir.namaPusat = null; pusatKomputer.kasir.sudahDisambung = false; ubahKasir("belum-sambung"); }
+      pusatKomputer.berjalan = a.mode === "pusat";
+      pusatKomputer.perluPilihan = a.mode === "kasir";
+      return statusKomputer();
+    }
+    case "pusat_beri_izin":
+      if (new URLSearchParams(window.location.search).has("izinTolak")) throw "Izin dari Windows belum diberikan. Tekan Beri izin, lalu pilih Ya saat Windows bertanya.";
+      pusatKomputer.izinFirewall = "ada";
+      return statusKomputer();
+    case "pusat_atur_mode":
+      pusatKomputer.mode = a.mode; pusatKomputer.berjalan = a.mode === "pusat";
+      return { ...statusKomputer(), cadangan: null };
+    case "kasir_atur":
+      pusatKomputer.mode = "kasir"; pusatKomputer.berjalan = false;
+      pusatKomputer.kasir.pusat = String(a.pusat ?? "");
+      return { ...pusatKomputer.kasir, cadangan: null };
+    case "kasir_sambung": {
+      const kode = String(a.kode ?? "");
+      if (kode === "000000") throw "[pusat] Kode sambung salah atau sudah tidak berlaku. Buat kode baru di komputer Pusat.";
+      if (!kode && !pusatKomputer.kasir.sudahDisambung) throw "[pusat] Komputer ini belum disambungkan ke Pusat. Sambungkan dulu dengan kode dari komputer Pusat.";
+      pusatKomputer.kasir.namaPusat = String(pusatKomputer.kasir.pusat || "TOKO-PC").toUpperCase();
+      pusatKomputer.kasir.sudahDisambung = true;
+      pusatKomputer.perluPilihan = false;
+      ubahKasir("tersambung");
+      return { ...pusatKomputer.kasir };
+    }
+    /* Pindah otomatis dari Toko Pro lama: ?simulasiPusat=lama-pusat atau lama-kasir; &terbuka=1 membuat Toko Pro lama "masih terbuka" dua kali; &pusatMati=1 (lama-kasir) membuat Pusat tidak pernah ditemukan */
+    case "lama_deteksi":
+      if (!pusatKomputer.perluPilihan || !simPusat.startsWith("lama-")) return { ada: false };
+      return { ada: true, peran: simPusat === "lama-kasir" ? "kasir" : "pusat", pusat: simPusat === "lama-kasir" ? "SERVER" : null, folder: "C:\\Program Files (x86)\\Toko Pro", terbuka: false };
+    case "lama_terbuka": return (lamaTerbuka -= 1) >= 0;
+    case "lama_pusat_mulai": return (async () => {
+      for (const [nama, ke] of [["Barang", 1], ["Transaksi", 2], ["Pelanggan", 3]] as const) { void emit("pindah-lama", { tahap: "tabel", nama, ke, dari: 3, jumlah: 10 }); await new Promise((r) => setTimeout(r, 700)); }
+      pusatKomputer.mode = "pusat"; pusatKomputer.berjalan = true; pusatKomputer.perluPilihan = false;
+      return { barang: 1284, transaksi: 5632, pelanggan: 47, pengguna: 4, foto: { tersalin: 118, tidakCocok: 12, gagal: 1 }, cadangan: "C:\\Backup\\sebelum-restore.db", peringatan: [], galatServer: null, izinWindows: new URLSearchParams(window.location.search).has("izinTolak") ? "Izin dari Windows belum diberikan." : null };
+    })();
+    case "lama_pengaturan": return { ada: true, nilai: { pakaidrawer: "-1", lokasireport: "\\_report\\", ukurankertas: "Kertas A4", pilihanhome: "1", jnsportprinter: "COM", jnsprinter: "Mini Printer", aktifbackup: "-1", lokasibackup: "D:\\Backup" }, fotoFolder: "C:\\Toko Pro\\_foto" };
+    case "kasir_tunggu_pusat": {
+      lamaTunggu += 1;
+      if (new URLSearchParams(window.location.search).has("pusatMati")) return { status: "menunggu" };
+      if (lamaTunggu <= 2) return { status: "menunggu" };
+      if (lamaTunggu === 3) return { status: "perawatan" };
+      pusatKomputer.kasir.sudahDisambung = true; pusatKomputer.perluPilihan = false; ubahKasir("tersambung");
+      return { status: "tersambung" };
+    }
+    case "kasir_nama_lama": return simPusat === "awal" ? "TOKO-PC" : null;
+    case "pusat_kode_baru": {
+      const kode = String(Math.floor(100000 + Math.random() * 900000));
+      return { kode, berlakuDetik: 600 };
+    }
+    case "pusat_terima_otomatis":
+      if (!a.buka) { pusatKomputer.terimaOtomatisSisaDetik = null; pusatKomputer.terimaOtomatisDiterima = null; pusatKomputer.terimaOtomatisMaks = null; }
+      return null;
+    case "pusat_perangkat": return perangkatMock;
+    case "pusat_putuskan": perangkatMock = perangkatMock.filter((p) => p.id !== a.id); return null;
+    case "jam_pusat": {
+      const beda = new URLSearchParams(window.location.search).has("jamBeda") && pusatKomputer.mode === "kasir";
+      const ms = beda ? 5 * 60 * 1000 : 0;
+      const d = new Date(Date.now() + ms);
+      const dua = (n: number) => String(n).padStart(2, "0");
+      const tanggal = `${d.getFullYear()}-${dua(d.getMonth() + 1)}-${dua(d.getDate())}`;
+      const jam = `${dua(d.getHours())}:${dua(d.getMinutes())}:${dua(d.getSeconds())}`;
+      return { tanggal, jam, dinding: `${tanggal} ${jam}`, selisihDetik: ms / 1000, selisihMs: ms, berbeda: beda, dariPusat: pusatKomputer.mode === "kasir" };
+    }
+    case "pembaruan_pusat_cek": return null;
     /* ---- Sesi & Pengguna ---- */
     case "current_user": case "login_bawaan": case "restore_session": case "login": return user;
     case "logout": case "change_password": case "cetak": return null;

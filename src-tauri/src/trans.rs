@@ -9,7 +9,7 @@ use crate::promo;
 use rusqlite::{params, Connection, Transaction};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
-use tauri::State;
+use perintah_macro::perintah;
 
 /// Nomor berikutnya dengan pola lama: KODE + yymm + "-" + 5 digit, misalnya TJ2611-00001.
 pub fn next_number(tx: &rusqlite::Connection, table: &str, col: &str, kode: &str, tgl: &str) -> Res<String> {
@@ -293,8 +293,8 @@ pub fn promo_hitung(conn: &Connection, tgl: &str, items: &[Item]) -> Res<PromoHi
     Ok(out)
 }
 
-#[tauri::command]
-pub fn promo_keranjang(db: State<Db>, tgl: String, items: Vec<Item>) -> Res<PromoHitung> {
+#[perintah]
+pub fn promo_keranjang(db: &Db, tgl: String, items: Vec<Item>) -> Res<PromoHitung> {
     check_date(&tgl)?;
     promo_hitung(&*db.lock()?, &tgl, &items)
 }
@@ -333,8 +333,8 @@ pub fn nama(tx: &Transaction, sql: &str, kode: &str) -> String {
     tx.query_row(sql, params![kode], |r| r.get::<_, String>(0)).unwrap_or_else(|_| kode.to_string())
 }
 
-#[tauri::command]
-pub fn save_penjualan(db: State<Db>, session: State<Session>, input: TransInput) -> Res<Value> {
+#[perintah]
+pub fn save_penjualan(db: &Db, session: &Session, input: TransInput) -> Res<Value> {
     let user = session.user()?;
     let mut conn = db.lock()?;
     crate::auth::require_menu(&conn, &user, "mnTRTrPenjualan")?;
@@ -342,7 +342,7 @@ pub fn save_penjualan(db: State<Db>, session: State<Session>, input: TransInput)
 }
 
 pub fn penjualan(conn: &mut Connection, user: &User, input: &TransInput) -> Res<Value> {
-    let tx = conn.transaction().map_err(e)?;
+    let tx = conn.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate).map_err(e)?;
     let r = penjualan_tx(&tx, user, input)?;
     tx.commit().map_err(e)?;
     Ok(r)
@@ -472,8 +472,8 @@ pub fn penjualan_tx(tx: &Transaction, user: &User, input_asli: &TransInput) -> R
     Ok(json!({ "notrans": notrans, "total": t.total, "kembali": sisa.max(0.0), "poin": poin_dapat, "bonus": promo.bonus.len() }))
 }
 
-#[tauri::command]
-pub fn save_pembelian(db: State<Db>, session: State<Session>, input: TransInput) -> Res<Value> {
+#[perintah]
+pub fn save_pembelian(db: &Db, session: &Session, input: TransInput) -> Res<Value> {
     let user = session.user()?;
     let mut conn = db.lock()?;
     crate::auth::require_menu(&conn, &user, "mnTRTransPembelian")?;
@@ -483,7 +483,7 @@ pub fn save_pembelian(db: State<Db>, session: State<Session>, input: TransInput)
 /// Pembelian dengan harga jual selalu ikut diperbarui dari margin (sama dengan pengaturan `updateharga` bit 2 aktif).
 #[cfg(test)]
 pub fn pembelian_margin(conn: &mut Connection, user: &User, input: &TransInput) -> Res<Value> {
-    let tx = conn.transaction().map_err(e)?;
+    let tx = conn.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate).map_err(e)?;
     let r = pembelian_isi(&tx, user, input, true)?;
     tx.commit().map_err(e)?;
     Ok(r)
@@ -539,7 +539,7 @@ fn perbarui_harga(tx: &Transaction, input: &TransInput, bit_jual_paksa: bool) ->
 }
 
 pub fn pembelian(conn: &mut Connection, user: &User, input: &TransInput) -> Res<Value> {
-    let tx = conn.transaction().map_err(e)?;
+    let tx = conn.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate).map_err(e)?;
     let r = pembelian_tx(&tx, user, input)?;
     tx.commit().map_err(e)?;
     Ok(r)
@@ -598,8 +598,8 @@ pub struct OpnameItem {
     pub stokfisik: f64,
 }
 
-#[tauri::command]
-pub fn save_opname(db: State<Db>, session: State<Session>, tgl: String, catatan: String, items: Vec<OpnameItem>) -> Res<Value> {
+#[perintah]
+pub fn save_opname(db: &Db, session: &Session, tgl: String, catatan: String, items: Vec<OpnameItem>) -> Res<Value> {
     let user = session.user()?;
     let mut conn = db.lock()?;
     crate::auth::require_menu(&conn, &user, "mnInvStokOpname")?;
@@ -611,7 +611,7 @@ pub fn opname(conn: &mut Connection, user: &User, tgl: &str, catatan: &str, item
         return Err("Akun kasir tidak bisa mencatat stok opname.".into());
     }
     check_date(tgl)?;
-    let tx = conn.transaction().map_err(e)?;
+    let tx = conn.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate).map_err(e)?;
     let notrans = next_number(&tx, "transaksi", "notrans", "OP", tgl)?;
     tx.execute(
         "INSERT INTO transaksi (tid,notrans,tgltrans,kode,jenis,kodekaryawan,catatan,tahun,bulan,tglupload,jamupload)
@@ -656,8 +656,8 @@ pub fn cari_barang_kasir(conn: &Connection, search: &str, limit: i64) -> Res<Vec
     crate::master::cari_barang_daftar(conn, search, limit)
 }
 
-#[tauri::command]
-pub fn barang_cari_kasir(db: State<Db>, search: String, limit: Option<i64>) -> Res<Vec<Value>> {
+#[perintah]
+pub fn barang_cari_kasir(db: &Db, search: String, limit: Option<i64>) -> Res<Vec<Value>> {
     cari_barang_kasir(&*db.lock()?, &search, limit.unwrap_or(100))
 }
 
@@ -670,20 +670,20 @@ pub fn cari_satu_kasir(conn: &Connection, code: &str) -> Res<Option<Value>> {
     one(conn, &sql, params![code.trim()])
 }
 
-#[tauri::command]
-pub fn barang_find_kasir(db: State<Db>, code: String) -> Res<Option<Value>> {
+#[perintah]
+pub fn barang_find_kasir(db: &Db, code: String) -> Res<Option<Value>> {
     cari_satu_kasir(&*db.lock()?, &code)
 }
 
-#[tauri::command]
-pub fn preview_notrans(db: State<Db>, kode: String, tgl: String) -> Res<String> {
+#[perintah]
+pub fn preview_notrans(db: &Db, kode: String, tgl: String) -> Res<String> {
     check_date(&tgl)?;
     let conn = db.lock()?;
     next_number(&conn, "transaksi", "notrans", &kode, &tgl)
 }
 
-#[tauri::command]
-pub fn list_transaksi(db: State<Db>, kode: String, dari: String, sampai: String, search: Option<String>) -> Res<Vec<Value>> {
+#[perintah]
+pub fn list_transaksi(db: &Db, kode: String, dari: String, sampai: String, search: Option<String>) -> Res<Vec<Value>> {
     let conn = db.lock()?;
     let s = format!("%{}%", search.unwrap_or_default().trim().to_uppercase());
     rows(
@@ -705,8 +705,8 @@ pub fn list_transaksi(db: State<Db>, kode: String, dari: String, sampai: String,
     )
 }
 
-#[tauri::command]
-pub fn get_transaksi(db: State<Db>, notrans: String) -> Res<Value> {
+#[perintah]
+pub fn get_transaksi(db: &Db, notrans: String) -> Res<Value> {
     let conn = db.lock()?;
     let mut header = one(
         &conn,

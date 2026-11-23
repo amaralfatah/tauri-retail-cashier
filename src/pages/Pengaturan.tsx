@@ -12,7 +12,7 @@ import { useApp } from "../appContext";
 import { Theme, useTheme } from "../lib/theme";
 import { terapkanUkuran, UKURAN_TAMPILAN } from "../lib/ukuranTampilan";
 import { ModalFrame, useMsgBox } from "../vb/VbGrid";
-import { LocalKey, LocalSettings, loadLocal, saveLocal } from "./localSettings";
+import { FORMAT_HRG, FORMAT_QTY, HOME, JENIS_PORT, JENIS_PRINTER, LocalKey, LocalSettings, MODE_SCAN, UKURAN_KERTAS, loadLocal, rapikan, saveLocal } from "./localSettings";
 
 export { Pengguna } from "./Pengguna";
 
@@ -20,30 +20,8 @@ const TABS = ["Info Usaha", "Transaksi", "Peralatan"];
 /** Kolom tseting yang berisi angka; sisanya teks atau 0/1. */
 const ANGKA = ["tempopiutang", "mintranspoin", "jmlpointrans"];
 
-const UKURAN_KERTAS = ["Mini Printer 56mm-58mm", "Mini Printer 75mm-80mm", "Kertas A4", "Kertas A5"];
-const JENIS_PRINTER = ["Direct", "Custom", "Direct-Custom"];
-const JENIS_PORT = ["USB", "LPT"];
-const FORMAT_QTY = ["###,##0", "###,##0.0", "###,##0.00"];
-const FORMAT_HRG = ["###,##0", "###,##0.00"];
-/** Urutan sama dengan nilai tersimpan: 0 = Grid, 1 = TextBox (kotak scan di atas tabel). */
-const MODE_SCAN = ["Grid", "TextBox"];
-/** Nilai tersimpan "Home" atau "Dashboard"; tulisan di combo mengikuti aslinya. */
-const HOME: [string, string][] = [["Home", "Home Backgroud"], ["Dashboard", "Dashboard Transaksi"]];
 const TEMA: [Theme, string][] = [["light", "Terang"], ["dark", "Gelap"], ["system", "Ikut Sistem"]];
 
-/** Pengaturan lama bisa berisi pilihan yang tidak ada lagi di combo (mis. Mini Printer atau COM); pakai pilihan pertama. */
-function rapikan(l: LocalSettings): LocalSettings {
-  const pilih = (v: string, daftar: string[]) => (daftar.includes(v) ? v : daftar[0]);
-  return {
-    ...l,
-    jnsPrinter: pilih(l.jnsPrinter, JENIS_PRINTER),
-    jnsPort: pilih(l.jnsPort, JENIS_PORT),
-    formatQty: pilih(l.formatQty, FORMAT_QTY),
-    formatHrg: pilih(l.formatHrg, FORMAT_HRG),
-    ukuranKertas: pilih(l.ukuranKertas, UKURAN_KERTAS),
-    home: pilih(l.home, HOME.map((h) => h[0])),
-  };
-}
 const muatLokal = () => rapikan(loadLocal());
 /** Angka contoh yang diketik (koma = desimal) menjadi angka biasa. */
 const angkaContoh = (t: string) => Number(t.replace(/\./g, "").replace(",", ".")) || 0;

@@ -10,7 +10,9 @@ use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
-use tauri::{AppHandle, Emitter, Manager, State};
+use crate::konteks::Konteks;
+use perintah_macro::perintah;
+use tauri::Emitter;
 
 const SEP: char = '\x1f';
 const NULL_MARK: &str = "\x1e";
@@ -56,7 +58,7 @@ pub(crate) fn nama_tabel(tabel: &str) -> &'static str {
     }
 }
 
-const PESAN_TIDAK_ADA: &str = "Program pembaca data lama (Firebird) tidak ada di komputer ini. Jalankan pemindahan di komputer yang dulu memakai Toko Pro lama.";
+pub(crate) const PESAN_TIDAK_ADA: &str = "Program pembaca data lama (Firebird) tidak ada di komputer ini. Jalankan pemindahan di komputer yang dulu memakai Toko Pro lama.";
 const PESAN_BUKAN: &str = "File ini bukan data Toko Pro lama. Pilih file DATAPOS.FDB atau file backup .fdk dari aplikasi lama.";
 const PESAN_TERKUNCI: &str = "File data Toko Pro lama sedang dipakai. Tutup dulu aplikasi Toko Pro lama, lalu coba lagi.";
 
@@ -73,13 +75,14 @@ fn ringkas(s: &str) -> String {
 // ---------------------------------------------------------------- cp1252
 
 const CP1252_80: [char; 32] = [
-    '\u{20AC}', '\u{FFFD}', '\u{201A}', '\u{0192}', '\u{201E}', '\u{2026}', '\u{2020}', '\u{2021}',
-    '\u{02C6}', '\u{2030}', '\u{0160}', '\u{2039}', '\u{0152}', '\u{FFFD}', '\u{017D}', '\u{FFFD}',
-    '\u{FFFD}', '\u{2018}', '\u{2019}', '\u{201C}', '\u{201D}', '\u{2022}', '\u{2013}', '\u{2014}',
-    '\u{02DC}', '\u{2122}', '\u{0161}', '\u{203A}', '\u{0153}', '\u{FFFD}', '\u{017E}', '\u{0178}',
+    '\u{20AC}', '\u{81}', '\u{201A}', '\u{0192}', '\u{201E}', '\u{2026}', '\u{2020}', '\u{2021}',
+    '\u{02C6}', '\u{2030}', '\u{0160}', '\u{2039}', '\u{0152}', '\u{8D}', '\u{017D}', '\u{8F}',
+    '\u{90}', '\u{2018}', '\u{2019}', '\u{201C}', '\u{201D}', '\u{2022}', '\u{2013}', '\u{2014}',
+    '\u{02DC}', '\u{2122}', '\u{0161}', '\u{203A}', '\u{0153}', '\u{9D}', '\u{017E}', '\u{0178}',
 ];
 
-/// Charset database lama NONE; teksnya cp1252 (Windows Indonesia).
+/// Charset database lama NONE; teksnya cp1252 (Windows Indonesia). Lima byte yang tidak terdefinisi (0x81, 0x8D, 0x8F, 0x90, 0x9D)
+/// menjadi karakter kontrol berkode sama, supaya tidak hilang dan bisa dikembalikan ke byte asal (dipakai password lama).
 pub(crate) fn dekode_cp1252(b: &[u8]) -> String {
     b.iter()
         .map(|&x| match x {
@@ -87,6 +90,67 @@ pub(crate) fn dekode_cp1252(b: &[u8]) -> String {
             _ => x as char,
         })
         .collect()
+}
+
+/// Kebalikan `dekode_cp1252`. `None` bila ada karakter yang tidak berasal dari satu byte cp1252.
+pub(crate) fn enkode_cp1252(t: &str) -> Option<Vec<u8>> {
+    t.chars()
+        .map(|c| match c as u32 {
+            0..=0x7F | 0xA0..=0xFF => Some(c as u32 as u8),
+            _ => CP1252_80.iter().position(|&x| x == c).map(|i| 0x80 + i as u8),
+        })
+        .collect()
+}
+
+// ---------------------------------------------------------------- password lama (ModEncrypt)
+
+const KUNCI_LAMA: &[u8] = b"Program Encrypt dan Decrypt ini dibut oleh LuckMy";
+const ULANG_LAMA: usize = 6;
+
+/// Enkripsi password Toko Pro lama: password diulang 6 kali, lalu `hasil[n] = F[n] + K[n mod 49] - 30` per byte.
+pub(crate) fn lama_enkripsi(password: &[u8]) -> Vec<u8> {
+    password
+        .repeat(ULANG_LAMA)
+        .iter()
+        .enumerate()
+        .map(|(n, &f)| f.wrapping_add(KUNCI_LAMA[n % KUNCI_LAMA.len()]).wrapping_sub(30))
+        .collect()
+}
+
+/// Membalik `lama_enkripsi`. `None` bila panjang bukan kelipatan 6, keenam ulangan tidak sama, atau ada karakter
+/// di luar ASCII yang bisa dicetak (32 sampai 126), sehingga data rusak tidak pernah dianggap password.
+pub(crate) fn lama_buka_password(terenkripsi: &[u8]) -> Option<String> {
+    if terenkripsi.is_empty() || terenkripsi.len() % ULANG_LAMA != 0 {
+        return None;
+    }
+    let f: Vec<u8> = terenkripsi
+        .iter()
+        .enumerate()
+        .map(|(n, &h)| h.wrapping_sub(KUNCI_LAMA[n % KUNCI_LAMA.len()]).wrapping_add(30))
+        .collect();
+    let panjang = f.len() / ULANG_LAMA;
+    let awal = &f[..panjang];
+    if f.chunks(panjang).any(|c| c != awal) || !awal.iter().all(|b| (32..=126).contains(b)) {
+        return None;
+    }
+    Some(awal.iter().map(|&b| b as char).collect())
+}
+
+/// Nilai `pswduser` baru untuk satu baris `MDUSER` lama: hash Argon2 dari password lama bila terbaca dan lolos
+/// lolos validasi `lama_buka_password` (enam ulangan sama, ASCII 32-126), selain itu `None` (password sementara, `must_change`). Password teks asli tidak dicatat.
+pub(crate) fn password_pindahan(lama: Option<&str>) -> Option<String> {
+    let teks = lama?;
+    if teks.is_empty() {
+        return None;
+    }
+    let byte = enkode_cp1252(teks)?;
+    let sandi = lama_buka_password(&byte)?;
+    // Pengaman tambahan saja: secara matematis tidak pernah gagal bila `lama_buka_password` lolos.
+    // Penjaga sebenarnya adalah validasi enam ulangan dan ASCII 32-126 di sana.
+    if lama_enkripsi(sandi.as_bytes()) != byte {
+        return None;
+    }
+    crate::auth::hash(&sandi).ok()
 }
 
 // ---------------------------------------------------------------- Settings.ini
@@ -109,14 +173,14 @@ pub(crate) fn baca_ini(teks: &str) -> HashMap<String, String> {
     out
 }
 
-fn baca_ini_file(p: &Path) -> Option<HashMap<String, String>> {
+pub(crate) fn baca_ini_file(p: &Path) -> Option<HashMap<String, String>> {
     let bytes = std::fs::read(p).ok()?;
     Some(baca_ini(&dekode_cp1252(&bytes)))
 }
 
 // ---------------------------------------------------------------- proses luar
 
-fn senyap(c: &mut Command) -> &mut Command {
+pub(crate) fn senyap(c: &mut Command) -> &mut Command {
     #[cfg(windows)]
     {
         use std::os::windows::process::CommandExt;
@@ -429,7 +493,7 @@ pub fn bangun_sqlite(sumber: &dyn Sumber, tujuan: &Path, progres: &mut dyn FnMut
                 let mut nilai: Vec<Option<String>> = simpan.iter().map(|&k| ubah(&kolom[k], r[k].clone())).collect();
                 if *tabel == "MDUSER" {
                     if let Some(p) = nama_kol.iter().position(|n| n == "pswduser") {
-                        nilai[p] = None;
+                        nilai[p] = password_pindahan(nilai[p].as_deref());
                     }
                 }
                 st.execute(rusqlite::params_from_iter(nilai.iter())).map_err(e)?;
@@ -551,10 +615,19 @@ pub struct Kandidat {
     modif: std::time::SystemTime,
 }
 
+/// Folder instalasi Toko Pro lama beserta isi `Settings.ini`-nya (kunci `bagian.kunci` huruf kecil, lihat `baca_ini`).
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct Instalasi {
+    pub folder: PathBuf,
+    pub ini: HashMap<String, String>,
+}
+
 #[derive(Default)]
 pub struct Temuan {
     pub kandidat: Vec<Kandidat>,
     pub folder_firebird: Vec<PathBuf>,
+    /// Instalasi yang `Settings.ini`-nya paling baru diubah (dan punya bagian `[Database]`). Rancangan 8.1.
+    pub instalasi: Option<Instalasi>,
 }
 
 fn kandidat_dari(p: &Path, jenis: &'static str) -> Option<Kandidat> {
@@ -627,6 +700,13 @@ pub fn cari_di(akar: &[PathBuf]) -> Temuan {
     t.kandidat.extend(cadangan);
     let mut f = std::collections::HashSet::new();
     t.folder_firebird.retain(|p| f.insert(kunci(&p.display().to_string())));
+    t.instalasi = cari_ini_di(akar).into_iter().find_map(|ini| {
+        let kv = baca_ini_file(&ini)?;
+        if !kv.keys().any(|k| k.starts_with("database.")) {
+            return None;
+        }
+        Some(Instalasi { folder: ini.parent()?.to_path_buf(), ini: kv })
+    });
     t
 }
 
@@ -638,51 +718,113 @@ pub fn cari() -> Temuan {
     cari_di(&akar)
 }
 
-// ---------------------------------------------------------------- perintah Tauri
+// ---------------------------------------------------------------- nama komputer Pusat dari Settings.ini lama
 
-#[tauri::command]
-pub async fn lama_cari(app: AppHandle, session: State<'_, Session>) -> Res<Value> {
-    hanya_manager(&session.user()?)?;
-    tauri::async_runtime::spawn_blocking(move || -> Res<Value> {
-        let t = cari();
-        let fb = Firebird::temukan(&t.folder_firebird);
-        let db = app.state::<Db>();
-        let (barang, transaksi) = {
-            let conn = db.lock()?;
-            let n = |tabel: &str| conn.query_row(&format!("SELECT COUNT(*) FROM {tabel}"), [], |r| r.get::<_, i64>(0)).map_err(e);
-            (n("mdbarang")?, n("transaksi")?)
-        };
-        Ok(json!({
-            "kandidat": t.kandidat.iter().map(|k| json!({ "path": k.path, "jenis": k.jenis, "ukuran": k.ukuran, "waktu": k.waktu })).collect::<Vec<_>>(),
-            "firebird": { "ada": fb.is_some(), "lokasi": fb.as_ref().map(|f| f.lokasi()) },
-            "data_sekarang": { "barang": barang, "transaksi": transaksi },
-        }))
-    })
-    .await
-    .map_err(e)?
+/// Bersihkan nilai `NamaKomputer`: buang spasi dan port Firebird (`SERVER/3050`, `SERVER:3050`).
+/// `None` bila kosong, `localhost`, alamat loopback, atau sama dengan `nama_sendiri`: komputer ini sendiri adalah server lama.
+pub(crate) fn bersihkan_nama_komputer(mentah: &str, nama_sendiri: &str) -> Option<String> {
+    let mut nama = mentah.trim().trim_matches('"').trim();
+    if let Some((depan, _)) = nama.split_once('/') {
+        nama = depan.trim();
+    } else if nama.matches(':').count() == 1 {
+        // Satu titik dua = port (`SERVER:3050`). Lebih dari satu = alamat IPv6, jangan dipotong.
+        if let Some((depan, port)) = nama.split_once(':') {
+            if !port.is_empty() && port.trim().bytes().all(|b| b.is_ascii_digit()) {
+                nama = depan.trim();
+            }
+        }
+    }
+    let nama = nama.trim_start_matches('[').trim_end_matches(']');
+    if nama.is_empty() || nama.eq_ignore_ascii_case("localhost") || nama.eq_ignore_ascii_case(nama_sendiri.trim()) {
+        return None;
+    }
+    if nama.parse::<std::net::IpAddr>().is_ok_and(|ip| ip.is_loopback()) {
+        return None;
+    }
+    Some(nama.to_string())
 }
 
-#[tauri::command]
-pub async fn lama_pindahkan(app: AppHandle, session: State<'_, Session>, file: String, folder: Option<String>) -> Res<Value> {
+/// `Settings.ini` di bawah `akar` (kedalaman 1 dan 2, seperti `cari_di`). Yang paling baru diubah lebih dulu.
+fn cari_ini_di(akar: &[PathBuf]) -> Vec<PathBuf> {
+    let mut ketemu: Vec<(std::time::SystemTime, PathBuf)> = vec![];
+    let mut periksa = |d: &Path| {
+        let ini = d.join("Settings.ini");
+        if let Ok(m) = std::fs::metadata(&ini) {
+            if m.is_file() {
+                ketemu.push((m.modified().unwrap_or(std::time::UNIX_EPOCH), ini));
+            }
+        }
+    };
+    for a in akar.iter().filter(|a| a.is_dir()) {
+        for d1 in sub_folder(a) {
+            let nama = d1.file_name().map(|n| n.to_string_lossy().to_lowercase()).unwrap_or_default();
+            if matches!(nama.as_str(), "windows" | "$recycle.bin" | "system volume information") {
+                continue;
+            }
+            periksa(&d1);
+            for d2 in sub_folder(&d1) {
+                periksa(&d2);
+            }
+        }
+    }
+    ketemu.sort_by(|a, b| b.0.cmp(&a.0));
+    ketemu.into_iter().map(|(_, p)| p).collect()
+}
+
+/// Nama komputer Pusat menurut `[Database] NamaKomputer` di instalasi lama di `akar`, bila komputer ini kasir
+/// (lihat `bersihkan_nama_komputer`). Memakai `Settings.ini` yang paling baru diubah dan punya nilai itu.
+pub fn nama_komputer_lama_di(akar: &[PathBuf], nama_sendiri: &str) -> Option<String> {
+    cari_ini_di(akar).iter().find_map(|ini| {
+        let kv = baca_ini_file(ini)?;
+        bersihkan_nama_komputer(kv.get("database.namakomputer")?, nama_sendiri)
+    })
+}
+
+/// Nama komputer Pusat dari Toko Pro lama di komputer ini. `None` bila tidak ada instalasi lama (atau bukan Windows),
+/// atau komputer ini sendiri server lama.
+pub fn nama_komputer_lama() -> Option<String> {
+    if !cfg!(windows) {
+        return None;
+    }
+    let akar: Vec<PathBuf> = [r"C:\Program Files (x86)", r"C:\Program Files", r"C:\", r"D:\"].iter().map(PathBuf::from).collect();
+    nama_komputer_lama_di(&akar, &crate::jaringan::kendali::nama_komputer())
+}
+
+// ---------------------------------------------------------------- perintah Tauri
+
+#[perintah]
+pub fn lama_cari(db: &Db, session: &Session) -> Res<Value> {
+    hanya_manager(&session.user()?)?;
+    let t = cari();
+    let fb = Firebird::temukan(&t.folder_firebird);
+    let (barang, transaksi) = {
+        let conn = db.lock()?;
+        let n = |tabel: &str| conn.query_row(&format!("SELECT COUNT(*) FROM {tabel}"), [], |r| r.get::<_, i64>(0)).map_err(e);
+        (n("mdbarang")?, n("transaksi")?)
+    };
+    Ok(json!({
+        "kandidat": t.kandidat.iter().map(|k| json!({ "path": k.path, "jenis": k.jenis, "ukuran": k.ukuran, "waktu": k.waktu })).collect::<Vec<_>>(),
+        "firebird": { "ada": fb.is_some(), "lokasi": fb.as_ref().map(|f| f.lokasi()) },
+        "data_sekarang": { "barang": barang, "transaksi": transaksi },
+    }))
+}
+
+#[perintah]
+pub fn lama_pindahkan(k: &Konteks, db: &Db, session: &Session, file: String, folder: Option<String>) -> Res<Value> {
     hanya_manager(&session.user()?)?;
     let file = file.trim().to_string();
     if file.is_empty() {
         return Err("Anda belum memilih file data lama.".into());
     }
-    tauri::async_runtime::spawn_blocking(move || -> Res<Value> {
-        let t = cari();
-        let fb = Firebird::temukan(&t.folder_firebird).ok_or_else(|| PESAN_TIDAK_ADA.to_string())?;
-        let db = app.state::<Db>();
-        let emitter = app.clone();
-        let h = pindahkan(&db, Path::new(&file), folder.as_deref(), &fb, &mut |p| {
-            let _ = emitter.emit("pindah-lama", p.json());
-        })?;
-        Ok(json!({
-            "hasil": h.hasil.iter().map(|x| json!({ "tabel": x.tabel, "nama": x.nama, "jumlah": x.jumlah })).collect::<Vec<_>>(),
-            "cadangan": h.cadangan.display().to_string(),
-            "peringatan": h.peringatan,
-        }))
-    })
-    .await
-    .map_err(e)?
+    let t = cari();
+    let fb = Firebird::temukan(&t.folder_firebird).ok_or_else(|| PESAN_TIDAK_ADA.to_string())?;
+    let app = k.app()?;
+    let h = pindahkan(db, Path::new(&file), folder.as_deref(), &fb, &mut |p| {
+        let _ = app.emit("pindah-lama", p.json());
+    })?;
+    Ok(json!({
+        "hasil": h.hasil.iter().map(|x| json!({ "tabel": x.tabel, "nama": x.nama, "jumlah": x.jumlah })).collect::<Vec<_>>(),
+        "cadangan": h.cadangan.display().to_string(),
+        "peringatan": h.peringatan,
+    }))
 }

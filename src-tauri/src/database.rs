@@ -6,7 +6,7 @@ use crate::db::{e, Db, Res};
 use rusqlite::{Connection, OpenFlags};
 use serde_json::{json, Value};
 use std::path::{Path, PathBuf};
-use tauri::State;
+use perintah_macro::perintah;
 
 pub fn hanya_pengelola(user: &User) -> Res<()> {
     if user.level == "Kasir" {
@@ -60,6 +60,40 @@ pub fn backup_ke(conn: &Connection, folder: &Path, awalan: &str) -> Res<PathBuf>
     }
     conn.execute("VACUUM INTO ?1", [file.to_string_lossy().as_ref()]).map_err(e)?;
     Ok(file)
+}
+
+/// Apakah database sudah berisi data yang diisi pengguna: barang, transaksi (termasuk order), pelanggan, supplier, karyawan,
+/// kas, piutang, poin, penjualan tertunda, promo, kategori dan kelompok, pengguna selain akun bawaan, serta jenis non tunai dan
+/// satuan yang berbeda dari data bawaan. Data bawaan database baru (`seed`) tidak dihitung. Satu tempat untuk layar pilihan awal
+/// dan cadangan sebelum jadi Kasir. Bila pemeriksaan gagal, dianggap berisi (lebih aman: dicadangkan dan tidak ditimpa).
+pub fn database_berisi(conn: &Connection) -> bool {
+    const ADA: &[&str] = &[
+        "mdbarang", "transaksi", "mdpelanggan", "mdpemasok", "mdkaryawan", "keuangan", "trkartupiutang", "transaksipoin", "pendingjual",
+        "mdbarangbonus", "mdbarangdiskon", "mdbarangpdp", "mdbarangbarcode", "mdkategori", "mdkelompok",
+    ];
+    // Selain data bawaan: akun lain, atau akun admin yang kata sandinya sudah diatur.
+    const BEDA: &[&str] = &[
+        "SELECT 1 FROM mduser WHERE NOT (iduser = 'admin' AND pswduser IS NULL)",
+        "SELECT 1 FROM mdjenisnontunai WHERE kode || '|' || namajenis NOT IN ('01|Kartu Debit','02|Kartu Kredit','03|E-Money','04|E-Wallet')",
+        "SELECT 1 FROM mdjenisnontunaiitem WHERE kode || '|' || namaitem NOT IN ('01|BCA','01|BRI','01|Mandiri','02|BCA','04|QRIS')",
+        "SELECT 1 FROM mdsatuan WHERE kodesatuan || '|' || namasatuan NOT IN ('PCS|Pieces','BOX|Box','PAK|Pak','KG|Kilogram')",
+        // Data bawaan yang dihapus juga tanda ada yang mengubahnya.
+        "SELECT 1 WHERE (SELECT COUNT(*) FROM mdjenisnontunai) <> 4 OR (SELECT COUNT(*) FROM mdjenisnontunaiitem) <> 5 OR (SELECT COUNT(*) FROM mdsatuan) <> 4",
+    ];
+    let ada = |sql: &str| conn.query_row(&format!("SELECT EXISTS({sql})"), [], |r| r.get::<_, i64>(0)).map(|n| n != 0);
+    ADA.iter().map(|t| format!("SELECT 1 FROM {t}")).chain(BEDA.iter().map(|s| s.to_string())).any(|sql| ada(&sql).unwrap_or(true))
+}
+
+/// Cadangan database toko sebelum komputer ini dijadikan Kasir (rancangan 6.2). Kasir tidak membuka `tokopro.db` lagi, jadi isinya
+/// dibiarkan di tempatnya dan salinan ini menjaganya tetap bisa dipulihkan. `None` bila tidak ada datanya (atau tidak ada file).
+pub fn cadangan_sebelum_kasir(db: &Db) -> Res<Option<PathBuf>> {
+    let conn = db.lock()?;
+    let Ok(lokasi) = lokasi_db(&conn) else { return Ok(None) };
+    if !database_berisi(&conn) {
+        return Ok(None);
+    }
+    let folder = lokasi.parent().map(|p| p.join("backup")).unwrap_or_else(|| PathBuf::from("backup"));
+    backup_ke(&conn, &folder, "sebelum-jadi-kasir").map(Some)
 }
 
 /// Jumlah cadangan otomatis yang disimpan; yang lebih lama dihapus.
@@ -189,8 +223,8 @@ pub fn daftar_backup(folder: &Path) -> Vec<Value> {
     out.into_iter().map(|x| x.1).collect()
 }
 
-#[tauri::command]
-pub fn db_info(db: State<Db>, session: State<Session>) -> Res<Value> {
+#[perintah]
+pub fn db_info(db: &Db, session: &Session) -> Res<Value> {
     let user = session.user()?;
     hanya_pengelola(&user)?;
     izin_database_atau_alat(&*db.lock()?, &user)?;
@@ -200,8 +234,8 @@ pub fn db_info(db: State<Db>, session: State<Session>) -> Res<Value> {
     Ok(json!({ "path": path.display().to_string(), "ukuran": ukuran, "folder_backup": folder_bawaan(&conn)?.display().to_string() }))
 }
 
-#[tauri::command]
-pub fn db_daftar_backup(db: State<Db>, session: State<Session>, folder: Option<String>) -> Res<Vec<Value>> {
+#[perintah]
+pub fn db_daftar_backup(db: &Db, session: &Session, folder: Option<String>) -> Res<Vec<Value>> {
     let user = session.user()?;
     hanya_pengelola(&user)?;
     izin_database_atau_alat(&*db.lock()?, &user)?;
@@ -209,8 +243,8 @@ pub fn db_daftar_backup(db: State<Db>, session: State<Session>, folder: Option<S
     Ok(daftar_backup(&folder_pilihan(&conn, folder.as_deref())?))
 }
 
-#[tauri::command]
-pub fn db_backup(db: State<Db>, session: State<Session>, folder: Option<String>) -> Res<Value> {
+#[perintah]
+pub fn db_backup(db: &Db, session: &Session, folder: Option<String>) -> Res<Value> {
     let user = session.user()?;
     hanya_pengelola(&user)?;
     izin_database_atau_alat(&*db.lock()?, &user)?;
@@ -221,8 +255,8 @@ pub fn db_backup(db: State<Db>, session: State<Session>, folder: Option<String>)
 }
 
 /// Cek database. `penuh` = pemeriksaan lengkap (Cek Data Corrupt); selain itu pemeriksaan cepat (Tes Koneksi).
-#[tauri::command]
-pub fn db_cek(db: State<Db>, session: State<Session>, penuh: bool) -> Res<Value> {
+#[perintah]
+pub fn db_cek(db: &Db, session: &Session, penuh: bool) -> Res<Value> {
     let user = session.user()?;
     hanya_pengelola(&user)?;
     izin_database_atau_alat(&*db.lock()?, &user)?;
@@ -230,8 +264,8 @@ pub fn db_cek(db: State<Db>, session: State<Session>, penuh: bool) -> Res<Value>
     Ok(json!({ "ok": masalah.is_empty(), "masalah": masalah }))
 }
 
-#[tauri::command]
-pub fn db_perbaiki(db: State<Db>, session: State<Session>, folder: Option<String>) -> Res<Value> {
+#[perintah]
+pub fn db_perbaiki(db: &Db, session: &Session, folder: Option<String>) -> Res<Value> {
     let user = session.user()?;
     hanya_pengelola(&user)?;
     izin_database_atau_alat(&*db.lock()?, &user)?;
@@ -240,8 +274,8 @@ pub fn db_perbaiki(db: State<Db>, session: State<Session>, folder: Option<String
     Ok(json!({ "cadangan": aman.display().to_string() }))
 }
 
-#[tauri::command]
-pub fn db_restore(db: State<Db>, session: State<Session>, file: String, folder: Option<String>) -> Res<Value> {
+#[perintah]
+pub fn db_restore(db: &Db, session: &Session, file: String, folder: Option<String>) -> Res<Value> {
     hanya_manager(&session.user()?)?;
     if file.trim().is_empty() {
         return Err("File backup yang akan dipulihkan belum dipilih.".into());
@@ -253,8 +287,8 @@ pub fn db_restore(db: State<Db>, session: State<Session>, file: String, folder: 
 }
 
 /// Dipanggil saat Anda keluar dari program kalau "Auto Backup" aktif. Boleh dipakai semua akun yang sedang masuk.
-#[tauri::command]
-pub fn backup_otomatis(db: State<Db>, session: State<Session>, folder: Option<String>, simpan: Option<usize>) -> Res<Value> {
+#[perintah]
+pub fn backup_otomatis(db: &Db, session: &Session, folder: Option<String>, simpan: Option<usize>) -> Res<Value> {
     session.user()?;
     let conn = db.lock()?;
     let file = backup_otomatis_ke(&conn, &folder_pilihan(&conn, folder.as_deref())?, simpan.unwrap_or(CADANGAN_OTOMATIS_MAKS))?;

@@ -21,7 +21,102 @@ fn cp1252_dekode() {
     assert_eq!(dekode_cp1252(b"Toko Maju"), "Toko Maju");
     assert_eq!(dekode_cp1252(&[0x80, 0x93, 0x94, 0x96, 0x99]), "\u{20AC}\u{201C}\u{201D}\u{2013}\u{2122}");
     assert_eq!(dekode_cp1252(&[0xE9, 0xA0, 0xFF]), "é\u{A0}ÿ");
-    assert_eq!(dekode_cp1252(&[0x81]), "\u{FFFD}");
+    assert_eq!(dekode_cp1252(&[0x81, 0x90]), "\u{81}\u{90}");
+    assert_eq!(enkode_cp1252(&dekode_cp1252(&(0u8..=255).collect::<Vec<_>>())).unwrap(), (0u8..=255).collect::<Vec<_>>());
+}
+
+fn dari_hex(h: &str) -> Vec<u8> {
+    (0..h.len()).step_by(2).map(|i| u8::from_str_radix(&h[i..i + 2], 16).unwrap()).collect()
+}
+
+const HEX_ADMIN: &str = "93b8beb2c2a4b36f90bea6b8c8bbc463aab0b97087abb2bdc9b3ba6fb4be";
+const HEX_KASIR: &str = "9db5c4b2c6aeb07590c2b0b5cebbc86da7b6b97491a8b8bdcdbdb775b4c2";
+
+#[test]
+fn lama_password_vektor_installer() {
+    assert_eq!(lama_enkripsi(b"admin"), dari_hex(HEX_ADMIN));
+    assert_eq!(lama_enkripsi(b"kasir"), dari_hex(HEX_KASIR));
+    assert_eq!(lama_buka_password(&dari_hex(HEX_ADMIN)).as_deref(), Some("admin"));
+    assert_eq!(lama_buka_password(&dari_hex(HEX_KASIR)).as_deref(), Some("kasir"));
+    let panjang = "Sandi Panjang !@#~ 123 dengan spasi dan tanda baca yang melewati 49 huruf";
+    assert_eq!(lama_buka_password(&lama_enkripsi(panjang.as_bytes())).as_deref(), Some(panjang));
+}
+
+#[test]
+fn lama_password_data_rusak_none() {
+    let mut ok = dari_hex(HEX_ADMIN);
+    assert!(lama_buka_password(&[]).is_none());
+    assert!(lama_buka_password(&ok[..29]).is_none(), "panjang bukan kelipatan 6");
+    ok[7] = ok[7].wrapping_add(1);
+    assert!(lama_buka_password(&ok).is_none(), "ulangan berbeda");
+    assert!(lama_buka_password(b"rahasia").is_none());
+    assert!(lama_buka_password(&lama_enkripsi("caf\u{e9}".as_bytes())).is_none(), "di luar ASCII");
+    assert!(lama_buka_password(&lama_enkripsi(&[b'a', 9, b'b'])).is_none(), "karakter kontrol");
+}
+
+#[test]
+fn password_pindahan_hash_atau_null() {
+    let teks = dekode_cp1252(&dari_hex(HEX_ADMIN));
+    let h = password_pindahan(Some(&teks)).unwrap();
+    assert!(h.starts_with("$argon2"), "{h}");
+    assert!(!h.contains("admin"));
+    assert!(password_pindahan(None).is_none());
+    assert!(password_pindahan(Some("")).is_none());
+    assert!(password_pindahan(Some("rahasia")).is_none());
+    assert!(password_pindahan(Some("\u{4e2d}")).is_none(), "huruf di luar cp1252");
+    // Teks yang tidak bisa kembali ke byte asal (U+FFFD) tidak dianggap terbaca: hasilnya NULL.
+    let t: String = std::iter::once('\u{FFFD}').chain(dekode_cp1252(&dari_hex(HEX_ADMIN)).chars().skip(1)).collect();
+    assert!(password_pindahan(Some(&t)).is_none());
+}
+
+#[test]
+fn password_pindahan_data_rusak_satu_byte_jadi_null() {
+    // Satu byte diubah: validasi enam ulangan di `lama_buka_password` menolaknya, hasilnya NULL.
+    for n in [0usize, 7, 29] {
+        let mut b = dari_hex(HEX_ADMIN);
+        b[n] = b[n].wrapping_add(1);
+        assert!(lama_buka_password(&b).is_none(), "byte {n}");
+        assert!(password_pindahan(Some(&dekode_cp1252(&b))).is_none(), "byte {n}");
+    }
+}
+
+#[test]
+fn password_byte_tinggi_cp1252_kembali_utuh() {
+    // Hasil enkripsi memuat byte di atas 0x7F; harus lolos dekode cp1252 lalu kembali ke byte asal.
+    let b = lama_enkripsi(b"zzzzzz");
+    assert!(b.iter().any(|&x| x >= 0x80));
+    assert_eq!(enkode_cp1252(&dekode_cp1252(&b)).unwrap(), b);
+    assert!(password_pindahan(Some(&dekode_cp1252(&b))).is_some());
+}
+
+#[test]
+fn pindah_mduser_isi_hash_dan_login_password_lama() {
+    use crate::auth::{masuk, verifikasi_pengelola as v};
+    let d = tmp("sandi");
+    let file = d.join("baru.db");
+    let mut p = Palsu::default();
+    let (a, k) = (dekode_cp1252(&dari_hex(HEX_ADMIN)), dekode_cp1252(&dari_hex(HEX_KASIR)));
+    p.isi("MDUSER", &["IDUSER", "PSWDUSER", "KODEKARYAWAN", "LEVEL", "AKTIF"], &[
+        &[s("Admin"), s(&a), s("-"), s("Supervisor"), s("1")],
+        &[s("kasir"), s(&k), s("-"), s("Kasir"), s("1")],
+        &[s("rusak"), s("rahasia"), s("-"), s("Kasir"), s("1")],
+        &[s("kosong"), None, s("-"), s("Kasir"), s("1")],
+    ]);
+    bangun_sqlite(&p, &file, &mut |_| {}).unwrap();
+    let c = Connection::open(&file).unwrap();
+    let psw = |id: &str| c.query_row("SELECT pswduser FROM mduser WHERE iduser=?1", [id], |r| r.get::<_, Option<String>>(0)).unwrap();
+    assert!(psw("Admin").unwrap().starts_with("$argon2"));
+    assert!(psw("kasir").unwrap().starts_with("$argon2"));
+    assert!(psw("rusak").is_none() && psw("kosong").is_none());
+
+    assert_eq!(v(&c, "admin", "admin").unwrap().iduser, "Admin");
+    assert!(v(&c, "Admin", "salah").is_err());
+    assert!(!masuk(&c, "kasir", "kasir").unwrap().must_change);
+    assert!(masuk(&c, "kasir", "admin").is_err(), "password sementara tidak berlaku untuk akun yang sudah punya password");
+    // Yang tidak terbaca masuk dengan password sementara dan wajib menggantinya.
+    assert!(masuk(&c, "rusak", "rahasia").is_err());
+    assert!(masuk(&c, "rusak", "admin").unwrap().must_change);
+    let _ = std::fs::remove_dir_all(d);
 }
 
 #[test]
@@ -94,6 +189,51 @@ fn cari_di_menemukan_data_dan_backup() {
     assert_eq!(fdk.len(), 5);
     assert_eq!(t.folder_firebird, vec![PathBuf::from("C:\\FB\\bin")]);
     assert_eq!(fdb[0].waktu.len(), 16);
+    let _ = std::fs::remove_dir_all(akar);
+}
+
+#[test]
+fn nama_komputer_lama_dibersihkan() {
+    let b = |m: &str| bersihkan_nama_komputer(m, "KASIR-2");
+    // Komputer ini sendiri server lama: diabaikan.
+    assert_eq!(b("localhost"), None);
+    assert_eq!(b("LOCALHOST"), None);
+    assert_eq!(b("127.0.0.1"), None);
+    assert_eq!(b("::1"), None);
+    assert_eq!(b("kasir-2"), None);
+    assert_eq!(b("KASIR-2/3050"), None);
+    assert_eq!(b(""), None);
+    assert_eq!(b("   "), None);
+    // Komputer lain: dipakai, port Firebird dipotong.
+    assert_eq!(b("SERVER"), Some("SERVER".into()));
+    assert_eq!(b("  SERVER  "), Some("SERVER".into()));
+    assert_eq!(b("SERVER/3050"), Some("SERVER".into()));
+    assert_eq!(b("SERVER:3050"), Some("SERVER".into()));
+    assert_eq!(b("192.168.1.5"), Some("192.168.1.5".into()));
+    assert_eq!(b("192.168.1.5/3050"), Some("192.168.1.5".into()));
+    assert_eq!(b("192.168.1.5:3050"), Some("192.168.1.5".into()));
+    assert_eq!(b("fe80::1"), Some("fe80::1".into()));
+}
+
+#[test]
+fn nama_komputer_lama_dibaca_dari_settings_ini() {
+    let akar = tmp("namakomp");
+    let tulis = |sub: &str, isi: &str| {
+        let d = akar.join(sub);
+        std::fs::create_dir_all(&d).unwrap();
+        std::fs::write(d.join("Settings.ini"), isi).unwrap();
+    };
+    // Tidak ada instalasi lama.
+    assert_eq!(nama_komputer_lama_di(&[akar.clone()], "KASIR-2"), None);
+    // Kosong, localhost, dan nama sendiri: komputer ini server lama.
+    for nilai in ["", "localhost", "KASIR-2"] {
+        tulis("TokoPro", &format!("[Database]\nNamaKomputer={nilai}\n"));
+        assert_eq!(nama_komputer_lama_di(&[akar.clone()], "KASIR-2"), None, "{nilai}");
+    }
+    tulis("TokoPro", "[Database]\r\nNamaKomputer=SERVER/3050\r\n");
+    assert_eq!(nama_komputer_lama_di(&[akar.clone()], "KASIR-2"), Some("SERVER".into()));
+    tulis("TokoPro", "[Database]\nNamaKomputer=192.168.1.5\n");
+    assert_eq!(nama_komputer_lama_di(&[akar.clone()], "KASIR-2"), Some("192.168.1.5".into()));
     let _ = std::fs::remove_dir_all(akar);
 }
 
@@ -225,7 +365,10 @@ fn pindahkan_dari_firebird_docker() {
         assert_eq!(n("SELECT COUNT(*) FROM transaksi"), 762);
         assert_eq!(n("SELECT COUNT(*) FROM transaksidetil"), 2379);
         assert_eq!(n("SELECT COUNT(*) FROM mduser"), 3);
-        assert_eq!(n("SELECT COUNT(*) FROM mduser WHERE pswduser IS NOT NULL"), 0);
+        // Data contoh memakai password bawaan installer: ketiganya terbaca dan disimpan sebagai hash Argon2.
+        assert_eq!(n("SELECT COUNT(*) FROM mduser WHERE pswduser LIKE '$argon2%'"), 3);
+        assert_eq!(crate::auth::masuk(&c, "kasir", "kasir").unwrap().iduser, "kasir");
+        assert_eq!(crate::auth::masuk(&c, "admin", "admin").unwrap().iduser, "Admin");
     }
 
     // Stok di SQLite harus sama dengan Firebird (trigger tidak menghitung dobel).

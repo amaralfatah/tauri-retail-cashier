@@ -172,6 +172,35 @@ Teks yang dilihat kasir dan pemilik toko memakai sapaan "Anda", kalimat aktif, d
 Istilah baku: "Supplier" (bukan Pemasok), "Pengguna" untuk akun (layar Login tetap "Nama User"). Label kolom kepala transaksi
 mengikuti caption form VB-nya (Kasir/Petugas). Uang ditulis `Rp 4.500` (tanpa titik setelah Rp, tanpa ",-").
 
+## Komputer Pusat (jaringan toko)
+
+Mode Tunggal (bawaan), Pusat, dan Kasir, diatur di `pusat.json`. Rancangan, keputusan, dan catatan "Sudah dikerjakan (Tahap N)" ada di
+`docs/rancangan-komputer-pusat.md`; baca di sana sebelum mengubah bagian ini. Panduan pengguna ada di `src/pages/Panduan.tsx` (bab "Komputer Pusat dan komputer kasir") dan README.
+
+| File | Isi |
+|---|---|
+| `src-tauri/src/jaringan/` | `kendali.rs` (mode, server, status), `server.rs` (axum: `/halo`, `/sambung`, `/jalankan`), `klien.rs` (komputer Kasir), `golongan.rs`, `perangkat.rs`, `batas.rs`, `firewall.rs` |
+| `src-tauri/src/jaringan/firewall.rs` | Aturan firewall Windows "Toko Pro Pusat" lewat `netsh` dengan UAC. Di luar Windows tidak melakukan apa-apa |
+| `src-tauri/windows/hooks.nsh` | Hook NSIS (`NSIS_HOOK_POSTUNINSTALL`) yang menghapus aturan firewall saat uninstall |
+| `src-tauri/src/pindah_otomatis.rs` | Pindah otomatis dari Toko Pro lama saat dibuka pertama kali |
+| `src/pages/KomputerPusat.tsx`, `PilihanAwal.tsx`, `src/components/StatusPusat.tsx` | Layar Komputer Pusat, layar pilihan awal, ikon status |
+| `src/api/pusat.ts`, `src/lib/panggil.ts`, `src/lib/statusPusat.ts` | Pembungkus perintah, peralihan lokal/jaringan, status |
+
+Aturan:
+
+- **Setiap perintah yang dipanggil tampilan masuk satu golongan** di `golongan.rs`: Lokal (dikerjakan di komputer ini), Data (dikirim ke Pusat), Khusus Pusat
+  (ditolak di Kasir), atau Campuran. Perintah baru yang tidak didaftarkan ditolak di Kasir, dan tes `tests_dispatch.rs`/`tests_tahap6.rs` gagal.
+  Perintah Data yang menerima alamat file atau folder harus ditinjau (lihat Tahap 6 di dokumen rancangan).
+- Perintah simpan memakai `idPermintaan` (daftar `perintah_simpan` di Rust dan `SIMPAN_SAMA`/`SIMPAN_AWALAN` di `src/lib/perintahSimpan.ts` harus sama; `npm run tes:simpan` memeriksanya). Semua perintah yang bukan simpan dianggap baca (`perintah_baca`).
+  ID dibuat baru setiap panggilan dan hanya dipakai ulang oleh dialog Coba Lagi; jangan mengingat ID berdasarkan isi perintah.
+- Tanggal di tampilan: `today()` dan `sekarang()` memakai selisih jam **dinding** Pusat (`terapkanJamPusat`, `src/format.ts`), bukan selisih epoch. Tes: `npm run tes:jam`.
+- Server Pusat memeriksa token dari header sebelum membaca badan, mereservasi percobaan login (`Pembatas::coba`) per perangkat dan per IP, dan membatasi masa terima otomatis (10 perangkat, satu per IP). Di tes, header `x-uji-ip` meniru alamat pengirim.
+- Kasir tidak membuka database. Jangan memakai `Db` untuk data toko dari perintah Lokal di komputer Kasir.
+- Kode Windows memakai `#[cfg(windows)]`. Di macOS tidak bisa dijalankan, tetapi bisa dicek: `rustup target add x86_64-pc-windows-msvc`, lalu
+  `cargo check --target x86_64-pc-windows-msvc` (di macOS gagal di C dependensi `ring`; CI Windows di `.github/workflows/release.yml` yang menguji penuh).
+- Lihat tampilan Pusat/Kasir di browser dev lewat `?simulasiPusat=` (daftar nilainya di komentar `src/dev/tauriMock.ts`); kalau port 1420 sedang dipakai, jalankan `npx vite --port 1430`.
+- Teks untuk pengguna ikut aturan "Teks untuk pengguna" di atas: tidak ada keterangan jenis jaringan di layar (penjelasan alamat `169.254.x.x` hanya di panduan).
+
 ## Pembaruan otomatis
 
 Plugin updater Tauri (`src/lib/pembaruan.ts`, dialog `src/components/PembaruanDialog.tsx`). Cek diam-diam 8 detik setelah dibuka,

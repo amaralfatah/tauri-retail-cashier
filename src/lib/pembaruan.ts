@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from "react";
 import { getVersion } from "@tauri-apps/api/app";
 import type { Update } from "@tauri-apps/plugin-updater";
+import { Channel, perintahTauri } from "@/lib/panggil";
 
 /**
  * Pembaruan aplikasi (plugin updater Tauri). Status dipegang di satu tempat supaya ikon di header,
@@ -18,16 +19,23 @@ interface Status {
   mengecek: boolean;
   /** Versi yang pemberitahuan Berandanya sudah ditutup di komputer ini (selama aplikasi terbuka). */
   noticeDitutup: string;
+  /** Komputer ini komputer Kasir: pembaruannya selalu ke versi Pusat, dan boleh dipasang semua akun (rancangan 6.4). */
+  kasir: boolean;
 }
 
-let status: Status = { baru: null, versi: "", dialog: false, mengecek: false, noticeDitutup: "" };
+let status: Status = { baru: null, versi: "", dialog: false, mengecek: false, noticeDitutup: "", kasir: false };
 const pendengar = new Set<() => void>();
 const ubah = (p: Partial<Status>) => { status = { ...status, ...p }; pendengar.forEach((f) => f()); };
 export const usePembaruan = () => useSyncExternalStore((f) => { pendengar.add(f); return () => { pendengar.delete(f); }; }, () => status);
 
 export const diJendelaTauri = () => "__TAURI_INTERNALS__" in window && !("__TOKOPRO_MOCK__" in window);
 /** Di browser biasa saat pengembangan, `?simulasiUpdate=1` memunculkan versi baru palsu untuk melihat tampilannya. */
-const simulasi = () => import.meta.env.DEV && !diJendelaTauri() && new URLSearchParams(window.location.search).has("simulasiUpdate");
+const simulasi = () => {
+  if (!import.meta.env.DEV || diJendelaTauri()) return false;
+  const q = new URLSearchParams(window.location.search);
+  // `?simulasiPusat=versi-beda` juga memunculkan versi baru palsu, supaya jalur "Perbarui Sekarang" di komputer kasir bisa dilihat.
+  return q.has("simulasiUpdate") || q.get("simulasiPusat") === "versi-beda";
+};
 
 let tertunda: Pick<Update, "downloadAndInstall"> | null = null;
 
@@ -37,6 +45,13 @@ export async function bacaVersi(): Promise<string> {
     if (v) ubah({ versi: v });
     return v;
   } catch { return ""; }
+}
+
+async function modeKasir(): Promise<boolean> {
+  try {
+    const s = await perintahTauri<{ mode?: string } | null>("pusat_status");
+    return s?.mode === "kasir";
+  } catch { return false; }
 }
 
 /** Tanda markdown dibuang: catatan rilis ditampilkan sebagai teks biasa. */
@@ -73,6 +88,22 @@ export async function cekPembaruan(): Promise<HasilCek> {
       return "ada";
     }
     if (!diJendelaTauri()) return "terbaru";
+    if (await modeKasir()) {
+      // Komputer Kasir hanya boleh naik ke versi Pusat, jadi pengecekannya lewat Rust (alamat rilis sesuai versi Pusat).
+      ubah({ kasir: true });
+      const info = await perintahTauri<{ version: string; currentVersion: string; body?: string } | null>("pembaruan_pusat_cek");
+      if (!info) { tertunda = null; ubah({ baru: null }); return "terbaru"; }
+      tertunda = {
+        async downloadAndInstall(onEvent) {
+          const saluran = new Channel<Parameters<NonNullable<typeof onEvent>>[0]>();
+          if (onEvent) saluran.onmessage = onEvent;
+          await perintahTauri("pembaruan_pusat_pasang", { kemajuan: saluran });
+        },
+      };
+      ubah({ baru: { versi: info.version, sekarang: info.currentVersion || sekarang, catatan: catatanBersih(info.body) } });
+      return "ada";
+    }
+    ubah({ kasir: false });
     const { check } = await import("@tauri-apps/plugin-updater");
     const u = await check();
     if (!u) { tertunda = null; ubah({ baru: null }); return "terbaru"; }

@@ -1,4 +1,4 @@
-import { invoke } from "@tauri-apps/api/core";
+import { invoke } from "@/lib/panggil";
 import { folderBackup } from "./keuangan";
 
 /** Pilihan "Auto Backup saat keluar aplikasi". Disimpan per komputer, seperti di aplikasi lama. */
@@ -15,8 +15,9 @@ export const autoBackup = {
 export async function cadanganSaatKeluar(): Promise<string | null> {
   if (!autoBackup.get()) return null;
   try {
-    const r = await invoke<{ path: string }>("backup_otomatis", { folder: folderBackup.get() || null, simpan: 10 });
-    return r.path;
+    // Di komputer Kasir hasilnya kosong: datanya ada di Pusat, jadi tidak ada yang dicadangkan.
+    const r = await invoke<{ path: string } | null>("backup_otomatis", { folder: folderBackup.get() || null, simpan: 10 });
+    return r?.path ?? null;
   } catch {
     return null;
   }

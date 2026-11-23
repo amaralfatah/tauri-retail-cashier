@@ -7,7 +7,7 @@ use crate::trans::{check_date, insert_kas_paksa};
 use rusqlite::{params, Connection};
 use serde::Deserialize;
 use serde_json::{json, Value};
-use tauri::State;
+use perintah_macro::perintah;
 
 /// Kategori yang ditawarkan di Input Transaksi Kas.
 pub const KATEGORI: &[&str] = &[
@@ -25,13 +25,13 @@ const SQL_MANUAL: &str = "(COALESCE(noreftrans,'') = ''
         OR (noreftrans NOT IN (SELECT notrans FROM transaksi) AND noreftrans NOT IN (SELECT nopiutang FROM trkartupiutang)))
      AND COALESCE(keterangan,'') NOT LIKE '%Pelunasan%'";
 
-#[tauri::command]
+#[perintah]
 pub fn kas_kategori() -> Vec<&'static str> {
     KATEGORI.to_vec()
 }
 
-#[tauri::command]
-pub fn kas_list(db: State<Db>, session: State<Session>, dari: Option<String>, sampai: Option<String>) -> Res<Value> {
+#[perintah]
+pub fn kas_list(db: &Db, session: &Session, dari: Option<String>, sampai: Option<String>) -> Res<Value> {
     let user = session.user()?;
     let conn = db.lock()?;
     crate::auth::require_menu(&conn, &user, "mnKeuangan")?;
@@ -77,8 +77,8 @@ pub struct KasInput {
     pub ket: String,
 }
 
-#[tauri::command]
-pub fn kas_save(db: State<Db>, session: State<Session>, input: KasInput) -> Res<Value> {
+#[perintah]
+pub fn kas_save(db: &Db, session: &Session, input: KasInput) -> Res<Value> {
     let user = session.user()?;
     let mut conn = db.lock()?;
     crate::auth::require_menu(&conn, &user, "mnKeuangan")?;
@@ -93,7 +93,7 @@ pub fn simpan(conn: &mut Connection, user: &User, input: &KasInput) -> Res<Value
     }
     // Seperti aslinya, jumlah nol dan kategori kosong tidak ditolak.
     let jumlah = round2(if jenis == "Keluar" { input.keluar } else { input.masuk });
-    let tx = conn.transaction().map_err(e)?;
+    let tx = conn.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate).map_err(e)?;
 
     // Petugas: yang dipilih di form, kalau tidak ada maka akun yang sedang masuk.
     let petugas = if input.kodekaryawan.trim().is_empty() {
@@ -130,8 +130,8 @@ pub fn simpan(conn: &mut Connection, user: &User, input: &KasInput) -> Res<Value
     Ok(json!({ "idkas": idkas, "nokas": nokas }))
 }
 
-#[tauri::command]
-pub fn kas_delete(db: State<Db>, session: State<Session>, idkas: i64, izin: Option<String>) -> Res<()> {
+#[perintah]
+pub fn kas_delete(db: &Db, session: &Session, idkas: i64, izin: Option<String>) -> Res<()> {
     let user = session.user()?;
     let mut conn = db.lock()?;
     crate::auth::require_menu(&conn, &user, "mnKeuangan")?;
@@ -142,7 +142,7 @@ pub fn kas_delete(db: State<Db>, session: State<Session>, idkas: i64, izin: Opti
 }
 
 pub fn hapus(conn: &mut Connection, idkas: i64) -> Res<()> {
-    let tx = conn.transaction().map_err(e)?;
+    let tx = conn.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate).map_err(e)?;
     // Semua baris kas boleh dihapus, termasuk kas dari transaksi atau pelunasan (seperti aslinya).
     one(&tx, "SELECT idkas FROM keuangan WHERE idkas = ?1", params![idkas])?.ok_or("Data kas tidak ditemukan. Silakan muat ulang daftarnya.")?;
     tx.execute("DELETE FROM keuangan WHERE idkas = ?1", params![idkas]).map_err(e)?;

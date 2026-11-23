@@ -1,4 +1,4 @@
-import { invoke } from "@tauri-apps/api/core";
+import { invoke } from "@/lib/panggil";
 import type { Row, TransItem } from "../api";
 
 export interface ReturSumber { header: Row; detail: Row[]; piutang_terbuka?: number }

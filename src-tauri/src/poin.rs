@@ -6,7 +6,7 @@ use crate::db::{e, one, rows, Db, Res};
 use crate::trans::{check_date, next_number};
 use rusqlite::{params, Connection};
 use serde_json::{json, Value};
-use tauri::State;
+use perintah_macro::perintah;
 
 /// Pengaturan poin dari tabel TSETING.
 #[allow(dead_code)]
@@ -91,14 +91,14 @@ pub fn catat_poin(conn: &Connection, kodekaryawan: &str, kodepelanggan: &str, tg
     Ok(notukar)
 }
 
-#[tauri::command]
-pub fn poin_member(db: State<Db>, session: State<Session>, kode: String) -> Res<Value> {
+#[perintah]
+pub fn poin_member(db: &Db, session: &Session, kode: String) -> Res<Value> {
     session.user()?;
     cari_pelanggan(&*db.lock()?, &kode)
 }
 
-#[tauri::command]
-pub fn poin_histori(db: State<Db>, session: State<Session>, kode: String, jumlah: Option<i64>) -> Res<Vec<Value>> {
+#[perintah]
+pub fn poin_histori(db: &Db, session: &Session, kode: String, jumlah: Option<i64>) -> Res<Vec<Value>> {
     session.user()?;
     histori(&*db.lock()?, &kode, jumlah.unwrap_or(20))
 }
@@ -115,14 +115,14 @@ pub fn histori(conn: &Connection, kode: &str, jumlah: i64) -> Res<Vec<Value>> {
     )
 }
 
-#[tauri::command]
-pub fn poin_tukar(db: State<Db>, session: State<Session>, kode: String, jumlah: f64, catatan: String) -> Res<Value> {
+#[perintah]
+pub fn poin_tukar(db: &Db, session: &Session, kode: String, jumlah: f64, catatan: String) -> Res<Value> {
     let user = session.user()?;
     tukar(&mut *db.lock()?, &user, &kode, jumlah, &catatan)
 }
 
 pub fn tukar(conn: &mut Connection, user: &User, kode: &str, jumlah: f64, catatan: &str) -> Res<Value> {
-    let tx = conn.transaction().map_err(e)?;
+    let tx = conn.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate).map_err(e)?;
     let p = cari_pelanggan(&tx, kode)?;
     let kodepel = p["kodepelanggan"].as_str().unwrap_or_default().to_string();
     let poin = p["poin"].as_i64().unwrap_or(0);
@@ -139,8 +139,8 @@ pub fn tukar(conn: &mut Connection, user: &User, kode: &str, jumlah: f64, catata
     Ok(json!({ "notukar": notukar, "poin": poin - jumlah }))
 }
 
-#[tauri::command]
-pub fn poin_koreksi(db: State<Db>, session: State<Session>, kode: String, poin_baru: f64) -> Res<Value> {
+#[perintah]
+pub fn poin_koreksi(db: &Db, session: &Session, kode: String, poin_baru: f64) -> Res<Value> {
     let user = session.user()?;
     koreksi(&mut *db.lock()?, &user, &kode, poin_baru)
 }
@@ -152,7 +152,7 @@ pub fn koreksi(conn: &mut Connection, user: &User, kode: &str, poin_baru: f64) -
     if poin_baru.fract() != 0.0 || poin_baru < 0.0 {
         return Err("Isi poin yang benar dengan bilangan bulat, 0 atau lebih.".into());
     }
-    let tx = conn.transaction().map_err(e)?;
+    let tx = conn.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate).map_err(e)?;
     let p = cari_pelanggan(&tx, kode)?;
     let kodepel = p["kodepelanggan"].as_str().unwrap_or_default().to_string();
     let lama = p["poin"].as_i64().unwrap_or(0);

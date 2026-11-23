@@ -4,7 +4,7 @@ use crate::auth::{Session, User};
 use crate::db::{e, rows, Db, Res};
 use rusqlite::{params, Connection};
 use serde_json::{json, Value};
-use tauri::State;
+use perintah_macro::perintah;
 
 fn hanya_pengelola(user: &User) -> Res<()> {
     if user.level == "Kasir" {
@@ -97,32 +97,32 @@ pub fn hapus_item(conn: &Connection, kode: &str, nama: &str) -> Res<()> {
     Ok(())
 }
 
-#[tauri::command]
-pub fn nt_list(db: State<Db>, session: State<Session>) -> Res<Value> {
+#[perintah]
+pub fn nt_list(db: &Db, session: &Session) -> Res<Value> {
     session.user()?;
     daftar(&*db.lock()?)
 }
 
-#[tauri::command]
-pub fn nt_jenis_save(db: State<Db>, session: State<Session>, kode: String, nama: String, asli: Option<String>) -> Res<()> {
+#[perintah]
+pub fn nt_jenis_save(db: &Db, session: &Session, kode: String, nama: String, asli: Option<String>) -> Res<()> {
     hanya_pengelola(&session.user()?)?;
     simpan_jenis(&*db.lock()?, &kode, &nama, asli.as_deref())
 }
 
-#[tauri::command]
-pub fn nt_jenis_delete(db: State<Db>, session: State<Session>, kode: String) -> Res<()> {
+#[perintah]
+pub fn nt_jenis_delete(db: &Db, session: &Session, kode: String) -> Res<()> {
     hanya_pengelola(&session.user()?)?;
     hapus_jenis(&*db.lock()?, &kode)
 }
 
-#[tauri::command]
-pub fn nt_item_save(db: State<Db>, session: State<Session>, kode: String, nama: String, asli: Option<String>) -> Res<()> {
+#[perintah]
+pub fn nt_item_save(db: &Db, session: &Session, kode: String, nama: String, asli: Option<String>) -> Res<()> {
     hanya_pengelola(&session.user()?)?;
     simpan_item(&*db.lock()?, &kode, &nama, asli.as_deref())
 }
 
-#[tauri::command]
-pub fn nt_item_delete(db: State<Db>, session: State<Session>, kode: String, nama: String) -> Res<()> {
+#[perintah]
+pub fn nt_item_delete(db: &Db, session: &Session, kode: String, nama: String) -> Res<()> {
     hanya_pengelola(&session.user()?)?;
     hapus_item(&*db.lock()?, &kode, &nama)
 }

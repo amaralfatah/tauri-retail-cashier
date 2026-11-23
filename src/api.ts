@@ -1,4 +1,4 @@
-import { invoke } from "@tauri-apps/api/core";
+import { invoke } from "@/lib/panggil";
 
 export type Row = Record<string, any>;
 
@@ -94,8 +94,11 @@ export const api = {
   laporanData: (jenis: string, filter: Record<string, string>) => invoke<Row[]>("laporan_data", { jenis, filter }),
 };
 
+/** Awalan "[pusat] " dari komputer kasir tidak perlu dilihat pengguna. */
+const tanpaAwalan = (t: string) => (t.startsWith("[pusat] ") ? t.slice(8) : t);
+
 export function errText(err: unknown): string {
-  if (typeof err === "string") return err;
-  if (err instanceof Error) return err.message;
+  if (typeof err === "string") return tanpaAwalan(err);
+  if (err instanceof Error) return tanpaAwalan(err.message);
   return "Terjadi kesalahan. Silakan coba lagi.";
 }

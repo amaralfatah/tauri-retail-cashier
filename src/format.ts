@@ -10,9 +10,36 @@ export const num = (s: string) => {
   return Number.isFinite(n) ? n : 0;
 };
 
-export function today(): string {
-  const d = new Date();
-  return localDate(d);
+// Selisih jam DINDING Pusat terhadap komputer ini (ms): tanggal dan jam yang terbaca di jam Pusat dikurangi yang terbaca di jam komputer ini,
+// tanpa memperhitungkan zona waktu. Nol di mode Tunggal dan di komputer Pusat. Diisi `terapkanJamPusat` (lewat `sinkronJamPusat`, src/api/pusat.ts).
+// Zona Windows di komputer kasir sering salah (bawaan Pacific, jam diatur manual supaya tampil WIB), jadi selisih epoch tidak boleh dipakai:
+// tanggalnya bisa mundur sehari selama belasan jam setiap hari (rancangan 4.3).
+let selisihJamMs = 0;
+
+/** Baca "YYYY-MM-DD HH:MM:SS" sebagai jam dinding di zona komputer ini (tanpa mengubah zona). `null` bila bentuknya salah. */
+export function parseSebagaiLokalNaif(teks: string): number | null {
+  const m = /^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2}):(\d{2})/.exec(String(teks).trim());
+  if (!m) return null;
+  const [y, mo, d, h, mi, s] = m.slice(1).map(Number);
+  return new Date(y, mo - 1, d, h, mi, s).getTime();
+}
+
+/**
+ * Pakai jam Pusat dari perintah lokal `jam_pusat`. Hanya yang `dariPusat` (komputer Kasir yang sedang tersambung) yang dipakai;
+ * selain itu (null, Tunggal, Pusat) selisihnya kembali ke nol.
+ */
+export function terapkanJamPusat(j: { dariPusat: boolean; dinding: string } | null | undefined, sekarangMs: number = Date.now()) {
+  const pusat = j?.dariPusat ? parseSebagaiLokalNaif(j.dinding) : null;
+  selisihJamMs = pusat === null ? 0 : pusat - sekarangMs;
+}
+
+/** Waktu sekarang menurut jam Pusat (jam komputer ini bila tidak tersambung ke Pusat). Komponen lokalnya (tanggal, jam) sama dengan jam dinding Pusat. */
+export function sekarang(sekarangMs: number = Date.now()): Date {
+  return new Date(sekarangMs + selisihJamMs);
+}
+
+export function today(sekarangMs?: number): string {
+  return localDate(sekarang(sekarangMs));
 }
 
 export function localDate(d: Date): string {

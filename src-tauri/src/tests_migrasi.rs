@@ -129,7 +129,7 @@ fn langkah_baru_jalan_sekali_dan_aman_diulang() {
     let schema = db::SCHEMA;
     drop(db::open(&p).unwrap());
     let mut c = Connection::open(&p).unwrap();
-    c.execute_batch("INSERT INTO mdbarang (kodebarang, namabarang) VALUES ('A1','Sabun');").unwrap();
+    c.execute_batch("INSERT INTO mdbarang (kodebarang, namabarang) VALUES ('A1','Sabun'); PRAGMA user_version = 0;").unwrap();
     assert!(!kolom_ada(&c, "mdbarang", "warna"));
     let daftar = langkah2_sql();
     migrasi::jalankan(&mut c, schema, &daftar).unwrap();
@@ -151,6 +151,7 @@ fn langkah_gagal_dibatalkan_seluruhnya() {
     let p = d.0.join("t.db");
     drop(db::open(&p).unwrap());
     let mut c = Connection::open(&p).unwrap();
+    c.execute_batch("PRAGMA user_version = 0").unwrap();
     let daftar = vec![
         Migrasi { no: 1, deskripsi: "satu", aksi: Aksi::Fungsi(|_| Ok(())) },
         Migrasi { no: 2, deskripsi: "gagal di tengah", aksi: Aksi::Sql("ALTER TABLE mdbarang ADD COLUMN setengah TEXT; INSERT INTO tabel_tidak_ada VALUES (1);") },
@@ -237,4 +238,145 @@ fn pindah_lama_lalu_pulihkan_berakhir_di_versi_terbaru() {
     assert_eq!(n, "Kopi");
     // Data impor sudah susunan terbaru, jadi tidak ada cadangan "sebelum-update" dari langkah yang salah jalan.
     assert_eq!(jumlah_backup(&d, "sebelum-update"), 0);
+}
+
+#[test]
+fn versi_satu_naik_ke_dua_dengan_tabel_sesi_dan_data_utuh() {
+    let d = Dir::new();
+    let p = d.0.join("v1.db");
+    {
+        let c = Connection::open(&p).unwrap();
+        c.execute_batch(db::SCHEMA).unwrap();
+        c.execute_batch("DROP TABLE sesi_perangkat; INSERT INTO mdbarang (kodebarang, namabarang) VALUES ('A1','Sabun'); PRAGMA user_version = 1;").unwrap();
+    }
+    let c = db::open(&p).unwrap();
+    assert_eq!(ver(&c), migrasi::versi_terbaru());
+    assert!(migrasi::versi_terbaru() >= 2);
+    assert!(kolom_ada(&c, "sesi_perangkat", "token_hash"));
+    assert!(kolom_ada(&c, "sesi_perangkat", "iduser"));
+    let nama: String = c.query_row("SELECT namabarang FROM mdbarang WHERE kodebarang='A1'", [], |r| r.get(0)).unwrap();
+    assert_eq!(nama, "Sabun");
+    // Dibuka lagi: aman, tabel tetap ada.
+    drop(c);
+    let c = db::open(&p).unwrap();
+    assert!(kolom_ada(&c, "sesi_perangkat", "mulai"));
+}
+
+#[test]
+fn versi_dua_naik_ke_tiga_dengan_tabel_perangkat_dan_data_utuh() {
+    let d = Dir::new();
+    let p = d.0.join("v2.db");
+    {
+        let c = Connection::open(&p).unwrap();
+        c.execute_batch(db::SCHEMA).unwrap();
+        c.execute_batch("DROP TABLE perangkat; INSERT INTO mdbarang (kodebarang, namabarang) VALUES ('A1','Sabun'); PRAGMA user_version = 2;").unwrap();
+    }
+    let c = db::open(&p).unwrap();
+    assert_eq!(ver(&c), migrasi::versi_terbaru());
+    assert!(migrasi::versi_terbaru() >= 3);
+    for k in ["id", "nama_komputer", "token_hash", "dibuat", "terakhir_terlihat", "aktif", "otomatis"] {
+        assert!(kolom_ada(&c, "perangkat", k), "kolom {k} tidak ada");
+    }
+    let nama: String = c.query_row("SELECT namabarang FROM mdbarang WHERE kodebarang='A1'", [], |r| r.get(0)).unwrap();
+    assert_eq!(nama, "Sabun");
+    // Langkah aman diulang: dibuka lagi tidak mengubah apa pun.
+    drop(c);
+    let c = db::open(&p).unwrap();
+    assert_eq!(ver(&c), migrasi::versi_terbaru());
+}
+
+#[test]
+fn versi_tiga_naik_ke_empat_dengan_tabel_permintaan_selesai_dan_data_utuh() {
+    let d = Dir::new();
+    let p = d.0.join("v3.db");
+    {
+        let c = Connection::open(&p).unwrap();
+        c.execute_batch(db::SCHEMA).unwrap();
+        c.execute_batch("DROP TABLE permintaan_selesai; INSERT INTO mdbarang (kodebarang, namabarang) VALUES ('A1','Sabun'); PRAGMA user_version = 3;").unwrap();
+    }
+    let c = db::open(&p).unwrap();
+    assert_eq!(ver(&c), migrasi::versi_terbaru());
+    assert!(migrasi::versi_terbaru() >= 4);
+    for k in ["id", "perintah", "hasil_json", "waktu"] {
+        assert!(kolom_ada(&c, "permintaan_selesai", k), "kolom {k} tidak ada");
+    }
+    let nama: String = c.query_row("SELECT namabarang FROM mdbarang WHERE kodebarang='A1'", [], |r| r.get(0)).unwrap();
+    assert_eq!(nama, "Sabun");
+    drop(c);
+    let c = db::open(&p).unwrap();
+    assert_eq!(ver(&c), migrasi::versi_terbaru());
+}
+
+/* ---- Langkah diuji sendiri, tanpa `schema.sql` sebagai pelengkap ---- */
+
+/// Tabel dan kolom yang harus dibuat tiap langkah (nomor langkah, tabel, kolom).
+const HASIL_LANGKAH: &[(i64, &str, &[&str])] = &[
+    (2, "sesi_perangkat", &["token_hash", "idperangkat", "iduser", "mulai", "terakhir"]),
+    (3, "perangkat", &["id", "nama_komputer", "token_hash", "dibuat", "terakhir_terlihat", "aktif", "otomatis"]),
+    (4, "permintaan_selesai", &["id", "perintah", "hasil_json", "waktu"]),
+];
+
+fn tabel_ada(c: &Connection, tabel: &str) -> bool {
+    c.query_row("SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name = ?1", [tabel], |r| r.get::<_, i64>(0)).unwrap() > 0
+}
+
+/// Database versi `no - 1`: susunan terbaru, tetapi tabel hasil langkah `no` dan sesudahnya dihapus.
+fn db_sebelum_langkah(d: &Dir, no: i64) -> Connection {
+    let c = Connection::open(d.0.join(format!("sebelum-{no}.db"))).unwrap();
+    c.execute_batch(db::SCHEMA).unwrap();
+    for (n, tabel, _) in HASIL_LANGKAH.iter().filter(|(n, _, _)| *n >= no) {
+        c.execute_batch(&format!("DROP TABLE {tabel}")).unwrap_or_else(|e| panic!("langkah {n}: {e}"));
+    }
+    c.execute_batch(&format!("INSERT INTO mdbarang (kodebarang, namabarang) VALUES ('A1','Sabun'); PRAGMA user_version = {};", no - 1)).unwrap();
+    c
+}
+
+#[test]
+fn setiap_langkah_membuat_tabelnya_sendiri_tanpa_pelengkap_schema() {
+    for (no, tabel, kolom) in HASIL_LANGKAH {
+        let d = Dir::new();
+        let mut c = db_sebelum_langkah(&d, *no);
+        assert!(!tabel_ada(&c, tabel), "langkah {no}: tabel {tabel} seharusnya belum ada");
+        // `schema` kosong: yang membuat tabelnya hanya langkah itu sendiri.
+        migrasi::jalankan(&mut c, "", MIGRASI).unwrap_or_else(|e| panic!("langkah {no}: {e}"));
+        assert_eq!(ver(&c), migrasi::versi_terbaru(), "langkah {no}");
+        assert!(tabel_ada(&c, tabel), "langkah {no} tidak membuat tabel {tabel}");
+        for k in *kolom {
+            assert!(kolom_ada(&c, tabel, k), "langkah {no}: kolom {k} tidak ada di {tabel}");
+        }
+        let nama: String = c.query_row("SELECT namabarang FROM mdbarang WHERE kodebarang='A1'", [], |r| r.get(0)).unwrap();
+        assert_eq!(nama, "Sabun", "langkah {no}: data toko harus utuh");
+        // Dijalankan lagi (versi sudah terbaru) tidak mengubah apa pun.
+        migrasi::jalankan(&mut c, "", MIGRASI).unwrap();
+    }
+}
+
+#[test]
+fn langkah_yang_dikosongkan_membuat_tes_di_atas_gagal() {
+    // Bukti tes peka: langkah 2 yang SQL-nya kosong tidak membuat tabel bila tidak ada pelengkap `schema`.
+    let d = Dir::new();
+    let mut c = db_sebelum_langkah(&d, 2);
+    let kosong = [
+        Migrasi { no: 1, deskripsi: "satu", aksi: Aksi::Fungsi(|_| Ok(())) },
+        Migrasi { no: 2, deskripsi: "kosong", aksi: Aksi::Sql("") },
+        Migrasi { no: 3, deskripsi: "kosong", aksi: Aksi::Sql("") },
+        Migrasi { no: 4, deskripsi: "kosong", aksi: Aksi::Sql("") },
+    ];
+    migrasi::jalankan(&mut c, "", &kosong).unwrap();
+    assert!(!tabel_ada(&c, "sesi_perangkat"));
+    assert!(!tabel_ada(&c, "perangkat"));
+    assert!(!tabel_ada(&c, "permintaan_selesai"));
+}
+
+#[test]
+fn langkah_berurutan_dari_setiap_versi_awal_sampai_terbaru() {
+    // Dari versi 1, 2, dan 3 sekaligus naik ke terbaru dengan hanya langkahnya.
+    for awal in 1..migrasi::versi_terbaru() {
+        let d = Dir::new();
+        let mut c = db_sebelum_langkah(&d, awal + 1);
+        migrasi::jalankan(&mut c, "", MIGRASI).unwrap();
+        for (_, tabel, _) in HASIL_LANGKAH {
+            assert!(tabel_ada(&c, tabel), "dari versi {awal}: tabel {tabel} tidak ada");
+        }
+    }
 }

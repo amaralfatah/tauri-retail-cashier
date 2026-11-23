@@ -14,7 +14,6 @@ use crate::db::{e, Res, SCHEMA};
 use rusqlite::{Connection, Transaction};
 
 pub enum Aksi {
-    #[allow(dead_code)]
     Sql(&'static str),
     Fungsi(fn(&Transaction) -> Res<()>),
 }
@@ -32,6 +31,21 @@ pub const MIGRASI: &[Migrasi] = &[Migrasi {
     // Susunan tabelnya sendiri sudah dibuat `schema.sql`. Langkah ini hanya menyusul perbaikan data lama yang dulu
     // dijalankan setiap kali program dibuka, dan aman dijalankan berulang.
     aksi: Aksi::Fungsi(crate::order::migrasi_pending_tx),
+},
+Migrasi {
+    no: 2,
+    deskripsi: "Tabel sesi_perangkat (sesi masuk per komputer)",
+    aksi: Aksi::Sql("CREATE TABLE IF NOT EXISTS sesi_perangkat (token_hash TEXT PRIMARY KEY NOT NULL, idperangkat TEXT NOT NULL DEFAULT '', iduser TEXT, mulai INTEGER NOT NULL, terakhir INTEGER NOT NULL);"),
+},
+Migrasi {
+    no: 3,
+    deskripsi: "Tabel perangkat (komputer kasir yang tersambung ke Pusat)",
+    aksi: Aksi::Sql("CREATE TABLE IF NOT EXISTS perangkat (id INTEGER PRIMARY KEY AUTOINCREMENT, nama_komputer TEXT NOT NULL, token_hash TEXT NOT NULL UNIQUE, dibuat INTEGER NOT NULL, terakhir_terlihat INTEGER NOT NULL, aktif INTEGER NOT NULL DEFAULT 1, otomatis INTEGER NOT NULL DEFAULT 0);"),
+},
+Migrasi {
+    no: 4,
+    deskripsi: "Tabel permintaan_selesai (hasil simpan, supaya simpan yang diulang tidak tercatat dua kali)",
+    aksi: Aksi::Sql("CREATE TABLE IF NOT EXISTS permintaan_selesai (id TEXT PRIMARY KEY NOT NULL, perintah TEXT NOT NULL, hasil_json TEXT NOT NULL, waktu INTEGER NOT NULL);"),
 }];
 
 pub fn versi_terbaru() -> i64 {

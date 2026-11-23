@@ -1,4 +1,4 @@
-import { invoke } from "@tauri-apps/api/core";
+import { invoke } from "@/lib/panggil";
 import { ChevronDownIcon, CornerDownLeftIcon, ScanBarcodeIcon, SearchIcon, Trash2Icon, XIcon } from "lucide-react";
 import { createPortal } from "react-dom";
 import { ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";

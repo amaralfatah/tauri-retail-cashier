@@ -28,11 +28,23 @@ chrono = "0.4.45"
 calamine = "0.38.0"
 rust_xlsxwriter = "0.103.0"
 tauri-plugin-dialog = "2.8.4"
+perintah-macro = { path = "perintah-macro" }
+sha2 = "0.11"
+getrandom = "0.3"
+axum = { version = "0.8", default-features = false, features = ["http1", "json", "tokio"] }
+tokio = { version = "1", features = ["net", "sync", "time"] }
+if-addrs = "0.15"
+# reqwest datang lewat plugin updater, dibangun dengan rustls tanpa penyedia kripto, dan `Client::new()` gagal
+# (panik) tanpa penyedia, juga untuk http biasa. `jaringan::klien::klien_http` memasang penyedia ring (sudah ada di Cargo.lock) sekali.
+reqwest = { version = "0.13", default-features = false, features = ["json"] }
+rustls = { version = "0.23", default-features = false, features = ["ring", "std"] }
 
 
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
 tauri-plugin-process = "2.4.0"
 tauri-plugin-updater = "2.14.1"
+
+[dev-dependencies]
 
 # Read the optimization guideline for more details: https://tauri.app/concept/size/#cargo-configuration
 [profile.release]

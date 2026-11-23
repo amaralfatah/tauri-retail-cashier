@@ -15,8 +15,12 @@ import { GridCol, ModalFrame, useMsgBox, VbGrid } from "../vb/VbGrid";
 import { ImporExcel } from "./ImporExcel";
 import { PindahLama } from "./PindahLama";
 import { Checklist } from "./keuanganLib";
+import { KunciPusat, useKunciPusat } from "../components/KunciPusat";
+import { KomputerPusat } from "./KomputerPusat";
 
-const TABS = ["Backup Data", "Restore Data", "Hapus Data", "Import Data", "SQL Editor", "Perbaiki Data", "Hapus Transaksi"];
+const TABS = ["Backup Data", "Restore Data", "Hapus Data", "Import Data", "SQL Editor", "Perbaiki Data", "Hapus Transaksi", "Komputer Pusat"];
+/** Tab yang hanya bisa dipakai di komputer Pusat (perintahnya "Khusus Pusat"): terkunci di komputer kasir. */
+const TAB_KHUSUS_PUSAT = new Set([0, 1, 3, 4, 5]);
 /** Tab yang bisa menghapus atau mengubah data: ditaruh terpisah di kanan dan berwarna merah. */
 const TAB_BAHAYA = new Set([2, 4, 6]);
 const URUT_TAB = [...TABS.keys()].filter((i) => !TAB_BAHAYA.has(i)).concat([...TABS.keys()].filter((i) => TAB_BAHAYA.has(i)));
@@ -50,6 +54,7 @@ export function Alat() {
   const [transPick, setTransPick] = useState<Set<string>>(new Set());
   const [sibuk, setSibuk] = useState(false);
   const [pindahLama, setPindahLama] = useState(false);
+  const kunci = useKunciPusat();
 
   useEffect(() => {
     dbApi.info().then((i) => { setLokasi(i?.path ?? ""); setFolder(folderBackup.get() || i?.folder_backup || ""); }).catch((e) => msg.alert(errText(e)));
@@ -215,7 +220,9 @@ export function Alat() {
         </div>
 
         <div className="min-h-0 flex-1 overflow-auto rounded-b-md rounded-tr-md border border-t-0 border-border bg-card p-4">
-          {tab === 0 && (
+          {kunci.terkunci && TAB_KHUSUS_PUSAT.has(tab) && <KunciPusat />}
+          {tab === 7 && <KomputerPusat />}
+          {!(kunci.terkunci && TAB_KHUSUS_PUSAT.has(tab)) && tab === 0 && (
             <div className="flex flex-col gap-3.5" data-vb="picTab(0)">
               <div className="flex flex-col gap-1.5" data-vb="tLokasiData">
                 <Label className="text-xs font-medium text-foreground">Lokasi Database</Label>
@@ -251,7 +258,7 @@ export function Alat() {
             </div>
           )}
 
-          {tab === 1 && (
+          {!(kunci.terkunci && TAB_KHUSUS_PUSAT.has(tab)) && tab === 1 && (
             <div className="flex flex-col gap-3.5" data-vb="picTab(1)">
               <div className="flex flex-col gap-1.5" data-vb="tLokasiDataRestore">
                 <Label className="text-xs font-medium text-foreground">Lokasi Database</Label>
@@ -308,7 +315,7 @@ export function Alat() {
             </div>
           )}
 
-          {tab === 3 && (
+          {!(kunci.terkunci && TAB_KHUSUS_PUSAT.has(tab)) && tab === 3 && (
             <div className="flex h-full flex-col gap-3" data-vb="picTab(3)">
               <div className="min-h-0 flex-1" data-vb="lsImport">
                 <Checklist radio items={jenisImpor} picked={new Set([imporPick])} onToggle={setImporPick} />
@@ -328,7 +335,7 @@ export function Alat() {
             </div>
           )}
 
-          {tab === 4 && (
+          {!(kunci.terkunci && TAB_KHUSUS_PUSAT.has(tab)) && tab === 4 && (
             <div className="flex h-full flex-col gap-3" data-vb="picTab(4)">
               <div className="min-h-0 flex-1" data-vb="tSQL">
                 <Textarea
@@ -346,7 +353,7 @@ export function Alat() {
             </div>
           )}
 
-          {tab === 5 && (
+          {!(kunci.terkunci && TAB_KHUSUS_PUSAT.has(tab)) && tab === 5 && (
             <div className="flex flex-col gap-3" data-vb="picTab(5)">
               <p className="text-xs text-muted-foreground">
                 Pakai alat di bawah ini kalau stok akhir tidak cocok atau harga pokok di laporan laba rugi terlihat janggal.

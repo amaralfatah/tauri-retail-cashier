@@ -8,7 +8,7 @@ use rusqlite::types::Value as Sql;
 use rusqlite::{params, params_from_iter, Connection};
 use serde_json::{json, Value};
 use std::path::Path;
-use tauri::State;
+use perintah_macro::perintah;
 
 #[derive(Clone, Copy, PartialEq)]
 enum Tipe {
@@ -412,7 +412,7 @@ pub fn impor_dengan(conn: &mut Connection, user: Option<&crate::auth::User>, kun
     }
     if j.kunci == "updatebarang" {
         let cadangan = backup_ke(conn, folder, "sebelum-impor")?;
-        let tx = conn.transaction().map_err(e)?;
+        let tx = conn.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate).map_err(e)?;
         let kolom: Vec<&str> = peta.iter().map(|p| p.0).filter(|k| *k != "kodebarang").collect();
         if kolom.is_empty() {
             return Err("File ini tidak punya kolom yang bisa diperbarui selain kodebarang.".into());
@@ -433,7 +433,7 @@ pub fn impor_dengan(conn: &mut Connection, user: Option<&crate::auth::User>, kun
     }
 
     let cadangan = backup_ke(conn, folder, "sebelum-impor")?;
-    let tx = conn.transaction().map_err(e)?;
+    let tx = conn.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate).map_err(e)?;
     if hapus_lama {
         tx.execute(&format!("DELETE FROM {}", j.tabel), []).map_err(e)?;
         if j.kunci == "barang" {
@@ -459,19 +459,19 @@ pub fn impor_dengan(conn: &mut Connection, user: Option<&crate::auth::User>, kun
 
 /* ---------------- Perintah Tauri ---------------- */
 
-#[tauri::command]
+#[perintah]
 pub fn impor_jenis() -> Vec<Value> {
     JENIS.iter().map(|j| json!({ "kunci": j.kunci, "nama": j.nama })).collect()
 }
 
-#[tauri::command]
-pub fn impor_baca(session: State<Session>, jenis: String, path: String) -> Res<Value> {
+#[perintah]
+pub fn impor_baca(session: &Session, jenis: String, path: String) -> Res<Value> {
     hanya_manager(&session.user()?)?;
     pratinjau(&jenis, &path)
 }
 
-#[tauri::command]
-pub fn impor_proses(db: State<Db>, session: State<Session>, jenis: String, path: String, hapus_lama: bool, folder: Option<String>) -> Res<Value> {
+#[perintah]
+pub fn impor_proses(db: &Db, session: &Session, jenis: String, path: String, hapus_lama: bool, folder: Option<String>) -> Res<Value> {
     hanya_manager(&session.user()?)?;
     let user = session.user()?;
     let mut conn = db.lock()?;

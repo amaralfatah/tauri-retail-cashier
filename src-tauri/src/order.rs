@@ -11,7 +11,7 @@ use crate::trans::{self, check_date, insert_detail, next_id, next_number, Item, 
 use rusqlite::{params, Connection, Transaction};
 use serde::Deserialize;
 use serde_json::{json, Value};
-use tauri::State;
+use perintah_macro::perintah;
 
 #[derive(Deserialize)]
 pub struct OrderInput {
@@ -42,8 +42,8 @@ fn kode_order(jual: bool) -> &'static str {
     if jual { "SO" } else { "PO" }
 }
 
-#[tauri::command]
-pub fn save_order(db: State<Db>, session: State<Session>, input: OrderInput) -> Res<Value> {
+#[perintah]
+pub fn save_order(db: &Db, session: &Session, input: OrderInput) -> Res<Value> {
     let user = session.user()?;
     let mut conn = db.lock()?;
     crate::auth::require_menu(&conn, &user, if input.jual { "mnTROrderJual" } else { "mnTROrderPembelian" })?;
@@ -76,7 +76,7 @@ pub fn simpan_order(conn: &mut Connection, user: &User, input: &OrderInput) -> R
     let (pelanggan, pemasok) = if input.jual { (kontak(&input.kodepelanggan), String::new()) } else { (String::new(), kontak(&input.kodepemasok)) };
     let dp = if input.jual { input.dp } else { 0.0 };
 
-    let tx = conn.transaction().map_err(e)?;
+    let tx = conn.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate).map_err(e)?;
     let notrans = match input.notrans.as_deref().filter(|s| !s.is_empty()) {
         Some(no) => {
             let status: Option<i64> = tx
@@ -113,8 +113,8 @@ pub fn simpan_order(conn: &mut Connection, user: &User, input: &OrderInput) -> R
     Ok(json!({ "notrans": notrans, "total": jmltrans }))
 }
 
-#[tauri::command]
-pub fn list_order(db: State<Db>, jual: bool, dari: String, sampai: String, search: Option<String>) -> Res<Vec<Value>> {
+#[perintah]
+pub fn list_order(db: &Db, jual: bool, dari: String, sampai: String, search: Option<String>) -> Res<Vec<Value>> {
     let conn = db.lock()?;
     daftar_order(&conn, jual, &dari, &sampai, search.as_deref().unwrap_or(""))
 }
@@ -142,8 +142,8 @@ pub fn daftar_order(conn: &Connection, jual: bool, dari: &str, sampai: &str, sea
     )
 }
 
-#[tauri::command]
-pub fn get_order(db: State<Db>, notrans: String) -> Res<Value> {
+#[perintah]
+pub fn get_order(db: &Db, notrans: String) -> Res<Value> {
     let conn = db.lock()?;
     ambil_order(&conn, &notrans)
 }
@@ -172,8 +172,8 @@ pub fn ambil_order(conn: &Connection, notrans: &str) -> Res<Value> {
     Ok(json!({ "header": header, "detail": detail }))
 }
 
-#[tauri::command]
-pub fn delete_order(db: State<Db>, session: State<Session>, notrans: String, izin: Option<String>) -> Res<()> {
+#[perintah]
+pub fn delete_order(db: &Db, session: &Session, notrans: String, izin: Option<String>) -> Res<()> {
     let user = session.user()?;
     let mut conn = db.lock()?;
     crate::auth::require_menu(&conn, &user, if notrans.starts_with("PO") { "mnTROrderPembelian" } else { "mnTROrderJual" })?;
@@ -184,7 +184,7 @@ pub fn delete_order(db: State<Db>, session: State<Session>, notrans: String, izi
 }
 
 pub fn hapus_order(conn: &mut Connection, notrans: &str) -> Res<()> {
-    let tx = conn.transaction().map_err(e)?;
+    let tx = conn.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate).map_err(e)?;
     let status: Option<i64> = tx
         .query_row("SELECT COALESCE(status,0) FROM transaksi WHERE notrans = ?1 AND kode IN ('SO','PO')", params![notrans], |r| r.get(0))
         .ok();
@@ -215,8 +215,8 @@ fn tandai_diambil(tx: &Transaction, notrans: &str, noorder: &str, tglorder: &str
     Ok(())
 }
 
-#[tauri::command]
-pub fn save_penjualan_order(db: State<Db>, session: State<Session>, input: TransInput, noorder: String) -> Res<Value> {
+#[perintah]
+pub fn save_penjualan_order(db: &Db, session: &Session, input: TransInput, noorder: String) -> Res<Value> {
     let user = session.user()?;
     let mut conn = db.lock()?;
     crate::auth::require_menu(&conn, &user, "mnTRTrPenjualan")?;
@@ -226,7 +226,7 @@ pub fn save_penjualan_order(db: State<Db>, session: State<Session>, input: Trans
 /// Simpan penjualan yang barangnya diambil dari order, dan tandai order sudah diambil, dalam satu langkah.
 /// Aturannya sama dengan penjualan biasa.
 pub fn penjualan_dari_order(conn: &mut Connection, user: &User, input: &TransInput, noorder: &str) -> Res<Value> {
-    let tx = conn.transaction().map_err(e)?;
+    let tx = conn.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate).map_err(e)?;
     let tglorder = order_terbuka(&tx, noorder, "SO")?;
     let r = trans::penjualan_tx(&tx, user, input)?;
     tandai_diambil(&tx, r["notrans"].as_str().unwrap_or_default(), noorder, &tglorder)?;
@@ -234,8 +234,8 @@ pub fn penjualan_dari_order(conn: &mut Connection, user: &User, input: &TransInp
     Ok(r)
 }
 
-#[tauri::command]
-pub fn save_pembelian_order(db: State<Db>, session: State<Session>, input: TransInput, noorder: String) -> Res<Value> {
+#[perintah]
+pub fn save_pembelian_order(db: &Db, session: &Session, input: TransInput, noorder: String) -> Res<Value> {
     let user = session.user()?;
     let mut conn = db.lock()?;
     crate::auth::require_menu(&conn, &user, "mnTRTransPembelian")?;
@@ -243,7 +243,7 @@ pub fn save_pembelian_order(db: State<Db>, session: State<Session>, input: Trans
 }
 
 pub fn pembelian_dari_order(conn: &mut Connection, user: &User, input: &TransInput, noorder: &str) -> Res<Value> {
-    let tx = conn.transaction().map_err(e)?;
+    let tx = conn.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate).map_err(e)?;
     let tglorder = order_terbuka(&tx, noorder, "PO")?;
     let r = trans::pembelian_tx(&tx, user, input)?;
     tandai_diambil(&tx, r["notrans"].as_str().unwrap_or_default(), noorder, &tglorder)?;
@@ -276,8 +276,8 @@ pub struct PendingInput {
     pub kodekasir: String,
 }
 
-#[tauri::command]
-pub fn save_pending(db: State<Db>, session: State<Session>, input: PendingInput) -> Res<Value> {
+#[perintah]
+pub fn save_pending(db: &Db, session: &Session, input: PendingInput) -> Res<Value> {
     let user = session.user()?;
     simpan_pending(&mut *db.lock()?, &user, &input)
 }
@@ -287,7 +287,7 @@ pub fn simpan_pending(conn: &mut Connection, user: &User, input: &PendingInput) 
     if input.items.is_empty() {
         return Err("Data transaksi masih kosong.".into());
     }
-    let tx = conn.transaction().map_err(e)?;
+    let tx = conn.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate).map_err(e)?;
     let no = pending_tulis(&tx, if input.kodekasir.trim().is_empty() { &user.kodekaryawan } else { input.kodekasir.trim() }, input.nopending.as_deref(), &input.tgl, &input.kodepelanggan, &input.kodesales, &input.catatan, &input.items)?;
     let total = round2(input.items.iter().map(|i| i.jmljual * i.harga - i.disknilai).sum());
     tx.commit().map_err(e)?;
@@ -318,7 +318,7 @@ fn pending_tulis(tx: &Transaction, kasir: &str, nomor: Option<&str>, tgl: &str, 
 /// Pindahkan isi tabel pendingjual versi sebelumnya menjadi transaksi TP, lalu kosongkan tabel itu.
 #[cfg(test)]
 pub fn migrasi_pending(conn: &mut Connection) -> Res<()> {
-    let tx = conn.transaction().map_err(e)?;
+    let tx = conn.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate).map_err(e)?;
     migrasi_pending_tx(&tx)?;
     tx.commit().map_err(e)
 }
@@ -369,8 +369,8 @@ pub fn migrasi_pending_tx(tx: &Transaction) -> Res<()> {
     Ok(())
 }
 
-#[tauri::command]
-pub fn list_pending(db: State<Db>, dari: String, sampai: String, search: Option<String>) -> Res<Vec<Value>> {
+#[perintah]
+pub fn list_pending(db: &Db, dari: String, sampai: String, search: Option<String>) -> Res<Vec<Value>> {
     let conn = db.lock()?;
     daftar_pending(&conn, &dari, &sampai, search.as_deref().unwrap_or(""))
 }
@@ -396,8 +396,8 @@ pub fn daftar_pending(conn: &Connection, dari: &str, sampai: &str, search: &str)
     )
 }
 
-#[tauri::command]
-pub fn get_pending(db: State<Db>, nopending: String) -> Res<Value> {
+#[perintah]
+pub fn get_pending(db: &Db, nopending: String) -> Res<Value> {
     let conn = db.lock()?;
     ambil_pending(&conn, &nopending)
 }
@@ -414,8 +414,8 @@ pub fn ambil_pending(conn: &Connection, nopending: &str) -> Res<Value> {
     Ok(json!({ "header": header, "detail": detail }))
 }
 
-#[tauri::command]
-pub fn delete_pending(db: State<Db>, session: State<Session>, nopending: String, izin: Option<String>) -> Res<()> {
+#[perintah]
+pub fn delete_pending(db: &Db, session: &Session, nopending: String, izin: Option<String>) -> Res<()> {
     let user = session.user()?;
     crate::izin::periksa_hapus(&user, crate::izin::tanda_sah(&izin, &user))?;
     hapus_pending(&mut *db.lock()?, &nopending)?;
@@ -424,14 +424,14 @@ pub fn delete_pending(db: State<Db>, session: State<Session>, nopending: String,
 }
 
 /// Pending yang sudah dipakai untuk menyimpan penjualan ikut dibersihkan; ini bukan penghapusan oleh pengguna, jadi tanpa izin.
-#[tauri::command]
-pub fn pending_selesai(db: State<Db>, session: State<Session>, nopending: String) -> Res<()> {
+#[perintah]
+pub fn pending_selesai(db: &Db, session: &Session, nopending: String) -> Res<()> {
     session.user()?;
     hapus_pending(&mut *db.lock()?, &nopending)
 }
 
 pub fn hapus_pending(conn: &mut Connection, nopending: &str) -> Res<()> {
-    let tx = conn.transaction().map_err(e)?;
+    let tx = conn.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate).map_err(e)?;
     tx.execute("DELETE FROM transaksidetil WHERE notrans = ?1 AND kode = 'TP'", params![nopending]).map_err(e)?;
     tx.execute("DELETE FROM transaksi WHERE notrans = ?1 AND kode = 'TP'", params![nopending]).map_err(e)?;
     tx.commit().map_err(e)

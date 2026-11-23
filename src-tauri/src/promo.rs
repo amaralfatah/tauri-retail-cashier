@@ -13,7 +13,7 @@ use chrono::NaiveDate;
 use rusqlite::{params, Connection};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
-use tauri::State;
+use perintah_macro::perintah;
 
 /// Hasil pencarian promo untuk satu barang.
 #[derive(Debug, Clone, PartialEq, Serialize, Default)]
@@ -251,7 +251,7 @@ pub fn save(conn: &mut Connection, user: &User, jenis: Jenis, data: &[PromoRow])
     if user.level == "Kasir" {
         return Err("Akun kasir tidak bisa mengubah data promo.".into());
     }
-    let tx = conn.transaction().map_err(e)?;
+    let tx = conn.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate).map_err(e)?;
     for (i, r) in data.iter().enumerate() {
         let baris = format!("Baris {}: ", i + 1);
         let kode = r.kodebarang.trim();
@@ -349,13 +349,13 @@ fn menu_promo(jenis: &str) -> &'static str {
     if jenis == "bonus" { "mnInvPromoBonus" } else { "mnInvPromoJual" }
 }
 
-#[tauri::command]
-pub fn promo_list(db: State<Db>, jenis: String, dari: Option<String>, sampai: Option<String>) -> Res<Vec<Value>> {
+#[perintah]
+pub fn promo_list(db: &Db, jenis: String, dari: Option<String>, sampai: Option<String>) -> Res<Vec<Value>> {
     list(&*db.lock()?, Jenis::parse(&jenis)?, &dari.unwrap_or_default(), &sampai.unwrap_or_default())
 }
 
-#[tauri::command]
-pub fn promo_save(db: State<Db>, session: State<Session>, jenis: String, data: Vec<PromoRow>) -> Res<Value> {
+#[perintah]
+pub fn promo_save(db: &Db, session: &Session, jenis: String, data: Vec<PromoRow>) -> Res<Value> {
     let user = session.user()?;
     let mut conn = db.lock()?;
     crate::auth::require_menu(&conn, &user, menu_promo(&jenis))?;
@@ -363,8 +363,8 @@ pub fn promo_save(db: State<Db>, session: State<Session>, jenis: String, data: V
     Ok(json!({ "jumlah": n }))
 }
 
-#[tauri::command]
-pub fn promo_delete(db: State<Db>, session: State<Session>, jenis: String, bid: i64) -> Res<()> {
+#[perintah]
+pub fn promo_delete(db: &Db, session: &Session, jenis: String, bid: i64) -> Res<()> {
     let user = session.user()?;
     let conn = db.lock()?;
     crate::auth::require_menu(&conn, &user, menu_promo(&jenis))?;
@@ -372,8 +372,8 @@ pub fn promo_delete(db: State<Db>, session: State<Session>, jenis: String, bid: 
 }
 
 /// Untuk kasir: promo satu barang pada tanggal dan jumlah beli tertentu.
-#[tauri::command]
-pub fn promo_barang(db: State<Db>, kodebarang: String, kodepelanggan: Option<String>, tgl: String, jml: f64) -> Res<PromoResult> {
+#[perintah]
+pub fn promo_barang(db: &Db, kodebarang: String, kodepelanggan: Option<String>, tgl: String, jml: f64) -> Res<PromoResult> {
     promo_untuk(&*db.lock()?, &kodebarang, &kodepelanggan.unwrap_or_default(), &tgl, jml)
 }
 

@@ -1,16 +1,17 @@
 use crate::db::{e, one, rows, Db, Res};
+use crate::konteks::{Asal, Konteks};
 use argon2::password_hash::{phc::PasswordHash, PasswordHasher, PasswordVerifier};
 use argon2::Argon2;
 use rusqlite::params;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 use std::sync::Mutex;
-use tauri::State;
+use perintah_macro::perintah;
 
 /// Password sementara untuk user yang belum punya password (database baru atau hasil impor).
 const DEFAULT_PASSWORD: &str = "admin";
 
-#[derive(Clone, Serialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct User {
     pub iduser: String,
     pub kodekaryawan: String,
@@ -32,7 +33,7 @@ impl Session {
     }
 }
 
-fn hash(password: &str) -> Res<String> {
+pub(crate) fn hash(password: &str) -> Res<String> {
     Argon2::default().hash_password(password.as_bytes()).map(|h| h.to_string()).map_err(e)
 }
 
@@ -45,39 +46,86 @@ fn check(stored: Option<&str>, password: &str) -> bool {
     }
 }
 
+/// Semua akun yang namanya sama tanpa membedakan huruf besar-kecil. Yang hurufnya persis sama didahulukan,
+/// lalu urut menurut `iduser`. Dua akun seperti `ADMIN` dan `Admin` bisa ada bersamaan (bawaan installer lama).
 /// User tanpa karyawan (kodekaryawan kosong atau "-") memakai ID-nya sendiri sebagai kode kasir,
 /// supaya nama kasir di struk dan laporan tidak kosong.
-fn load(conn: &rusqlite::Connection, iduser: &str) -> Res<Option<(Option<String>, User, i64)>> {
+fn calon_login(conn: &rusqlite::Connection, iduser: &str) -> Res<Vec<(Option<String>, User, i64)>> {
     let mut stmt = conn
         .prepare(
             "SELECT u.pswduser, u.iduser, COALESCE(NULLIF(NULLIF(u.kodekaryawan,''),'-'), u.iduser), COALESCE(k.namakaryawan, u.iduser), COALESCE(u.\"level\",''), COALESCE(u.aktif,1)
-             FROM mduser u LEFT JOIN mdkaryawan k ON k.kodekaryawan = u.kodekaryawan WHERE UPPER(u.iduser) = UPPER(?1) ORDER BY (u.iduser = ?1) DESC LIMIT 1",
+             FROM mduser u LEFT JOIN mdkaryawan k ON k.kodekaryawan = u.kodekaryawan WHERE UPPER(u.iduser) = UPPER(?1) ORDER BY (u.iduser = ?1) DESC, u.iduser",
         )
         .map_err(e)?;
     let mut q = stmt.query(params![iduser]).map_err(e)?;
-    let Some(r) = q.next().map_err(e)? else { return Ok(None) };
-    let pswd: Option<String> = r.get(0).map_err(e)?;
-    let user = User {
-        iduser: r.get(1).map_err(e)?,
-        kodekaryawan: r.get(2).map_err(e)?,
-        namakaryawan: r.get(3).map_err(e)?,
-        level: r.get(4).map_err(e)?,
-        must_change: pswd.as_deref().unwrap_or("").is_empty(),
-    };
-    Ok(Some((pswd, user, r.get(5).map_err(e)?)))
+    let mut out = vec![];
+    while let Some(r) = q.next().map_err(e)? {
+        let pswd: Option<String> = r.get(0).map_err(e)?;
+        let user = User {
+            iduser: r.get(1).map_err(e)?,
+            kodekaryawan: r.get(2).map_err(e)?,
+            namakaryawan: r.get(3).map_err(e)?,
+            level: r.get(4).map_err(e)?,
+            must_change: pswd.as_deref().unwrap_or("").is_empty(),
+        };
+        out.push((pswd, user, r.get(5).map_err(e)?));
+    }
+    Ok(out)
 }
 
-#[tauri::command]
-pub fn login(db: State<Db>, session: State<Session>, iduser: String, password: String) -> Res<User> {
+/// Satu akun untuk `iduser` yang sudah pasti (dari sesi atau daftar pengguna): yang hurufnya persis sama didahulukan.
+fn load(conn: &rusqlite::Connection, iduser: &str) -> Res<Option<(Option<String>, User, i64)>> {
+    Ok(calon_login(conn, iduser)?.into_iter().next())
+}
+
+/// Akun senama yang passwordnya cocok, urut menurut `calon_login`.
+/// - Akun ber-password asli dicocokkan tanpa membedakan huruf besar-kecil nama.
+/// - Akun tanpa password (NULL atau kosong) menerima password sementara hanya bila nama yang diketik persis sama
+///   hurufnya dengan akun itu, atau akun itu satu-satunya yang bernama demikian. Kalau tidak, akun kosong bisa
+///   menangkap login yang ditujukan ke akun senama lain.
+/// Hasilnya `(user, aktif)`.
+fn akun_cocok(conn: &rusqlite::Connection, iduser: &str, password: &str) -> Res<Vec<(User, bool)>> {
+    let calon = calon_login(conn, iduser)?;
+    let tunggal = calon.len() == 1;
+    Ok(calon
+        .into_iter()
+        .filter(|(pswd, user, _)| {
+            if pswd.as_deref().unwrap_or("").is_empty() {
+                (tunggal || user.iduser == iduser) && check(pswd.as_deref(), password)
+            } else {
+                check(pswd.as_deref(), password)
+            }
+        })
+        .map(|(_, user, aktif)| (user, aktif != 0))
+        .collect())
+}
+
+/// Akun aktif pertama yang cocok (lihat `akun_cocok`). `Err(true)` bila yang cocok hanya akun nonaktif,
+/// `Err(false)` bila tidak ada yang cocok (tidak ada akun, atau password salah).
+fn cari_akun_cocok(conn: &rusqlite::Connection, iduser: &str, password: &str) -> Res<Result<User, bool>> {
+    let cocok = akun_cocok(conn, iduser, password)?;
+    if cocok.is_empty() {
+        return Ok(Err(false));
+    }
+    match cocok.into_iter().find(|c| c.1) {
+        Some((u, _)) => Ok(Ok(u)),
+        None => Ok(Err(true)),
+    }
+}
+
+/// Periksa nama dan password untuk masuk. Mencoba semua akun senama (beda huruf besar-kecil), lihat `cari_akun_cocok`.
+pub(crate) fn masuk(conn: &rusqlite::Connection, iduser: &str, password: &str) -> Res<User> {
+    match cari_akun_cocok(conn, iduser.trim(), password)? {
+        Ok(u) => Ok(u),
+        Err(true) => Err("Akun ini sedang dinonaktifkan. Hubungi pemilik toko untuk mengaktifkannya.".into()),
+        Err(false) => Err("Nama pengguna atau password salah. Silakan coba lagi.".into()),
+    }
+}
+
+#[perintah]
+pub fn login(db: &Db, session: &Session, iduser: String, password: String) -> Res<User> {
     let conn = db.lock()?;
-    let wrong = "Nama pengguna atau password salah. Silakan coba lagi.".to_string();
-    let Some((pswd, user, aktif)) = load(&conn, iduser.trim())? else { return Err(wrong) };
-    if aktif == 0 {
-        return Err("Akun ini sedang dinonaktifkan. Hubungi pemilik toko untuk mengaktifkannya.".into());
-    }
-    if !check(pswd.as_deref(), &password) {
-        return Err(wrong);
-    }
+    let user = masuk(&conn, &iduser, &password)?;
     *session.0.lock().map_err(e)? = Some(user.clone());
     Ok(user)
 }
@@ -94,8 +142,8 @@ pub fn masuk_bawaan(conn: &rusqlite::Connection, session: &Session) -> Res<Optio
     Ok(Some(user))
 }
 
-#[tauri::command]
-pub fn login_bawaan(db: State<Db>, session: State<Session>) -> Res<Option<User>> {
+#[perintah]
+pub fn login_bawaan(db: &Db, session: &Session) -> Res<Option<User>> {
     let conn = db.lock()?;
     masuk_bawaan(&conn, &session)
 }
@@ -103,26 +151,24 @@ pub fn login_bawaan(db: State<Db>, session: State<Session>) -> Res<Option<User>>
 /// Periksa nama user dan kata sandi seorang pengelola (bukan Kasir atau Lainnya, masih aktif). Dipakai untuk Verifikasi Admin.
 pub fn verifikasi_pengelola(conn: &rusqlite::Connection, iduser: &str, password: &str) -> Res<User> {
     let salah = "Nama user atau kata sandi salah. Silakan coba lagi.".to_string();
-    let Some((pswd, user, aktif)) = load(conn, iduser.trim())? else { return Err(salah) };
-    if aktif == 0 || !check(pswd.as_deref(), password) {
-        return Err(salah);
+    let aktif: Vec<User> = akun_cocok(conn, iduser.trim(), password)?.into_iter().filter(|c| c.1).map(|c| c.0).collect();
+    let Some(first) = aktif.first() else { return Err(salah) };
+    if let Some(u) = aktif.iter().find(|u| u.level != "Kasir" && u.level != "Lainnya") {
+        return Ok(u.clone());
     }
-    if user.level == "Kasir" || user.level == "Lainnya" {
-        return Err(format!("Akun ini berlevel {}, jadi tidak bisa memberi izin. Minta supervisor atau pemilik toko yang masuk.", user.level));
-    }
-    Ok(user)
+    Err(format!("Akun ini berlevel {}, jadi tidak bisa memberi izin. Minta supervisor atau pemilik toko yang masuk.", first.level))
 }
 
-#[tauri::command]
-pub fn logout(session: State<Session>) -> Res<()> {
+#[perintah]
+pub fn logout(session: &Session) -> Res<()> {
     *session.0.lock().map_err(e)? = None;
     Ok(())
 }
 
-#[tauri::command]
+#[perintah]
 /// Seperti FrmZEditProfil aslinya: kata sandi baru langsung menggantikan yang lama tanpa menanyakan kata sandi lama.
 /// `old` tidak dipakai lagi dan hanya dipertahankan supaya pemanggil lama tetap jalan. Disimpan sebagai hash Argon2.
-pub fn change_password(db: State<Db>, session: State<Session>, #[allow(unused_variables)] old: String, new: String) -> Res<()> {
+pub fn change_password(db: &Db, session: &Session, #[allow(unused_variables)] old: String, new: String) -> Res<()> {
     let mut user = session.user()?;
     if new.is_empty() {
         return Err("Kata sandi baru belum diisi.".into());
@@ -145,14 +191,14 @@ const SETTING_COLS: &[&str] = &[
     "mintranspoin", "jmlpointrans", "berlakukelipatanpoin", "konfirmasikredit", "aktifotentikasi", "nonaktifstokhabis", "tampilnonaktif",
 ];
 
-#[tauri::command]
-pub fn get_settings(db: State<Db>) -> Res<Value> {
+#[perintah]
+pub fn get_settings(db: &Db) -> Res<Value> {
     let conn = db.lock()?;
     Ok(one(&conn, "SELECT * FROM tseting LIMIT 1", [])?.unwrap_or(Value::Null))
 }
 
-#[tauri::command]
-pub fn save_settings(db: State<Db>, session: State<Session>, data: Map<String, Value>) -> Res<()> {
+#[perintah]
+pub fn save_settings(db: &Db, session: &Session, data: Map<String, Value>) -> Res<()> {
     let user = session.user()?;
     if user.level == "Kasir" {
         return Err("Hanya pemilik atau supervisor yang bisa mengubah pengaturan.".into());
@@ -169,8 +215,8 @@ pub fn save_settings(db: State<Db>, session: State<Session>, data: Map<String, V
     Ok(())
 }
 
-#[tauri::command]
-pub fn list_users(db: State<Db>, session: State<Session>) -> Res<Vec<Value>> {
+#[perintah]
+pub fn list_users(db: &Db, session: &Session) -> Res<Vec<Value>> {
     let user = session.user()?;
     hanya_pengelola(&user)?;
     let conn = db.lock()?;
@@ -293,16 +339,16 @@ pub fn hapus_user(conn: &rusqlite::Connection, actor: &User, iduser: &str) -> Re
     Ok(())
 }
 
-#[tauri::command]
-pub fn save_user(db: State<Db>, session: State<Session>, data: Map<String, Value>, baru: bool) -> Res<()> {
+#[perintah]
+pub fn save_user(db: &Db, session: &Session, data: Map<String, Value>, baru: bool) -> Res<()> {
     let actor = session.user()?;
     let conn = db.lock()?;
     require_menu(&conn, &actor, "mnPengaturanPengguna")?;
     simpan_user(&conn, &actor, &data, baru)
 }
 
-#[tauri::command]
-pub fn delete_user(db: State<Db>, session: State<Session>, iduser: String) -> Res<()> {
+#[perintah]
+pub fn delete_user(db: &Db, session: &Session, iduser: String) -> Res<()> {
     let actor = session.user()?;
     let conn = db.lock()?;
     require_menu(&conn, &actor, "mnPengaturanPengguna")?;
@@ -367,8 +413,8 @@ pub fn require_menu(conn: &rusqlite::Connection, user: &User, nama: &str) -> Res
 }
 
 /// Menu yang disembunyikan untuk pengguna yang sedang masuk.
-#[tauri::command]
-pub fn my_menus(db: State<Db>, session: State<Session>) -> Res<Vec<String>> {
+#[perintah]
+pub fn my_menus(db: &Db, session: &Session) -> Res<Vec<String>> {
     let user = session.user()?;
     let conn = db.lock()?;
     menu_ditolak(&conn, &user)
@@ -410,7 +456,7 @@ pub fn simpan_akses(conn: &mut rusqlite::Connection, actor: &User, iduser: &str,
         let v: Vec<i64> = anak.iter().map(|a| nilai(a, info, ok)).collect();
         if v.iter().all(|x| *x == 1) { 1 } else if v.iter().all(|x| *x == 0) { 0 } else { 2 }
     }
-    let tx = conn.transaction().map_err(e)?;
+    let tx = conn.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate).map_err(e)?;
     tx.execute("DELETE FROM mdusermenu WHERE UPPER(iduser) = UPPER(?1)", params![iduser]).map_err(e)?;
     for (id, _) in &info {
         tx.execute("INSERT INTO mdusermenu (iduser, idmenu, akses) VALUES (?1, ?2, ?3)", params![iduser, id, nilai(id, &info, diizinkan)]).map_err(e)?;
@@ -418,16 +464,16 @@ pub fn simpan_akses(conn: &mut rusqlite::Connection, actor: &User, iduser: &str,
     tx.commit().map_err(e)
 }
 
-#[tauri::command]
-pub fn user_akses(db: State<Db>, session: State<Session>, iduser: String) -> Res<Vec<Value>> {
+#[perintah]
+pub fn user_akses(db: &Db, session: &Session, iduser: String) -> Res<Vec<Value>> {
     let actor = session.user()?;
     let conn = db.lock()?;
     require_menu(&conn, &actor, "mnPengaturanPengguna")?;
     daftar_akses(&conn, &actor, &iduser)
 }
 
-#[tauri::command]
-pub fn save_user_akses(db: State<Db>, session: State<Session>, iduser: String, diizinkan: Vec<String>) -> Res<()> {
+#[perintah]
+pub fn save_user_akses(db: &Db, session: &Session, iduser: String, diizinkan: Vec<String>) -> Res<()> {
     let actor = session.user()?;
     let mut conn = db.lock()?;
     require_menu(&conn, &actor, "mnPengaturanPengguna")?;
@@ -435,18 +481,26 @@ pub fn save_user_akses(db: State<Db>, session: State<Session>, iduser: String, d
 }
 
 /// User yang sedang masuk, atau `None` kalau belum ada sesi.
-#[tauri::command]
-pub fn current_user(session: State<Session>) -> Res<Option<User>> {
+#[perintah]
+pub fn current_user(session: &Session) -> Res<Option<User>> {
     Ok(session.0.lock().map_err(e)?.clone())
 }
 
+/// User aktif untuk `iduser` yang sudah pasti, dibaca ulang dari database (dipakai memuat sesi tersimpan).
+/// `None` bila akun tidak ada, dinonaktifkan, atau masih harus ganti password.
+pub fn user_aktif(conn: &rusqlite::Connection, iduser: &str) -> Res<Option<User>> {
+    Ok(load(conn, iduser)?.filter(|(_, u, aktif)| *aktif != 0 && !u.must_change).map(|(_, u, _)| u))
+}
+
 /// Hanya di build pengembangan: pulihkan sesi setelah backend dimulai ulang oleh `tauri dev`,
-/// supaya hot reload tidak selalu kembali ke layar login. Build rilis selalu menolak.
-#[tauri::command]
-pub fn restore_session(db: State<Db>, session: State<Session>, iduser: String) -> Res<Option<User>> {
-    if !cfg!(debug_assertions) {
+/// supaya hot reload tidak selalu kembali ke layar login. Build rilis selalu menolak,
+/// dan permintaan lewat jaringan selalu ditolak (juga di build debug).
+#[perintah]
+pub fn restore_session(k: &Konteks, iduser: String) -> Res<Option<User>> {
+    if !cfg!(debug_assertions) || k.asal != Asal::Lokal {
         return Ok(None);
     }
+    let (db, session) = (k.db, k.sesi);
     let conn = db.lock()?;
     let Some((_, user, aktif)) = load(&conn, iduser.trim())? else { return Ok(None) };
     if aktif == 0 || user.must_change {

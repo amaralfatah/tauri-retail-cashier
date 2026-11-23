@@ -9,15 +9,15 @@ use crate::trans::{check_date, insert_detail, insert_kas_transaksi, next_id, nex
 use rusqlite::{params, Connection, Transaction};
 use serde::Deserialize;
 use serde_json::{json, Value};
-use tauri::State;
+use perintah_macro::perintah;
 
 fn konversi(jml: f64, jmljual: f64, k: f64) -> f64 {
     if k > 0.0 { k } else if jmljual > 0.0 { jml / jmljual } else { 1.0 }
 }
 
 /// Transaksi asal (TJ atau TB) beserta barisnya, lengkap dengan jumlah yang sudah diretur.
-#[tauri::command]
-pub fn get_retur_sumber(db: State<Db>, notrans: String, kode: String) -> Res<Value> {
+#[perintah]
+pub fn get_retur_sumber(db: &Db, notrans: String, kode: String) -> Res<Value> {
     let conn = db.lock()?;
     let header = one(
         &conn,
@@ -93,16 +93,16 @@ fn simpan_header(tx: &Transaction, kasir: &str, notrans: &str, kode: &str, jenis
     Ok(())
 }
 
-#[tauri::command]
-pub fn save_retur_jual(db: State<Db>, session: State<Session>, input: ReturInput) -> Res<Value> {
+#[perintah]
+pub fn save_retur_jual(db: &Db, session: &Session, input: ReturInput) -> Res<Value> {
     let user = session.user()?;
     let mut conn = db.lock()?;
     crate::auth::require_menu(&conn, &user, "mnTRReturJual")?;
     retur_transaksi(&mut conn, &user, &input, false)
 }
 
-#[tauri::command]
-pub fn save_retur_beli(db: State<Db>, session: State<Session>, input: ReturInput) -> Res<Value> {
+#[perintah]
+pub fn save_retur_beli(db: &Db, session: &Session, input: ReturInput) -> Res<Value> {
     let user = session.user()?;
     let mut conn = db.lock()?;
     crate::auth::require_menu(&conn, &user, "mnTRReturBeliPerTrans")?;
@@ -115,7 +115,7 @@ pub fn retur_transaksi(conn: &mut Connection, user: &User, input: &ReturInput, b
     // Aplikasi lama menulis jenis "Sales Return" juga untuk retur pembelian (sisa salinan dari form penjualan).
     let (kode_asal, kode_retur, jenis_retur, kategori) =
         if beli { ("TB", "RB", "Sales Return", "Retur pembelian") } else { ("TJ", "RJ", "Sales Return", "Retur penjualan") };
-    let tx = conn.transaction().map_err(e)?;
+    let tx = conn.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate).map_err(e)?;
     let (pelanggan, pemasok, sales, jmltrans, diskon): (String, String, String, f64, f64) = tx
         .query_row(
             "SELECT COALESCE(kodepelanggan,''), COALESCE(kodepemasok,''), COALESCE(kodesales,''), COALESCE(jmltrans,0), COALESCE(diskonnilai,0)
@@ -209,8 +209,8 @@ pub struct ReturBrgInput {
     pub kodekasir: String,
 }
 
-#[tauri::command]
-pub fn save_retur_beli_barang(db: State<Db>, session: State<Session>, input: ReturBrgInput) -> Res<Value> {
+#[perintah]
+pub fn save_retur_beli_barang(db: &Db, session: &Session, input: ReturBrgInput) -> Res<Value> {
     let user = session.user()?;
     let mut conn = db.lock()?;
     crate::auth::require_menu(&conn, &user, "mnTRReturBeliperBarang")?;
@@ -227,7 +227,7 @@ pub fn retur_beli_barang(conn: &mut Connection, user: &User, input: &ReturBrgInp
     if input.items.is_empty() {
         return Err("Belum ada barang yang diretur.".into());
     }
-    let tx = conn.transaction().map_err(e)?;
+    let tx = conn.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate).map_err(e)?;
     let nama_pemasok: String = tx
         .query_row("SELECT namapemasok FROM mdpemasok WHERE kodepemasok = ?1", params![pemasok], |r| r.get(0))
         .map_err(|_| "Pemasok itu tidak ditemukan.".to_string())?;

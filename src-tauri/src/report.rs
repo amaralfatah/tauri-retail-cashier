@@ -1,15 +1,15 @@
 use crate::db::{e, rows, Db, Res};
 use rusqlite::params;
 use serde_json::{json, Value};
-use tauri::State;
+use perintah_macro::perintah;
 
 /// Nilai jual per baris. Data lama menyimpan SUBTOTAL = 0, jadi dihitung dari jumlah x harga.
 const LINE_JUAL: &str = "(d.jmljual * d.hrgterjual - COALESCE(d.disknilai,0))";
 /// Modal per baris: harga beli dasar x jumlah dalam satuan dasar.
 const LINE_MODAL: &str = "(d.hrgbeli * d.jml)";
 
-#[tauri::command]
-pub fn dashboard(db: State<Db>, tgl: String) -> Res<Value> {
+#[perintah]
+pub fn dashboard(db: &Db, tgl: String) -> Res<Value> {
     let conn = db.lock()?;
     let bulan = tgl.get(0..7).unwrap_or("").to_string();
     let (hari_ini, jml_hari_ini): (f64, i64) = conn
@@ -40,8 +40,8 @@ pub fn dashboard(db: State<Db>, tgl: String) -> Res<Value> {
                "piutang": piutang, "harian": harian, "terakhir": terakhir }))
 }
 
-#[tauri::command]
-pub fn laporan_penjualan(db: State<Db>, dari: String, sampai: String) -> Res<Value> {
+#[perintah]
+pub fn laporan_penjualan(db: &Db, dari: String, sampai: String) -> Res<Value> {
     let conn = db.lock()?;
     let data = rows(
         &conn,
@@ -70,8 +70,8 @@ pub fn laporan_penjualan(db: State<Db>, dari: String, sampai: String) -> Res<Val
     Ok(json!({ "rows": data, "terlaris": terlaris }))
 }
 
-#[tauri::command]
-pub fn laporan_pembelian(db: State<Db>, dari: String, sampai: String) -> Res<Vec<Value>> {
+#[perintah]
+pub fn laporan_pembelian(db: &Db, dari: String, sampai: String) -> Res<Vec<Value>> {
     let conn = db.lock()?;
     rows(
         &conn,
@@ -82,8 +82,8 @@ pub fn laporan_pembelian(db: State<Db>, dari: String, sampai: String) -> Res<Vec
     )
 }
 
-#[tauri::command]
-pub fn laporan_stok(db: State<Db>, search: Option<String>, mode: String) -> Res<Vec<Value>> {
+#[perintah]
+pub fn laporan_stok(db: &Db, search: Option<String>, mode: String) -> Res<Vec<Value>> {
     let conn = db.lock()?;
     let filter = match mode.as_str() {
         "minimum" => "AND stokmin > 0 AND stokakhir <= stokmin",
@@ -103,8 +103,8 @@ pub fn laporan_stok(db: State<Db>, search: Option<String>, mode: String) -> Res<
     )
 }
 
-#[tauri::command]
-pub fn laporan_kas(db: State<Db>, dari: String, sampai: String) -> Res<Vec<Value>> {
+#[perintah]
+pub fn laporan_kas(db: &Db, dari: String, sampai: String) -> Res<Vec<Value>> {
     let conn = db.lock()?;
     rows(
         &conn,
@@ -114,8 +114,8 @@ pub fn laporan_kas(db: State<Db>, dari: String, sampai: String) -> Res<Vec<Value
     )
 }
 
-#[tauri::command]
-pub fn laporan_piutang(db: State<Db>, kode: String) -> Res<Vec<Value>> {
+#[perintah]
+pub fn laporan_piutang(db: &Db, kode: String) -> Res<Vec<Value>> {
     let conn = db.lock()?;
     rows(
         &conn,
@@ -367,8 +367,8 @@ pub fn lap_query(conn: &rusqlite::Connection, jenis: &str, f: &LapFilter) -> Res
     }
 }
 
-#[tauri::command]
-pub fn laporan_data(db: State<Db>, jenis: String, filter: LapFilter) -> Res<Vec<Value>> {
+#[perintah]
+pub fn laporan_data(db: &Db, jenis: String, filter: LapFilter) -> Res<Vec<Value>> {
     let conn = db.lock()?;
     lap_query(&conn, &jenis, &filter)
 }
@@ -448,8 +448,8 @@ pub fn dashboard_query(conn: &rusqlite::Connection, tgl: &str) -> Res<Value> {
     }))
 }
 
-#[tauri::command]
-pub fn dashboard_data(db: State<Db>, tgl: String) -> Res<Value> {
+#[perintah]
+pub fn dashboard_data(db: &Db, tgl: String) -> Res<Value> {
     let conn = db.lock()?;
     dashboard_query(&conn, &tgl)
 }
@@ -462,15 +462,15 @@ pub fn notifikasi_query(conn: &rusqlite::Connection, tgl: &str) -> Res<Value> {
     Ok(json!({ "piutang_jatuh_tempo": jml }))
 }
 
-#[tauri::command]
-pub fn notifikasi(db: State<Db>, tgl: String) -> Res<Value> {
+#[perintah]
+pub fn notifikasi(db: &Db, tgl: String) -> Res<Value> {
     let conn = db.lock()?;
     notifikasi_query(&conn, &tgl)
 }
 
 /// Simpan hasil ekspor laporan sebagai file baru di Documents atau Downloads. Mengembalikan alamat file.
-#[tauri::command]
-pub fn simpan_laporan(app: tauri::AppHandle, session: State<crate::auth::Session>, path: String, isi: String) -> Res<String> {
+#[perintah]
+pub fn simpan_laporan(k: &crate::konteks::Konteks, session: &crate::auth::Session, path: String, isi: String) -> Res<String> {
     session.user()?;
-    crate::berkas::simpan_teks(&app, &path, &isi, &["txt", "csv", "html", "htm", "rtf"])
+    crate::berkas::simpan_teks(k, &path, &isi, &["txt", "csv", "html", "htm", "rtf"])
 }
