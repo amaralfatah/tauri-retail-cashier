@@ -13,6 +13,7 @@ import { useApp } from "../appContext";
 import { rp, tglID, today } from "../format";
 import { GridCol, ModalFrame, useMsgBox, VbGrid } from "../vb/VbGrid";
 import { ImporExcel } from "./ImporExcel";
+import { PindahLama } from "./PindahLama";
 import { Checklist } from "./keuanganLib";
 
 const TABS = ["Backup Data", "Restore Data", "Hapus Data", "Import Data", "SQL Editor", "Perbaiki Data", "Hapus Transaksi"];
@@ -48,6 +49,7 @@ export function Alat() {
   const [trans, setTrans] = useState<Row[]>([]);
   const [transPick, setTransPick] = useState<Set<string>>(new Set());
   const [sibuk, setSibuk] = useState(false);
+  const [pindahLama, setPindahLama] = useState(false);
 
   useEffect(() => {
     dbApi.info().then((i) => { setLokasi(i?.path ?? ""); setFolder(folderBackup.get() || i?.folder_backup || ""); }).catch((e) => msg.alert(errText(e)));
@@ -269,6 +271,14 @@ export function Alat() {
                   Restore Data
                 </Button>
               </div>
+              <div className="mt-2 flex flex-col gap-1.5 border-t border-border pt-3.5">
+                <p className="text-xs text-foreground">Dulu memakai Toko Pro versi lama? Anda bisa memindahkan datanya ke sini.</p>
+                <div>
+                  <Button type="button" variant="outline" size="default" className="h-8 px-3 text-xs font-medium" onClick={() => setPindahLama(true)}>
+                    Ambil dari Toko Pro Lama…
+                  </Button>
+                </div>
+              </div>
             </div>
           )}
 
@@ -418,6 +428,7 @@ export function Alat() {
       </div>
 
       {msg.node}
+      {pindahLama && <PindahLama onClose={() => setPindahLama(false)} />}
       {periode && (
         <ModalFrame title="Pilih Periode Hapus Data" width={360} onClose={() => setPeriode(null)}>
           <div className="flex flex-col gap-3.5 p-4 font-sans text-xs text-foreground" data-form="FrmZAlatTgl">

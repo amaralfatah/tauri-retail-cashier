@@ -43,6 +43,14 @@ Database ada di `~/Library/Application Support/com.tokopro.app/tokopro.db` (macO
 
 ## Memindahkan data lama
 
+Cara utama ada di dalam aplikasi, khusus Windows dan akun Manager: Pengaturan, Alat Bantu, Restore Data, lalu "Ambil dari Toko Pro lama".
+Aplikasi mencari `DATAPOS.FDB` (lewat `Settings.ini` Toko Pro lama) dan file backup `.fdk`, lalu membacanya memakai Firebird bawaan Toko Pro lama
+(`C:\Program Files\Firebird\Firebird_2_5\bin`, atau folder di `TOKOPRO_FB_BIN`). Toko Pro lama harus ditutup dulu. File asli tidak diubah:
+aplikasi bekerja pada salinan, lalu membuat cadangan "sebelum-restore" sebelum mengganti data sekarang. Kodenya ada di `src-tauri/src/pindah_lama.rs`.
+Untuk menjalankan tesnya terhadap Firebird di Docker: `TOKOPRO_FB_DOCKER=tokopro-fb cargo test pindah_lama`.
+
+Cara cadangan untuk pengembang (skrip, tanpa aplikasi):
+
 Butuh container Firebird 2.5 yang membuka `datapos.fdb` (lihat `../analisis/README.md`), lalu:
 
 ```bash

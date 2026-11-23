@@ -2,6 +2,7 @@
  * Peniru backend Tauri untuk melihat dan menguji tampilan di browser biasa (http://localhost:1420) tanpa `tauri dev`.
  * Hanya dimuat oleh src/main.tsx saat mode pengembangan DAN aplikasi tidak berjalan di jendela Tauri.
  */
+import { emit } from "@tauri-apps/api/event";
 import { mockIPC, mockWindows } from "@tauri-apps/api/mocks";
 
 type Row = Record<string, any>;
@@ -537,8 +538,36 @@ mockIPC((cmd, args) => {
       return null;
     case "foto_hapus":
       return true;
+    /* ---- Pindah dari Toko Pro lama ---- */
+    case "lama_cari":
+      return {
+        kandidat: [
+          { path: "C:\\TokoPro\\Data\\DATAPOS.FDB", jenis: "fdb", ukuran: 48234496, waktu: "22/11/2026 17:45" },
+          { path: "D:\\Backup Toko\\DATAPOS-2026-10-31.fdk", jenis: "fdk", ukuran: 9437184, waktu: "31/10/2026 20:10" },
+        ],
+        firebird: { ada: true, lokasi: "C:\\Program Files\\Firebird\\fbclient.dll" },
+        data_sekarang: { barang: 0, transaksi: 0 },
+      };
+    case "lama_pindahkan": {
+      const tabel = [["mdbarang", "Barang", 1284], ["mdpelanggan", "Pelanggan", 96], ["mdpemasok", "Supplier", 18], ["tjual", "Penjualan", 15230], ["tstok", "Stok", 4120], ["tkas", "Kas", 842], ["mduser", "Pengguna", 4]] as const;
+      return (async () => {
+        const tunggu = (ms: number) => new Promise((r) => setTimeout(r, ms));
+        await emit("pindah-lama", { tahap: "salin", ke: 0, dari: 1 });
+        await tunggu(400);
+        for (let i = 0; i < tabel.length; i++) {
+          await emit("pindah-lama", { tahap: "baca", tabel: tabel[i][0], nama: tabel[i][1], ke: i + 1, dari: tabel.length, jumlah: tabel[i][2] });
+          await tunggu(250);
+        }
+        await emit("pindah-lama", { tahap: "selesai", ke: tabel.length, dari: tabel.length });
+        return {
+          hasil: tabel.map(([t, nama, jumlah]) => ({ tabel: t, nama, jumlah })),
+          cadangan: "/Users/tokopro/Backup/sebelum-pindah-2026-11-23.db",
+          peringatan: ["Dua barang punya kode yang sama. Yang kedua diberi akhiran -2."],
+        };
+      })();
+    }
     default:
       console.info(`[tauriMock] perintah "${cmd}" belum ditiru`, a);
       return null;
   }
-});
+}, { shouldMockEvents: true });

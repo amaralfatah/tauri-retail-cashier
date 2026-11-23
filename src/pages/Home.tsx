@@ -9,6 +9,8 @@ import { addDays, rp, today } from "../format";
 import { useApp } from "../appContext";
 import { getLocal } from "./localSettings";
 import { Dashboard } from "./Dashboard";
+import { PindahLama, pindahLamaDitutup, tutupPindahLama } from "./PindahLama";
+import { lamaApi } from "../api/keuangan";
 
 type Ringkasan = { jual: number | null; struk: number | null; pending: number | null; menipis: number | null; piutang: number | null };
 const KOSONG: Ringkasan = { jual: null, struk: null, pending: null, menipis: null, piutang: null };
@@ -51,6 +53,12 @@ export function Home() {
   const [tutup, setTutup] = useState(false);
   const [bukaDash, setBukaDash] = useState(false);
   const { setting, user, go } = useApp();
+  const [ajakPindah, setAjakPindah] = useState(false);
+  const [bukaPindah, setBukaPindah] = useState(false);
+  useEffect(() => {
+    if (user.level !== "Manager" || pindahLamaDitutup()) return;
+    lamaApi.cari().then((r) => { if (r.data_sekarang.barang === 0 && r.data_sekarang.transaksi === 0) setAjakPindah(true); }).catch(() => undefined);
+  }, [user.level]);
   const ringkas = useRingkasan(!((getLocal("home") === "Dashboard" && !tutup) || bukaDash));
 
   if ((getLocal("home") === "Dashboard" && !tutup) || bukaDash) {
@@ -101,6 +109,15 @@ export function Home() {
   return (
     <div className="tp-scroll-always flex h-full min-h-0 flex-col justify-between gap-4 bg-background p-4 font-sans text-foreground" data-form="FrmZHome">
       <div className="flex w-full flex-col gap-4">
+        {ajakPindah && (
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-muted px-4 py-3" data-slot="ajak-pindah">
+            <p className="text-sm font-medium text-foreground">Anda sebelumnya memakai Toko Pro versi lama? Pindahkan data Anda ke sini.</p>
+            <div className="flex items-center gap-2">
+              <Button type="button" variant="outline" size="default" className="h-8 bg-background px-3 text-xs font-medium" onClick={() => { tutupPindahLama(); setAjakPindah(false); }}>Nanti saja</Button>
+              <Button type="button" variant="default" size="default" className="h-8 px-3.5 text-xs font-semibold" onClick={() => setBukaPindah(true)}>Pindahkan Data</Button>
+            </div>
+          </div>
+        )}
         <div className="flex flex-wrap items-center justify-between gap-4 rounded-lg border border-border bg-card px-4 py-3">
           <div>
             <h1 className="text-base font-bold tracking-tight text-foreground">{setting.namausaha || "Toko Pro"}</h1>
@@ -190,6 +207,7 @@ export function Home() {
         </div>
         <span>Operator aktif: <strong className="font-semibold text-foreground">{user.namakaryawan || user.iduser}</strong> ({user.level})</span>
       </div>
+      {bukaPindah && <PindahLama onClose={() => setBukaPindah(false)} />}
     </div>
   );
 }

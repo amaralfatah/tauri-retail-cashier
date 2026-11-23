@@ -16,6 +16,9 @@ export const pilihGambar = () =>
 export const pilihExcel = () =>
   satu({ title: "Pilih File Excel", filters: [{ name: "Excel (*.xlsx;*.xls;*.csv)", extensions: ["xlsx", "xls", "csv"] }] });
 
+export const pilihDataLama = () =>
+  satu({ title: "Pilih Data Toko Pro Lama", filters: [{ name: "Data Toko Pro lama (*.fdb;*.fdk)", extensions: ["fdb", "fdk"] }] });
+
 export const pilihFolder = () => satu({ title: "Pilih Folder", directory: true });
 
 export async function pilihSimpan(defaultPath: string, ext: string, nama: string): Promise<string | null> {

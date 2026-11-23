@@ -10,6 +10,7 @@ mod inventori;
 mod master;
 mod nontunai;
 mod poin;
+mod pindah_lama;
 mod promo;
 mod order;
 mod pelunasan;
@@ -40,6 +41,8 @@ mod tests_sistem;
 mod tests_laporan;
 #[cfg(test)]
 mod tests_e2e;
+#[cfg(test)]
+mod tests_pindah_lama;
 
 use std::sync::Mutex;
 use tauri::Manager;
@@ -160,6 +163,8 @@ pub fn run() {
             database::db_perbaiki,
             database::db_restore,
             database::backup_otomatis,
+            pindah_lama::lama_cari,
+            pindah_lama::lama_pindahkan,
             alat::alat_item_hapus,
             alat::alat_hitung_stok,
             alat::alat_hitung_kas,

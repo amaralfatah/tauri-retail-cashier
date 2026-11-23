@@ -22,7 +22,7 @@ impl Db {
     }
 }
 
-const SCHEMA: &str = include_str!("schema.sql");
+pub(crate) const SCHEMA: &str = include_str!("schema.sql");
 
 pub fn open(path: &Path) -> Res<Connection> {
     let conn = Connection::open(path).map_err(e)?;

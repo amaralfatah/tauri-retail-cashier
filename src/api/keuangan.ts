@@ -77,3 +77,21 @@ export const folderBackup = {
   get: (): string => { try { return localStorage.getItem(KEY_FOLDER) ?? ""; } catch { return ""; } },
   set: (v: string) => { try { if (v.trim()) localStorage.setItem(KEY_FOLDER, v.trim()); else localStorage.removeItem(KEY_FOLDER); } catch { /* penyimpanan tidak tersedia */ } },
 };
+
+export type KandidatLama = { path: string; jenis: "fdb" | "fdk"; ukuran: number; waktu: string };
+export type CariLama = {
+  kandidat: KandidatLama[];
+  firebird: { ada: boolean; lokasi: string | null };
+  data_sekarang: { barang: number; transaksi: number };
+};
+export type HasilLama = {
+  hasil: { tabel: string; nama: string; jumlah: number }[];
+  cadangan: string;
+  peringatan: string[];
+};
+export type KemajuanLama = { tahap: "salin" | "baca" | "selesai"; tabel?: string; nama?: string; ke: number; dari: number; jumlah?: number };
+
+export const lamaApi = {
+  cari: () => invoke<CariLama>("lama_cari"),
+  pindahkan: (file: string, folder?: string) => invoke<HasilLama>("lama_pindahkan", { file, folder: folder || null }),
+};
