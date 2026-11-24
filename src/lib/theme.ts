@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from "react";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 
 /**
  * Tema tampilan: terang, gelap, atau ikut pengaturan sistem operasi.
@@ -25,6 +26,10 @@ function apply() {
   const dark = current === "dark" || (current === "system" && media().matches);
   document.documentElement.classList.toggle("dark", dark);
   document.documentElement.style.colorScheme = dark ? "dark" : "light";
+  // Bilah judul jendela (milik Windows/macOS) ikut tema aplikasi. "system" = null, ikut sistem operasi.
+  if ("__TAURI_INTERNALS__" in window && !("__TOKOPRO_MOCK__" in window)) {
+    getCurrentWindow().setTheme(current === "system" ? null : current).catch(() => { /* bukan di jendela Tauri */ });
+  }
 }
 
 /** Panggil sekali sebelum render pertama supaya tidak ada kedipan warna. */
