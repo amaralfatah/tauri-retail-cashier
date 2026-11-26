@@ -4,13 +4,55 @@ import { tglID } from "../format";
 import { fmtHrgStruk as rp, fmtQtyStruk as qty, kertasStruk } from "../pages/kasirSettings";
 import { getLocal, KODE_DRAWER_BAWAAN } from "../pages/localSettings";
 
+/**
+ * Baris kepala dan baris total struk penjualan, mengikuti struk aplikasi lama (CetakNotaKecil / CetakData):
+ * No, Kasir, Sales, Pel., lalu Total Jenis, Total Item, Total Jual, Diskon Total, Biaya Lain, Total, Uang Muka, Tunai,
+ * Non Tunai + Card, Piutang, Jatuh Tempo, Kembali (hanya bila lebih dari 0), Piutang belum terbayar, poin, dan Catatan.
+ * Kertas 58 mm memakai label pendek seperti aslinya (Jth. Tempo, Piutang blm dibayar).
+ */
+function barisStruk(trans: { header: Row; detail: Row[] }, kolom: number) {
+  const h = trans.header;
+  const pendek = kolom <= 32;
+  const kepala: [string, string][] = [[`No    : ${h.notrans}`, `${tglID(h.tgltrans)} ${String(h.jamupload ?? "").slice(0, 5)}`], [`Kasir : ${h.namakasir ?? ""}`, ""]];
+  if (h.namasales) kepala.push([`Sales : ${h.namasales}`, ""]);
+  if (h.namapelanggan && h.namapelanggan !== "Tunai") kepala.push([`Pel.  : ${h.namapelanggan}`, ""]);
+  const item = trans.detail.reduce((n, d) => n + Number(d.jmljual || 0), 0);
+  const kredit = h.carabayar === "Kredit";
+  const tunai = Number(h.jmlbayar) || 0;
+  const nonTunai = Number(h.bayarlain1) || 0;
+  const total: [string, string, boolean?][] = [
+    ["Total Jenis", String(trans.detail.length)],
+    ["Total Item", qty(item)],
+    ["Total Jual", rp(h.jmltrans)],
+  ];
+  if (Number(h.diskonnilai) > 0) total.push([pendek ? "Diskon" : "Diskon Total", rp(h.diskonnilai)]);
+  if (Number(h.biaya) > 0) total.push(["Biaya Lain", rp(h.biaya)]);
+  if (Number(h.ppnnilai) > 0) total.push([`PPN ${qty(h.ppn)}%`, rp(h.ppnnilai)]);
+  total.push(["Total", rp(h.totaltrans), true]);
+  if (kredit && tunai > 0) total.push(["Uang Muka", rp(tunai)]);
+  if (!kredit && (tunai > 0 || nonTunai === 0)) total.push(["Tunai", rp(tunai)]);
+  if (nonTunai > 0) {
+    total.push(["Non Tunai", rp(nonTunai)]);
+    const kartu = `${h.ketbayarlain1 ?? ""} ${h.kartu ?? ""}`.trim();
+    if (kartu) total.push([`Card : ${kartu}`, ""]);
+  }
+  if (kredit) {
+    total.push(["Piutang", rp(-Number(h.sisa))]);
+    if (h.tgljthtempo) total.push([pendek ? "Jth. Tempo" : "Jatuh Tempo", tglID(h.tgljthtempo)]);
+  }
+  if (!kredit && Number(h.sisa) > 0) total.push(["Kembali", rp(h.sisa)]);
+  if (Number(h.piutangpelanggan) > 0) total.push([pendek ? "Piutang blm dibayar" : "Piutang belum terbayar", rp(h.piutangpelanggan)]);
+  if (Number(h.poinmasuk) > 0) total.push(["Poin Anda bertambah", qty(h.poinmasuk)], ["Total poin Anda", qty(h.poinakhir)]);
+  return { kepala, total, catatan: String(h.catatan ?? "").trim() };
+}
+
 /** Struk 58/80 mm. Hanya tampil saat dicetak (lihat CSS body[data-print="struk"]). */
 export function Struk({ trans, setting }: { trans: { header: Row; detail: Row[] } | null; setting: Row | null }) {
   if (!trans) return null;
   const h = trans.header;
   const s = setting ?? {};
-  const bayar = h.carabayar === "Non Tunai" ? Number(h.bayarlain1) : Number(h.jmlbayar);
   const kertas = kertasStruk();
+  const b = barisStruk(trans, kertas.kolom);
   return createPortal(
     <div className="struk" style={{ width: kertas.lebar, fontSize: kertas.fontPx }}>
       <style>{`@media print { @page { size: ${kertas.halaman}; margin: ${kertas.halaman.includes("auto") ? "2mm" : "10mm"}; } }`}</style>
@@ -20,8 +62,7 @@ export function Struk({ trans, setting }: { trans: { header: Row; detail: Row[] 
       {s.header1 && <div className="center">{s.header1}</div>}
       {s.header2 && <div className="center">{s.header2}</div>}
       <hr />
-      <div className="row"><span>{h.notrans}</span><span>{tglID(h.tgltrans)} {String(h.jamupload ?? "").slice(0, 5)}</span></div>
-      <div className="row"><span>Kasir: {h.namakasir}</span><span>{h.namapelanggan !== "Tunai" ? h.namapelanggan : ""}</span></div>
+      {b.kepala.map(([a, c]) => <div key={a} className="row"><span>{a}</span><span>{c}</span></div>)}
       <hr />
       {trans.detail.map((d) => (
         <div key={d.nourut}>
@@ -35,21 +76,8 @@ export function Struk({ trans, setting }: { trans: { header: Row; detail: Row[] 
         </div>
       ))}
       <hr />
-      <div className="row"><span>Jumlah</span><span>{rp(h.jmltrans)}</span></div>
-      {Number(h.diskonnilai) > 0 && <div className="row"><span>Diskon</span><span>-{rp(h.diskonnilai)}</span></div>}
-      {Number(h.biaya) > 0 && <div className="row"><span>Biaya lain</span><span>{rp(h.biaya)}</span></div>}
-      {Number(h.ppnnilai) > 0 && <div className="row"><span>PPN {qty(h.ppn)}%</span><span>{rp(h.ppnnilai)}</span></div>}
-      <div className="row bold"><span>TOTAL</span><span>{rp(h.totaltrans)}</span></div>
-      <div className="row"><span>{h.carabayar === "Kredit" ? "Uang muka" : h.carabayar === "Non Tunai" ? `${h.ketbayarlain1} ${h.kartu ?? ""}` : "Bayar"}</span><span>{rp(bayar)}</span></div>
-      {h.carabayar !== "Non Tunai" && Number(h.bayarlain1) > 0 && <div className="row"><span>{h.ketbayarlain1} {h.kartu ?? ""}</span><span>{rp(h.bayarlain1)}</span></div>}
-      {h.carabayar === "Tunai" && <div className="row"><span>Kembali</span><span>{rp(h.sisa)}</span></div>}
-      {h.carabayar === "Kredit" && <div className="row"><span>Sisa hutang</span><span>{rp(-Number(h.sisa))}</span></div>}
-      {Number(h.poinmasuk) > 0 && (
-        <>
-          <div className="row"><span>Poin Anda bertambah</span><span>{qty(h.poinmasuk)}</span></div>
-          <div className="row"><span>Total poin Anda</span><span>{qty(h.poinakhir)}</span></div>
-        </>
-      )}
+      {b.total.map(([a, c, tebal]) => <div key={a} className={tebal ? "row bold" : "row"}><span>{c ? `${a} :` : a}</span><span>{c}</span></div>)}
+      {b.catatan && <div>Catatan: {b.catatan}</div>}
       <hr />
       {s.footer1 && <div className="center">{s.footer1}</div>}
       {s.footer2 && <div className="center">{s.footer2}</div>}
@@ -130,8 +158,9 @@ function pembantuTeks(W: number) {
 export function strukTeks(trans: { header: Row; detail: Row[] }, setting: Row | null): string {
   const h = trans.header;
   const s = setting ?? {};
-  const { tengah, dua, garis } = pembantuTeks(kertasStruk().kolom);
-  const bayar = h.carabayar === "Non Tunai" ? Number(h.bayarlain1) : Number(h.jmlbayar);
+  const kolom = kertasStruk().kolom;
+  const { tengah, dua, garis } = pembantuTeks(kolom);
+  const b = barisStruk(trans, kolom);
   const L: string[] = [];
   const tambah = (t: unknown) => { if (t) L.push(tengah(t)); };
   tambah(s.namausaha);
@@ -139,24 +168,15 @@ export function strukTeks(trans: { header: Row; detail: Row[] }, setting: Row | 
   if (s.tlp) tambah(`Telp. ${s.tlp}`);
   tambah(s.header1);
   tambah(s.header2);
-  L.push(garis, dua(h.notrans, `${tglID(h.tgltrans)} ${String(h.jamupload ?? "").slice(0, 5)}`),
-    dua(`Kasir: ${h.namakasir}`, h.namapelanggan !== "Tunai" ? h.namapelanggan : ""), garis);
+  L.push(garis, ...b.kepala.map(([a, c]) => (c ? dua(a, c) : a)), garis);
   for (const d of trans.detail) {
     L.push(String(d.namabarang ?? ""));
     if (Number(d.hrgterjual) === 0 && Number(d.jmljual) > 0 && h.kode === "TJ") L.push(dua(`${qty(d.jmljual)} ${d.satuanjual} (bonus)`, "Gratis"));
     else L.push(dua(`${qty(d.jmljual)} ${d.satuanjual} x ${rp(d.hrgterjual)}`, rp(d.subtotal)));
     if (Number(d.disknilai) > 0) L.push(dua("  Potongan", `-${rp(d.disknilai)}`));
   }
-  L.push(garis, dua("Jumlah", rp(h.jmltrans)));
-  if (Number(h.diskonnilai) > 0) L.push(dua("Diskon", `-${rp(h.diskonnilai)}`));
-  if (Number(h.biaya) > 0) L.push(dua("Biaya lain", rp(h.biaya)));
-  if (Number(h.ppnnilai) > 0) L.push(dua(`PPN ${qty(h.ppn)}%`, rp(h.ppnnilai)));
-  L.push(dua("TOTAL", rp(h.totaltrans)));
-  L.push(dua(h.carabayar === "Kredit" ? "Uang muka" : h.carabayar === "Non Tunai" ? `${h.ketbayarlain1} ${h.kartu ?? ""}` : "Bayar", rp(bayar)));
-  if (h.carabayar !== "Non Tunai" && Number(h.bayarlain1) > 0) L.push(dua(`${h.ketbayarlain1} ${h.kartu ?? ""}`.trim(), rp(h.bayarlain1)));
-  if (h.carabayar === "Tunai") L.push(dua("Kembali", rp(h.sisa)));
-  if (h.carabayar === "Kredit") L.push(dua("Sisa hutang", rp(-Number(h.sisa))));
-  if (Number(h.poinmasuk) > 0) L.push(dua("Poin Anda bertambah", qty(h.poinmasuk)), dua("Total poin Anda", qty(h.poinakhir)));
+  L.push(garis, ...b.total.map(([a, c]) => (c ? dua(`${a} :`, c) : a)));
+  if (b.catatan) L.push("Catatan:", b.catatan);
   L.push(garis);
   tambah(s.footer1);
   tambah(s.footer2);

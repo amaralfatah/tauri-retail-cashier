@@ -24,6 +24,8 @@ Bawaan konteks di `src/vb/skin.tsx` adalah `"modern"`. Seluruh `VbForm`, `VbWind
 
 Layar kasir penjualan dan dialog Pembayaran (`BayarDialog`) sengaja menyusun ulang tata letak untuk alur scan, bayar,
 lalu kembalian; kontrak `data-f` (mis. `tJmlBayar`, `tDP`, `cmbJenis`) tetap dipakai untuk fokus dan urutan Enter.
+Perilakunya tetap mengikuti aplikasi lama: kursor awal di Diskon %, Enter pindah sesuai TabIndex form VB, dan di penjualan
+Enter di Jml Bayar baru menyimpan kalau uangnya sudah cukup.
 
 ### Peta file
 
@@ -109,6 +111,9 @@ Ambil bentuk shadcn (sudut membulat, Inter, garis rapi), tetapi pertahankan keku
   Sel aktif = `input[data-act]`; kalau tidak ada, kotak isian baris kosong untuk barang baru. Hanya sel aktif yang ditandai:
   bingkai 2px di `td::before` (1px keluar, menutupi garis grid) dan pegangan kotak di `td::after`. Baris, kepala kolom,
   dan nomor baris sengaja tidak disorot (pemilik toko memintanya dihapus). Kotak isian lain tampil tanpa bingkai.
+- **Perilaku sel seperti Excel ada di `EntryGrid`** (dipakai semua tabel isian: transaksi, retur, opname, stok awal, promo, cetak label),
+  jadi jangan menulisnya ulang per layar. Masuk ke sel = seluruh isi terpilih dan panah kiri/kanan pindah sel. Mengetik, Backspace/Delete,
+  F2, atau klik pada sel yang sudah aktif masuk mode edit (`data-edit="1"`, cek dengan `sedangDiedit`); baru di mode itu panah menggeser kursor teks.
 - **Elemen HTML bawaan yang Anda buat di skin modern wajib punya `data-slot`** (komponen shadcn sudah punya).
   `App.css` lama masih punya aturan global `input`, `select`, `label`, `kbd`, `button` yang hanya berlaku untuk elemen tanpa `data-slot`.
 - CSS lama (`App.css`, `vb.css`, `transaksi.css`, `master.css`) tidak memakai `@layer`, jadi selalu menang atas kelas Tailwind
@@ -133,6 +138,9 @@ Ambil bentuk shadcn (sudut membulat, Inter, garis rapi), tetapi pertahankan keku
   paling kanan. Tombol tutup selalu bernama "Tutup" dan Esc benar-benar menutup (`useTopEscape`).
 - **Konfirmasi yang menghapus atau membatalkan**: `msg.confirm(teks, ya, judul, tidak, bahaya)`, dengan `bahaya` = `true` atau label
   ("Ya, batalkan"). Tombol Ya jadi merah, fokus awal di Tidak, dan huruf Y/T menjawab seperti MsgBox lama.
+  Pengecualian: Batal di layar transaksi (tombol Batal dan F6/F1) langsung mengosongkan tanpa bertanya, seperti aplikasi lama.
+- **Perilaku layar transaksi mengikuti aplikasi lama.** Sebelum mengubah alur kasir, cek kode dekompilasi di
+  `../analisis/dekompilasi/kode/*.c` dan form di `../analisis/ui/frm/*.frm` (TabIndex, KeyPress, Form_KeyDown), jangan menebak.
 - **Kotak isian**: yang bisa diisi berlatar putih (`bg-card`), yang hanya bisa dibaca abu (`readOnly`). Jangan beri `bg-muted` pada kotak yang bisa diisi.
 - **`VbGrid`** menyesuaikan lebar kolom dengan isinya. Yang mengalah hanya kolom teks lebar, jadi kode, nomor, tanggal, dan uang tidak terpotong.
 - **Nama layar** tampil di kiri status bar (`child.caption`), pengganti `[Nama Layar]` di judul jendela VB.

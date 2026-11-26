@@ -11,7 +11,7 @@ import { useKasirAktif } from "../lib/kasirAktif";
 import { CariBarang } from "../components/CariBarang";
 import { CariSatuan } from "../components/CariSatuan";
 import { CariTransaksi } from "../components/CariTransaksi";
-import { EntryGrid, type EntryGridCol, GRID_TH, GridSearchButton } from "../components/EntryGrid";
+import { EntryGrid, type EntryGridCol, GRID_TH, GridSearchButton, sedangDiedit } from "../components/EntryGrid";
 import { Alert, Modal } from "../components/Modal";
 import { Otentikasi } from "../components/Otentikasi";
 import { toast } from "sonner";
@@ -100,19 +100,22 @@ export function parseRibuan(teks: string): number {
   return Number(teks.replace(/\./g, "").replace(",", ".")) || 0;
 }
 
-/** Kotak isian angka: teks mentah saat difokus, berformat saat tidak. `ribuan`: titik ribuan juga tampil saat mengetik. */
-function VNum(props: { value: number; onChange?: (v: number) => void; f: string; right?: boolean; readOnly?: boolean; dec2?: boolean; ribuan?: boolean; inputRef?: React.Ref<HTMLInputElement>; className?: string }) {
-  const [text, setText] = useState(String(props.value));
+/** Kotak isian angka: teks mentah saat difokus, berformat saat tidak. `ribuan`: titik ribuan juga tampil saat mengetik.
+ *  `bulat`: rupiah penuh seperti format `###,##0` aplikasi lama (500,0191 tampil 500); nilai tersimpan baru berubah kalau Anda mengetik. */
+function VNum(props: { value: number; onChange?: (v: number) => void; f: string; right?: boolean; readOnly?: boolean; dec2?: boolean; ribuan?: boolean; bulat?: boolean; inputRef?: React.Ref<HTMLInputElement>; className?: string }) {
+  const ribuan = props.ribuan || props.bulat;
+  const awal = (v: number) => String(props.bulat ? Math.round(v) : v);
+  const [text, setText] = useState(awal(props.value));
   const [focus, setFocus] = useState(false);
-  useEffect(() => { if (!focus) setText(String(props.value)); }, [props.value, focus]);
+  useEffect(() => { if (!focus) setText(awal(props.value)); }, [props.value, focus]); // eslint-disable-line react-hooks/exhaustive-deps
   // Nilai diubah dari luar saat Anda mengetik (misalnya jumlah dikembalikan ke stok): tampilkan nilai barunya.
-  useEffect(() => { if (focus && (Number(text.replace(",", ".")) || 0) !== props.value) setText(String(props.value)); }, [props.value]); // eslint-disable-line react-hooks/exhaustive-deps
-  const formatted = focus ? (props.ribuan ? formatRibuan(text) : text) : new Intl.NumberFormat("id-ID", { minimumFractionDigits: props.dec2 ? 2 : 0, maximumFractionDigits: 2 }).format(props.value);
+  useEffect(() => { if (focus && (Number(text.replace(",", ".")) || 0) !== props.value) setText(awal(props.value)); }, [props.value]); // eslint-disable-line react-hooks/exhaustive-deps
+  const formatted = focus ? (ribuan ? formatRibuan(text) : text) : new Intl.NumberFormat("id-ID", { minimumFractionDigits: props.dec2 ? 2 : 0, maximumFractionDigits: props.bulat ? 0 : 2 }).format(props.value);
   const readOnly = props.readOnly || !props.onChange;
-  const onFocus = (e: React.FocusEvent<HTMLInputElement>) => { setFocus(true); setText(String(props.value)); const el = e.target; setTimeout(() => el.select(), 0); };
+  const onFocus = (e: React.FocusEvent<HTMLInputElement>) => { setFocus(true); setText(awal(props.value)); const el = e.target; setTimeout(() => el.select(), 0); };
   const onBlur = () => setFocus(false);
   const onChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!props.ribuan) { setText(e.target.value); props.onChange?.(Number(e.target.value.replace(",", ".")) || 0); return; }
+    if (!ribuan) { setText(e.target.value); props.onChange?.(Number(e.target.value.replace(",", ".")) || 0); return; }
     const el = e.target;
     const mentah = el.value.replace(/[^\d,]/g, "");
     // Kursor: hitung angka di kiri kursor, lalu pasang lagi di posisi yang sama setelah titik ribuan disusun ulang.
@@ -179,6 +182,8 @@ function DetailGrid(props: {
   onDelete: (key: number) => void;
   onEnterScan: () => void;
   onCariKode: (key: number) => void;
+  /** Kode atau barcode yang diketik di sel Kode baris yang ada: ganti barang di baris itu. Hasil false = tidak ditemukan. */
+  onGantiKode: (key: number, kode: string) => Promise<boolean>;
   onCariSatuan: (key: number) => void;
   stokKurang: (l: Line) => boolean;
   /** Stok sisa setelah barang ini terjual sudah sampai batas minimum (hanya penanda, tidak memblokir). */
@@ -197,6 +202,8 @@ function DetailGrid(props: {
   const { lines, selected, g } = props;
   const wantFocus = useRef(false);
   const [entryFocus, setEntryFocus] = useState(false);
+  /** Teks yang sedang diketik di sel Kode baris terpilih (null = belum diubah). */
+  const [kodeDraft, setKodeDraft] = useState<string | null>(null);
   const [col, setCol] = useState<Kol>("jml");
   const [boxH, setBoxH] = useState(460);
   const defaultCols = props.jual ? COLS : COLS_BELI;
@@ -237,7 +244,7 @@ function DetailGrid(props: {
   const onKeyDown = (e: React.KeyboardEvent) => {
     const inInput = e.target !== e.currentTarget;
     if ((e.key === "ArrowLeft" || e.key === "ArrowRight") && selected != null && !entryFocus) {
-      if (e.target instanceof HTMLInputElement && !e.target.readOnly) {
+      if (e.target instanceof HTMLInputElement && !e.target.readOnly && sedangDiedit(e.target)) {
         const s = e.target.selectionStart ?? 0;
         const end = e.target.selectionEnd ?? 0;
         const len = e.target.value.length;
@@ -277,7 +284,8 @@ function DetailGrid(props: {
         e.preventDefault();
         props.gridRef.current?.querySelector<HTMLInputElement>('input[data-entry], .kd-edit input:not([data-act])')?.focus();
       }
-    } else if (e.key === "Delete" && !inInput && selected != null) {
+    } else if (e.key === "Delete" && selected != null && (!inInput || (e.target instanceof HTMLInputElement && e.target.readOnly && e.target.dataset.act !== undefined))) {
+      // Delete menghapus baris terpilih, juga saat sel aktifnya hanya bisa dibaca (Satuan, Subtotal).
       e.preventDefault();
       props.onDelete(selected);
     } else if (e.key === "Enter" && !inInput && selected != null) {
@@ -295,10 +303,19 @@ function DetailGrid(props: {
     const act = e.target instanceof HTMLInputElement ? e.target.dataset.act : undefined;
     if (e.key !== "Enter" || !act) return;
     e.preventDefault();
-    if (act === "kode" && selected != null) props.onCariKode(selected);
+    if (act === "kode" && selected != null) {
+      // Seperti Excel: kode baru yang diketik langsung mengganti barang di baris ini. Tanpa perubahan, Enter membuka Cari Barang.
+      const baru = kodeDraft?.trim();
+      const lama = lines.find((l) => l.key === selected)?.b.kodebarang;
+      if (baru && baru !== lama) {
+        const el = e.target as HTMLInputElement;
+        void props.onGantiKode(selected, baru).then((ok) => { if (ok) setKodeDraft(null); else { delete el.dataset.edit; el.select(); } });
+      } else { setKodeDraft(null); props.onCariKode(selected); }
+    }
     else if (act === "satuan" && selected != null) props.onCariSatuan(selected);
     else if (act === "nama") pindah("jml");
-    else if (act === "jml" && !props.hargaTerkunci) pindah("hrg");
+    // Layar jual lama: Enter di Jml langsung ke baris baru (mode Grid) atau kotak scan (mode TextBox), kolom harga dilewati.
+    else if (act === "jml" && !props.hargaTerkunci && !props.jual) pindah("hrg");
     else if (act === "hrg" && !props.jual) pindah("hjual");
     else if (act === "hjual") pindah("margin");
     else props.onEnterScan();
@@ -311,7 +328,9 @@ function DetailGrid(props: {
       if (!l) {
         const isEntry = !!props.entry && i === lines.length;
         rows.push(
-          <TableRow key={`e${i}`} className="border-0 hover:bg-transparent" style={fillRowH ? { height: fillRowH } : undefined}>
+          // Baris isian barang baru memakai key tetap: saat barang bertambah baris ini hanya bergeser, kotaknya tidak dibuat ulang,
+          // jadi kursor tetap di sini dan scan berikutnya langsung masuk tanpa klik.
+          <TableRow key={isEntry ? "entry" : `e${i}`} className="border-0 hover:bg-transparent" style={fillRowH ? { height: fillRowH } : undefined}>
             <TableCell className={isEntry ? GRID_TD_NO : GRID_TD_NO_EMPTY}>{i + 1}</TableCell>
             <TableCell className={cn(isEntry ? GRID_TD : GRID_TD_EMPTY, isEntry && "p-0!", isEntry && entryActive && ACT_CELL)}>
               {isEntry && (
@@ -337,7 +356,16 @@ function DetailGrid(props: {
         continue;
       }
       const cur = selected === l.key && !entryFocus;
-      const klik = (c: Kol) => () => { if (!(cur && col === c)) { wantFocus.current = true; setCol(c); } if (selected !== l.key) props.onSelect(l.key); };
+      // Klik sel: aktifkan sel itu dan taruh kursor di kotaknya, juga saat kursor sedang di baris kosong (kotak scan).
+      // Kotak sel aktif baru ada setelah render, jadi fokusnya menunggu sebentar.
+      const klik = (c: Kol) => (e: React.MouseEvent) => {
+        if (cur && col === c && e.target instanceof HTMLInputElement) return;
+        e.preventDefault();
+        setEntryFocus(false);
+        setCol(c);
+        if (selected !== l.key) props.onSelect(l.key);
+        setTimeout(() => props.gridRef.current?.querySelector<HTMLInputElement>("input[data-act]")?.focus(), 0);
+      };
       const kodeTampil = l.b.kodebarang;
       const act = (c: Kol) => cur && col === c;
       rows.push(
@@ -354,7 +382,21 @@ function DetailGrid(props: {
           <TableCell className={cn(GRID_TD, act("kode") && ACT_CELL)} onMouseDown={klik("kode")}>
             {act("kode") ? (
               <div className="relative h-full">
-                <Input readOnly data-act="kode" value={kodeTampil} className={cn(GRID_INPUT, "cursor-default pr-6!")} />
+                <Input
+                  data-act="kode"
+                  value={kodeDraft ?? kodeTampil}
+                  autoComplete="off"
+                  onChange={(e) => setKodeDraft(e.target.value)}
+                  onBlur={() => setKodeDraft(null)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Escape" && kodeDraft != null) {
+                      // Batalkan ketikan dan pilih lagi seluruh kode, supaya ketikan berikutnya menimpa seperti Excel.
+                      e.preventDefault(); e.stopPropagation(); setKodeDraft(null);
+                      const el = e.currentTarget; delete el.dataset.edit; setTimeout(() => el.select(), 0);
+                    }
+                  }}
+                  className={cn(GRID_INPUT, "pr-6!")}
+                />
                 <GridSearchButton title="Cari barang [F10]" onClick={() => props.onCariKode(l.key)} />
               </div>
             ) : kodeTampil}
@@ -388,7 +430,7 @@ function DetailGrid(props: {
               </>
             )}
           </TableCell>
-          <TableCell className={cn(GRID_TD, "px-1! text-center", act("satuan") && ACT_CELL)} onMouseDown={klik("satuan")}>
+          <TableCell className={cn(GRID_TD, "px-1! text-center", act("satuan") && ACT_CELL)} onMouseDown={klik("satuan")} onDoubleClick={() => props.onCariSatuan(l.key)}>
             {act("satuan") ? (
               <div className="relative h-full">
                 <Input readOnly data-act="satuan" value={l.units[l.ui].satuan} className={cn(GRID_INPUT, "cursor-default pr-6! text-center")} />
@@ -417,14 +459,14 @@ function DetailGrid(props: {
           <TableCell className={cn(GRID_TD, "text-right", l.pdp > 0 && "text-success font-medium", act("hrg") && ACT_CELL)} onMouseDown={klik("hrg")}
             title={l.pdp > 0 ? `Potongan promo: −Rp ${rp(l.pdp)}` : undefined}>
             {act("hrg") ? (
-              <VNum f="hrg" right value={l.harga} readOnly={props.hargaTerkunci} onChange={(v) => props.onUpdate(l.key, { harga: v, manual: true })}
+              <VNum f="hrg" right bulat value={l.harga} readOnly={props.hargaTerkunci} onChange={(v) => props.onUpdate(l.key, { harga: v, manual: true })}
                 inputRef={(el) => { if (el) el.setAttribute("data-act", "hrg"); }} className="text-[13px] md:text-[13px]" />
             ) : rp(l.harga)}
           </TableCell>
           {!props.jual && (
             <TableCell className={cn(GRID_TD, "text-right", act("hjual") && ACT_CELL)} onMouseDown={klik("hjual")}>
               {act("hjual") ? (
-                <VNum f="hjual" right value={hrgJualBaris(l)} onChange={(v) => props.onUpdate(l.key, { hrgjual: v })}
+                <VNum f="hjual" right bulat value={hrgJualBaris(l)} onChange={(v) => props.onUpdate(l.key, { hrgjual: v })}
                   inputRef={(el) => { if (el) el.setAttribute("data-act", "hjual"); }} className="text-[13px] md:text-[13px]" />
               ) : rp(hrgJualBaris(l))}
             </TableCell>
@@ -846,7 +888,6 @@ function TransaksiIsi({ mode, order = false }: { mode: Mode; order?: boolean }) 
   const [selesai, setSelesai] = useState<{ notrans: string; kembali?: number } | null>(null);
   const [scanFokus, setScanFokus] = useState(true);
   /** Pesan merah di panel atas saat barcode yang discan belum terdaftar; hilang saat scan berikutnya berhasil. */
-  const [gagalScan, setGagalScan] = useState<string | null>(null);
 
   const aktifLevel = Number(setting.aktiflevel) === 1;
   const level = useMemo(() => kontakList.find((k) => k.kodepelanggan === kontak)?.level ?? "", [kontak, kontakList]);
@@ -935,7 +976,7 @@ function TransaksiIsi({ mode, order = false }: { mode: Mode; order?: boolean }) 
       return [...ls, l];
     });
   };
-  const tandaiBaru = (key: number) => { setFlash((f) => ({ key, n: f.n + 1 })); setSelesai(null); setGagalScan(null); };
+  const tandaiBaru = (key: number) => { setFlash((f) => ({ key, n: f.n + 1 })); setSelesai(null); };
 
   const onScan = async () => {
     const code = scan.trim();
@@ -947,24 +988,36 @@ function TransaksiIsi({ mode, order = false }: { mode: Mode; order?: boolean }) 
     try {
       const b = await (jual && !order ? kasirApi.findBarang(kode) : api.barangFind(kode));
       if (b) {
-        setGagalScan(null);
         addBarang(b, jml);
         setScan("");
         setelahTambah();
-      } else if (!jual) {
-        // Pembelian dan order: pesan seperti aslinya, bukan dialog cari.
+      } else {
+        // Seperti aplikasi lama: MsgBox "Data tidak ditemukan, atau barang tidak aktif." (juga untuk barang yang stoknya habis).
+        // Setelah OK kursor kembali ke kotak scan.
+        if (jual) bunyiGagal();
         setMsg("Data tidak ditemukan, atau barang tidak aktif.");
         setScan("");
-      } else {
-        // Barcode tidak terdaftar: bunyi dan pesan di panel atas, kursor tetap di kolom scan supaya scan berikutnya tidak salah masuk.
-        bunyiGagal();
-        setGagalScan(`Barcode ${kode} belum terdaftar. Tekan F10 untuk mencari barang.`);
-        setScan("");
-        setTimeout(() => scanRef.current?.focus(), 0);
       }
     } catch (e) {
       setMsg(errText(e));
     }
+  };
+
+  /** Sel Kode baris yang ada diketik ulang: cari kode/barcode itu lalu ganti barang di baris tersebut. */
+  const gantiKode = async (key: number, kode: string): Promise<boolean> => {
+    try {
+      const b = await (jual && !order ? kasirApi.findBarang(kode) : api.barangFind(kode));
+      if (b) {
+        update(key, { b, units: unitsOf(b), ui: 0, manual: false });
+        setelahTambah();
+        return true;
+      }
+      if (jual) bunyiGagal();
+      setMsg("Data tidak ditemukan, atau barang tidak aktif.");
+    } catch (e) {
+      setMsg(errText(e));
+    }
+    return false;
   };
 
   const update = (key: number, patch: Partial<Line>) => {
@@ -1004,7 +1057,6 @@ function TransaksiIsi({ mode, order = false }: { mode: Mode; order?: boolean }) 
     setTgl(today());
     setKasir({ kode: user.kodekaryawan, nama: user.namakaryawan });
     setLines([]);
-    setGagalScan(null);
     setKontak("");
     setSales("");
     setCatatan("");
@@ -1019,15 +1071,10 @@ function TransaksiIsi({ mode, order = false }: { mode: Mode; order?: boolean }) 
     setTimeout(() => scanRef.current?.focus(), 0);
   };
 
-  /** Batal [F6]: seperti aslinya (cBatal_Click) langsung mengosongkan form tanpa bertanya, lalu kursor ke Pelanggan. */
+  /** Tombol Batal: seperti aslinya (cBatal_Click) langsung mengosongkan form tanpa bertanya, lalu kursor ke Pelanggan/Supplier. */
   const batal = () => {
-    const kosongkan = () => {
-      reset();
-      setTimeout(() => fokusCtl(jual ? "tPelangganNama" : "tPemasokNama"), 0);
-    };
-    // Skin modern: Batal menghapus semua barang, jadi tanyakan dulu kalau sudah ada barang.
-    if (modern && lines.length > 0) tanya.confirm("Hapus semua barang di transaksi ini? Barang yang sudah discan akan hilang.", kosongkan, "Batalkan transaksi", undefined, "Ya, kosongkan");
-    else kosongkan();
+    reset();
+    setTimeout(() => fokusCtl(jual ? "tPelangganNama" : "tPemasokNama"), 0);
   };
 
   const bayar = () => {
@@ -1270,7 +1317,7 @@ function TransaksiIsi({ mode, order = false }: { mode: Mode; order?: boolean }) 
         ? { F1: batal, F4: bayar, F10: cariBarangF10, ...(jual ? {} : { F6: stokMin }) }
         : jual
           ? {
-            F1: () => { setScan(""); scanRef.current?.focus(); }, F3: () => setModal("ambilorder"), F4: bayar, F6: batal, F10: cariBarangF10,
+            F1: () => { setScan(""); scanRef.current?.focus(); }, F3: () => setModal("ambilorder"), F4: bayar, F6: reset, F10: cariBarangF10,
             ...(modern ? { F7: simpanPending, F8: () => setModal("pending"), ...(poinAktif ? { F9: cekPoin } : {}) } : {}),
           }
           : { F1: batal, F3: () => setModal("ambilorder"), F4: bayar, F6: stokMin, F10: cariBarangF10 };
@@ -1291,6 +1338,14 @@ function TransaksiIsi({ mode, order = false }: { mode: Mode; order?: boolean }) 
 
   // Enter di kolom kepala pindah ke kolom berikutnya: Tanggal, Kasir, Pelanggan/Pemasok, Sales, Catatan, lalu kotak scan.
   const rantai = ["dtTglTrans", "tKasirNama", kontakKey, "tSalesNama", "tCatatan"];
+  // Dialog atau pesan ditutup tanpa menaruh kursor di mana pun: kembalikan ke kotak scan, seperti MsgBox dan form modal VB
+  // yang mengembalikan fokus. Tanpa ini scan berikutnya hilang.
+  const adaDialog = !!modal || !!msg || !!tanya.node;
+  useEffect(() => {
+    if (adaDialog) return;
+    const t = setTimeout(() => { const a = document.activeElement; if (!a || a === document.body) scanRef.current?.focus(); }, 0);
+    return () => clearTimeout(t);
+  }, [adaDialog]);
   const enterKepala = (e: React.KeyboardEvent) => {
     if (e.key !== "Enter" || modal || msg || tanya.node) return;
     const nama = (e.target as HTMLElement).closest<HTMLElement>("[data-vb]")?.dataset.vb ?? "";
@@ -1298,6 +1353,8 @@ function TransaksiIsi({ mode, order = false }: { mode: Mode; order?: boolean }) 
     if (i < 0 || !(e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement)) return;
     e.preventDefault();
     if (i < rantai.length - 1) fokusCtl(rantai[i + 1]);
+    // Enter di Catatan selalu ke tabel, seperti aplikasi lama (mode TextBox juga).
+    else if (kotakScan) gridRef.current?.focus();
     else scanRef.current?.focus();
   };
 
@@ -1317,8 +1374,6 @@ function TransaksiIsi({ mode, order = false }: { mode: Mode; order?: boolean }) 
                 type="date"
                 value={tgl}
                 onChange={(e) => e.target.value && setTgl(e.target.value)}
-                disabled={!kasirBisaDiganti}
-                title={!kasirBisaDiganti ? "Tanggal hanya bisa diubah oleh Manager" : undefined}
                 className="border-foreground/20 bg-background pr-1.5 text-foreground tabular-nums [&::-webkit-calendar-picker-indicator]:ml-0 [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-datetime-edit]:p-0"
               />
             </div>
@@ -1396,11 +1451,7 @@ function TransaksiIsi({ mode, order = false }: { mode: Mode; order?: boolean }) 
               </div>
             </div>
             <div className="hidden min-w-0 flex-1 flex-col justify-center border-l border-display-foreground/20 pl-5 md:flex" aria-live="polite">
-              {gagalScan ? (
-                <div role="alert" className="flex items-center gap-2 rounded-md border-2 border-destructive bg-background px-3 py-1.5 text-sm font-semibold text-destructive lg:text-base">
-                  <span className="min-w-0">{gagalScan}</span>
-                </div>
-              ) : terakhir ? (
+              {terakhir ? (
                 <>
                   <div className="text-[11px] font-medium uppercase tracking-wider text-display-foreground/65">Barang Terakhir</div>
                   <div className="flex min-w-0 items-baseline gap-2.5">
@@ -1566,6 +1617,7 @@ function TransaksiIsi({ mode, order = false }: { mode: Mode; order?: boolean }) 
                 onDelete={hapusBaris}
                 onEnterScan={() => scanRef.current?.focus()}
                 onCariKode={(k) => { setGantiKey(k); setCariAwal(""); setModal("cari"); }}
+                onGantiKode={gantiKode}
                 onCariSatuan={(k) => { setSatuanKey(k); setModal("satuan"); }}
                 stokKurang={stokKurang}
                 stokTipis={stokTipis}
@@ -1702,12 +1754,12 @@ function TransaksiIsi({ mode, order = false }: { mode: Mode; order?: boolean }) 
       {modal === "kontak" && (
         <PilihModal title={jual ? "Pilih Pelanggan" : "Pilih Supplier"} kosong="Tunai"
           rows={kontakList.map((k) => ({ kode: jual ? k.kodepelanggan : k.kodepemasok, nama: jual ? `${k.namapelanggan}${k.level ? ` · ${k.level}` : ""}` : k.namapemasok }))}
-          onClose={() => setModal(null)} onPick={(k) => { setKontak(k); setModal(null); scanRef.current?.focus(); }} />
+          onClose={() => setModal(null)} onPick={(k) => { setKontak(k); setModal(null); setTimeout(() => fokusCtl(kontakKey), 0); }} />
       )}
       {modal === "sales" && (
         <PilihModal title="Pilih Sales" kosong="Tanpa sales"
           rows={salesList.map((k) => ({ kode: k.kodekaryawan, nama: k.namakaryawan }))}
-          onClose={() => setModal(null)} onPick={(k) => { setSales(k); setModal(null); scanRef.current?.focus(); }} />
+          onClose={() => setModal(null)} onPick={(k) => { setSales(k); setModal(null); setTimeout(() => fokusCtl("tSalesNama"), 0); }} />
       )}
       {modal === "bayar" && (
         <BayarDialog mode={mode} tgl={tgl} kontak={kontak} sales={sales} kasir={kasir.kode} catatan={catatan} lines={shown} noorder={noOrder} dpAwal={dp}
@@ -1725,7 +1777,7 @@ function TransaksiIsi({ mode, order = false }: { mode: Mode; order?: boolean }) 
       {modal === "koreksi" && <CariDataDialog jenis={jual ? "orderjual" : "orderbeli"} onClose={() => setModal(null)} onAmbil={(n) => void ambilOrder(n, true)} />}
       {modal === "kasir" && (
         <CariMaster table="mdkaryawan" onClose={() => setModal(null)}
-          onPick={(r) => { setKasir({ kode: String(r.kodekaryawan), nama: String(r.namakaryawan) }); setModal(null); scanRef.current?.focus(); }} />
+          onPick={(r) => { setKasir({ kode: String(r.kodekaryawan), nama: String(r.namakaryawan) }); setModal(null); setTimeout(() => fokusCtl("tKasirNama"), 0); }} />
       )}
       {modal === "pilihtrans" && (
         <CariTransaksi kode={jual ? "TJ" : "TB"} onClose={() => setModal(null)}
@@ -1900,8 +1952,11 @@ function BayarDialog(props: { mode: Mode; tgl: string; kontak: string; sales: st
   const [noref, setNoref] = useState("");
   // Jatuh tempo = hari ini + pengaturan Tempo Piutang (FrmTransJualBayar.Form_Load).
   const [tempo, setTempo] = useState(addDays(today(), Number(setting.tempopiutang) || 0));
-  const [preview, setPreviewNilai] = useState(getLihatStruk);
-  const setPreview = (v: boolean | ((p: boolean) => boolean)) => setPreviewNilai((p) => { const n = typeof v === "function" ? v(p) : v; setLihatStruk(n); return n; });
+  // Aplikasi lama mematikan dan mengosongkan "Preview Struk" untuk kertas A4/A5 dan printer Direct-Custom.
+  const previewMati = ["Kertas A4", "Kertas A5"].includes(getLocal("ukuranKertas")) || getLocal("jnsPrinter") === "Direct-Custom";
+  const [previewPilihan, setPreviewNilai] = useState(getLihatStruk);
+  const preview = previewPilihan && !previewMati;
+  const setPreview = (v: boolean | ((p: boolean) => boolean)) => { if (previewMati) return; setPreviewNilai((p) => { const n = typeof v === "function" ? v(p) : v; setLihatStruk(n); return n; }); };
   const defaultJmlByr = jual && getLocal("defaultJmlByr") === "1";
   const diskonTerkunci = jual && user.level === "Kasir" && Number(setting.izindiskon) !== 1;
   const [err, setErr] = useState("");
@@ -2066,25 +2121,33 @@ function BayarDialog(props: { mode: Mode; tgl: string; kontak: string; sales: st
     return () => window.removeEventListener("keydown", onKey, true);
   });
 
-  useEffect(() => { setTimeout(() => field("tJmlBayar")?.focus(), 0); }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Enter pindah ke kolom berikutnya; di kolom terakhir menyimpan.
-  // Isian tambahan berakhir di Uang tunai yang diterima, lalu Enter di sana menyimpan.
+  // Urutan Enter mengikuti TabIndex form aslinya (Form_KeyDown mengirim {tab}).
+  // Jual: Enter di Jml Bayar menyimpan kalau uangnya sudah cukup, dan Enter di No Ref selalu menyimpan (tJmlBayar/tNoRefNonTunai_KeyPress).
+  // Beli: Enter di Jml Bayar pindah ke tombol Simpan.
   const urutan = jual
-    ? ["tDiskonPersen", "tDiskonNilai", "tBiaya", "tDP", "cmbJenis", "cmbItem", "tBayarNonTunai", "tNoRefNonTunai", "tJmlBayar", "dtJthTempo"]
-    : ["tDiskonPersen", "tDiskonNilai", "tBiaya", "tJmlBayar", "dtJthTempo"];
+    ? ["tDiskonPersen", "tDiskonNilai", "tBiaya", "tJmlBayar", "cmbJenis", "cmbItem", "tBayarNonTunai", "tNoRefNonTunai", "cSimpan", "dtJthTempo", "tDP"]
+    : ["tDiskonPersen", "tDiskonNilai", "tBiaya", "tJmlBayar", "cSimpan", "dtJthTempo"];
+  const bisaFokus = (el: HTMLElement | null | undefined): el is HTMLElement =>
+    !!el && !(el as HTMLInputElement).disabled && el.offsetParent !== null;
+  const fokusSetelah = (cur: number) => {
+    for (let k = 1; k <= urutan.length; k++) {
+      const el = field(urutan[(cur + k) % urutan.length]);
+      if (bisaFokus(el)) { el.focus(); return; }
+    }
+  };
+
+  // Seperti aslinya, kursor awal di kolom pertama (Diskon %), bukan di Jml Bayar.
+  useEffect(() => { setTimeout(() => fokusSetelah(-1), 0); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   const onEnter = (ev: React.KeyboardEvent) => {
     if (ev.key !== "Enter" || ev.target instanceof HTMLButtonElement) return;
     ev.preventDefault();
     const el = ev.target as HTMLElement;
     const cur = urutan.findIndex((n) => field(n) === el);
-    const akhir = ["tJmlBayar", "dtJthTempo"];
-    if (cur < 0 || akhir.includes(urutan[cur])) return void simpan();
-    // Lewati isian yang sedang tidak tampil (bagian tambahan tertutup).
-    let n = cur + 1;
-    while (n < urutan.length && !field(urutan[n])) n++;
-    if (n < urutan.length) field(urutan[n])?.focus();
-    else void simpan();
+    if (cur < 0) return void simpan();
+    const nama = urutan[cur];
+    if (jual && (nama === "tNoRefNonTunai" || (nama === "tJmlBayar" && sisa <= 0.0001))) return void simpan();
+    fokusSetelah(cur);
   };
 
   if (hasil && jual && hasil.trans) {
@@ -2125,9 +2188,9 @@ function BayarDialog(props: { mode: Mode; tgl: string; kontak: string; sales: st
       <Modal title={formCaption(formName)} onClose={() => selesai(tanyaCetak.notrans)}
         footer={<>
           <Button variant="outline" onClick={() => selesai(tanyaCetak.notrans)}>Tidak</Button>
-          <Button autoFocus onClick={() => selesai(tanyaCetak.notrans, tanyaCetak)}>Cetak</Button>
+          <Button autoFocus onClick={() => selesai(tanyaCetak.notrans, tanyaCetak)}>Ya</Button>
         </>}>
-        <p>Data sudah disimpan ({tanyaCetak.notrans}). {jual ? "Cetak struknya?" : "Apakah akan cetak nota pembelian?"}</p>
+        <p>{jual ? "Apakah akan cetak faktur jual?" : "Apakah akan cetak nota pembelian?"}</p>
       </Modal>
     )}
     </>
@@ -2295,13 +2358,13 @@ function BayarDialog(props: { mode: Mode; tgl: string; kontak: string; sales: st
 
           <footer className="flex flex-none items-center gap-2 border-t bg-muted/30 px-5 py-3">
             <label data-slot="label" className="flex flex-1 cursor-pointer items-center gap-2 text-sm text-foreground select-none">
-              <input type="checkbox" data-slot="checkbox-native" className="size-4 accent-primary" checked={preview} onChange={(e) => setPreview(e.target.checked)} />
+              <input type="checkbox" data-slot="checkbox-native" className="size-4 accent-primary disabled:opacity-50" checked={preview} disabled={previewMati} onChange={(e) => setPreview(e.target.checked)} />
               Lihat struk dulu <span className="text-xs text-muted-foreground">Alt+P</span>
             </label>
             <Button type="button" variant="outline" size="lg" className="border-foreground/20 text-foreground" onClick={props.onClose}>
               Tutup <Kbd className="border border-border bg-muted text-foreground">Esc</Kbd>
             </Button>
-            <Button type="button" size="lg" className="h-10 min-w-36 px-6 text-base font-semibold" disabled={busy} onClick={() => void simpan()}>
+            <Button type="button" data-f="cSimpan" size="lg" className="h-10 min-w-36 px-6 text-base font-semibold" disabled={busy} onClick={() => void simpan()}>
               {busy ? "Menyimpan…" : "Simpan"} <Kbd className="bg-primary-foreground/20 text-primary-foreground">Enter</Kbd>
             </Button>
           </footer>

@@ -149,6 +149,17 @@ function clearColWidths(key: string) {
   }
 }
 
+/**
+ * Mode sel seperti Excel. Sel yang baru aktif ada di "mode pilih": seluruh isinya terpilih, ketikan menimpa,
+ * dan panah kiri/kanan pindah sel. Sel masuk "mode edit" (`data-edit="1"` pada kotaknya) setelah Anda mengetik,
+ * menekan Backspace/Delete/F2, atau mengklik di dalam kotak yang sudah aktif; di mode edit panah menggeser kursor teks.
+ * Halaman yang menangani panah sendiri (mis. tabel kasir) cukup memeriksa `sedangDiedit(e.target)`.
+ */
+export const sedangDiedit = (el: EventTarget | null) => el instanceof HTMLInputElement && el.dataset.edit === "1";
+
+const kotakSel = (el: EventTarget | null): el is HTMLInputElement =>
+  el instanceof HTMLInputElement && !el.readOnly && !el.disabled && el.type !== "checkbox" && el.type !== "radio" && !!el.closest("td");
+
 function safeSelect(input: HTMLInputElement) {
   if (input.type === "checkbox" || input.type === "radio") return;
   try {
@@ -303,6 +314,11 @@ export function EntryGrid({
 
   const handleFocusCapture: React.FocusEventHandler<HTMLDivElement> = (e) => {
     const target = e.target as HTMLElement | null;
+    if (kotakSel(target)) {
+      // Sel baru aktif: mode pilih, seluruh isi terpilih (setelah klik atau fokus dari kode selesai).
+      delete target.dataset.edit;
+      setTimeout(() => { if (document.activeElement === target && !sedangDiedit(target)) safeSelect(target); }, 0);
+    }
     const td = target?.closest?.("td");
     if (td && e.currentTarget.contains(td)) {
       markActiveTd(td);
@@ -314,6 +330,8 @@ export function EntryGrid({
 
   const handleMouseDownCapture: React.MouseEventHandler<HTMLDivElement> = (e) => {
     const target = e.target as HTMLElement | null;
+    // Klik di dalam kotak yang sudah aktif: mulai mengedit, kursor teks di tempat klik.
+    if (kotakSel(target) && document.activeElement === target) target.dataset.edit = "1";
     const td = target?.closest?.("td");
     if (td && e.currentTarget.contains(td)) {
       markActiveTd(td);
@@ -324,6 +342,21 @@ export function EntryGrid({
     if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
       markActiveTd(null);
     }
+  };
+
+  const handleKeyDownCapture: React.KeyboardEventHandler<HTMLDivElement> = (e) => {
+    const target = e.target;
+    if (kotakSel(target) && !sedangDiedit(target)) {
+      if ((e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) || e.key === "Backspace" || e.key === "Delete") {
+        target.dataset.edit = "1";
+      } else if (e.key === "F2") {
+        e.preventDefault();
+        target.dataset.edit = "1";
+        const n = target.value.length;
+        target.setSelectionRange(n, n);
+      }
+    }
+    onKeyDownCapture?.(e);
   };
 
   const handleKeyDown: React.KeyboardEventHandler<HTMLDivElement> = (e) => {
@@ -399,13 +432,8 @@ export function EntryGrid({
     }
 
     if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
-      if (target instanceof HTMLInputElement) {
-        const atEdge =
-          e.key === "ArrowLeft"
-            ? target.selectionStart === 0 && target.selectionEnd === 0
-            : target.selectionStart === target.value.length && target.selectionEnd === target.value.length;
-        if (!atEdge) return;
-      }
+      // Mode edit: panah menggeser kursor teks. Mode pilih: pindah sel.
+      if (sedangDiedit(target)) return;
       const tr = curTd.closest("tr");
       if (!tr) return;
       const nextCol = curTd.cellIndex + (e.key === "ArrowLeft" ? -1 : 1);
@@ -422,7 +450,7 @@ export function EntryGrid({
       tabIndex={tabIndex}
       ref={setRef}
       onKeyDown={handleKeyDown}
-      onKeyDownCapture={onKeyDownCapture}
+      onKeyDownCapture={handleKeyDownCapture}
       onFocusCapture={handleFocusCapture}
       onMouseDownCapture={handleMouseDownCapture}
       onBlurCapture={handleBlurCapture}

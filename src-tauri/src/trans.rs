@@ -662,9 +662,10 @@ pub fn barang_cari_kasir(db: &Db, search: String, limit: Option<i64>) -> Res<Vec
 }
 
 /// Cari satu barang dari kode atau barcode yang di-scan di layar kasir; aturan stoknya sama dengan daftar F10.
+/// Huruf besar/kecil tidak dibedakan, seperti `upper(barcode)` di aplikasi lama.
 pub fn cari_satu_kasir(conn: &Connection, code: &str) -> Res<Option<Value>> {
     let sql = format!(
-        "SELECT * FROM mdbarang WHERE COALESCE(aktif,1) = 1{} AND (UPPER(kodebarang) = UPPER(?1) OR barcode = ?1 OR barcode2 = ?1) LIMIT 1",
+        "SELECT * FROM mdbarang WHERE COALESCE(aktif,1) = 1{} AND (UPPER(kodebarang) = UPPER(?1) OR UPPER(barcode) = UPPER(?1) OR UPPER(barcode2) = UPPER(?1)) LIMIT 1",
         syarat_stok_kasir(conn)
     );
     one(conn, &sql, params![code.trim()])
@@ -708,14 +709,19 @@ pub fn list_transaksi(db: &Db, kode: String, dari: String, sampai: String, searc
 #[perintah]
 pub fn get_transaksi(db: &Db, notrans: String) -> Res<Value> {
     let conn = db.lock()?;
+    // piutangpelanggan: baris "Piutang belum terbayar" di struk lama, total kekurangan piutang pelanggan yang belum lunas.
     let mut header = one(
         &conn,
         "SELECT t.*, COALESCE(p.namapelanggan, t.kodepelanggan) AS namapelanggan, COALESCE(s.namapemasok, t.kodepemasok) AS namapemasok,
-                COALESCE(k.namakaryawan, t.kodekaryawan) AS namakasir
+                COALESCE(k.namakaryawan, t.kodekaryawan) AS namakasir, COALESCE(sl.namakaryawan, '') AS namasales,
+                CASE WHEN COALESCE(t.kodepelanggan, 'Tunai') = 'Tunai' THEN 0 ELSE
+                  (SELECT COALESCE(SUM(kekurangan), 0) FROM trkartupiutang WHERE status = 0 AND UPPER(kodepelanggan) = UPPER(t.kodepelanggan)) END
+                  AS piutangpelanggan
          FROM transaksi t
          LEFT JOIN mdpelanggan p ON p.kodepelanggan = t.kodepelanggan
          LEFT JOIN mdpemasok s ON s.kodepemasok = t.kodepemasok
          LEFT JOIN mdkaryawan k ON k.kodekaryawan = t.kodekaryawan
+         LEFT JOIN mdkaryawan sl ON sl.kodekaryawan = t.kodesales
          WHERE t.notrans = ?1",
         params![notrans],
     )?
