@@ -79,4 +79,9 @@ test("menutup modal satuan/cari di Transaksi mengembalikan fokus ke sel aktif, b
     "CariBarang onClose tidak boleh memaksa fokus ke scanRef (baris baru)",
   );
   assert.match(transSrc, /fokusKembali/, "Transaksi.tsx harus memulihkan fokus lewat fokusKembali");
+  assert.doesNotMatch(
+    transSrc,
+    /data-entry="1"[\s\S]{0,260}?onBlur=\{\(\)\s*=>\s*setEntryFocus\(false\)\}/,
+    "Kotak baris kosong (data-entry) tidak boleh mereset entryFocus saat blur ke dialog",
+  );
 });

@@ -227,6 +227,7 @@ function DetailGrid(props: {
 
   useEffect(() => {
     if (!props.fokusJml) return;
+    setEntryFocus(false);
     setCol("jml");
     const t = setTimeout(() => props.gridRef.current?.querySelector<HTMLInputElement>("input[data-act]")?.focus(), 30);
     return () => clearTimeout(t);
@@ -257,9 +258,10 @@ function DetailGrid(props: {
   };
 
   const idx = lines.findIndex((l) => l.key === selected);
+  const diBarisBaru = !!props.entry && (selected == null || entryFocus);
   const onKeyDown = (e: React.KeyboardEvent) => {
     const inInput = e.target !== e.currentTarget;
-    if ((e.key === "ArrowLeft" || e.key === "ArrowRight") && selected != null && !entryFocus) {
+    if ((e.key === "ArrowLeft" || e.key === "ArrowRight") && selected != null && !diBarisBaru) {
       if (e.target instanceof HTMLInputElement && !e.target.readOnly && sedangDiedit(e.target)) {
         const s = e.target.selectionStart ?? 0;
         const end = e.target.selectionEnd ?? 0;
@@ -279,13 +281,15 @@ function DetailGrid(props: {
     if (e.key === "ArrowDown" || e.key === "ArrowUp") {
       if (e.target instanceof HTMLSelectElement) return;
       // Dari baris kosong (isian barang baru), panah atas kembali ke barang terakhir.
-      if (entryFocus) {
+      if (diBarisBaru) {
         if (e.key === "ArrowUp" && lines.length) {
           e.preventDefault();
           // Sel barang baru dirender setelah kotak isian ini kehilangan fokus, jadi fokuskan setelah render.
           (e.target as HTMLElement).blur();
+          setEntryFocus(false);
           setCol("kode");
           props.onSelect(lines[lines.length - 1].key);
+          props.onFokusSel?.();
           setTimeout(() => props.gridRef.current?.querySelector<HTMLInputElement>("input[data-act]")?.focus(), 30);
         }
         return;
@@ -300,14 +304,14 @@ function DetailGrid(props: {
         e.preventDefault();
         props.gridRef.current?.querySelector<HTMLInputElement>('input[data-entry], .kd-edit input:not([data-act])')?.focus();
       }
-    } else if (e.key === "Delete" && selected != null && (!inInput || (e.target instanceof HTMLInputElement && e.target.readOnly && e.target.dataset.act !== undefined))) {
+    } else if (e.key === "Delete" && selected != null && !diBarisBaru && (!inInput || (e.target instanceof HTMLInputElement && e.target.readOnly && e.target.dataset.act !== undefined))) {
       // Delete menghapus baris terpilih, juga saat sel aktifnya hanya bisa dibaca (Satuan, Subtotal).
       e.preventDefault();
       props.onDelete(selected);
-    } else if (e.key === "Enter" && !inInput && selected != null) {
+    } else if (e.key === "Enter" && !inInput && selected != null && !diBarisBaru) {
       e.preventDefault();
       pindah("jml");
-    } else if (e.key === "Tab" && inInput && (e.target as HTMLElement).dataset.act !== undefined && selected != null && !entryFocus) {
+    } else if (e.key === "Tab" && inInput && (e.target as HTMLElement).dataset.act !== undefined && selected != null && !diBarisBaru) {
       const i = urutan.indexOf(col) + (e.shiftKey ? -1 : 1);
       e.preventDefault();
       if (i >= 0 && i < urutan.length) pindah(urutan[i]);
@@ -337,7 +341,7 @@ function DetailGrid(props: {
     else props.onEnterScan();
   };
 
-    const entryActive = selected == null || entryFocus;
+    const entryActive = diBarisBaru;
     const rows: ReactNode[] = [];
     for (let i = 0; i < total; i++) {
       const l = lines[i];
@@ -357,7 +361,6 @@ function DetailGrid(props: {
                     value={props.entry!.value}
                     autoComplete="off"
                     onFocus={() => setEntryFocus(true)}
-                    onBlur={() => setEntryFocus(false)}
                     onChange={(e) => props.entry!.onChange(e.target.value)}
                     onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); props.entry!.onEnter(); } }}
                     className={cn(GRID_INPUT, "pr-6!")}
@@ -371,7 +374,7 @@ function DetailGrid(props: {
         );
         continue;
       }
-      const cur = selected === l.key && !entryFocus;
+      const cur = selected === l.key && !diBarisBaru;
       // Klik sel: aktifkan sel itu dan taruh kursor di kotaknya, juga saat kursor sedang di baris kosong (kotak scan).
       // Kotak sel aktif baru ada setelah render, jadi fokusnya menunggu sebentar.
       const klik = (c: Kol) => (e: React.MouseEvent) => {
@@ -1169,6 +1172,8 @@ function TransaksiIsi({ mode, order = false }: { mode: Mode; order?: boolean }) 
     }
     setLines(baru);
     setSelected(baru[0]?.key ?? null);
+    fokusTerakhirRef.current = { jenis: "scan" };
+    setTimeout(() => scanRef.current?.focus(), 0);
     if (hilang.length) setMsg(`Barang ini sudah tidak ada di data barang, jadi tidak ikut diambil: ${hilang.join(", ")}.`);
   };
 
