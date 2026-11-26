@@ -91,6 +91,7 @@ export function Database() {
               data-vb="cOpenFolderBackup"
               className="h-7 px-2.5 text-xs"
               title="Pilih lokasi folder backup"
+              aria-label="Pilih lokasi folder backup"
               onClick={() => void pilihFolderBackup()}
             >
               ...

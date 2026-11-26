@@ -251,7 +251,7 @@ function KasAdd(props: { onClose: () => void; onSaved: () => void }) {
           <InputGroup className="h-8">
             <InputGroupInput id="kas-pelanggan" data-vb="tPelangganNama" readOnly value={s(pelanggan?.namapelanggan)} placeholder="—" className="text-xs" />
             <InputGroupAddon align="inline-end">
-              <InputGroupButton data-vb="cCariPelanggan" onClick={() => setCari("mdpelanggan")}>...</InputGroupButton>
+              <InputGroupButton data-vb="cCariPelanggan" title="Cari pelanggan" aria-label="Cari pelanggan" onClick={() => setCari("mdpelanggan")}>...</InputGroupButton>
             </InputGroupAddon>
           </InputGroup>
         </div>
@@ -260,7 +260,7 @@ function KasAdd(props: { onClose: () => void; onSaved: () => void }) {
           <InputGroup className="h-8">
             <InputGroupInput id="kas-pemasok" data-vb="tPemasokNama" readOnly value={s(pemasok?.namapemasok)} placeholder="—" className="text-xs" />
             <InputGroupAddon align="inline-end">
-              <InputGroupButton data-vb="cCariPemasok" onClick={() => setCari("mdpemasok")}>...</InputGroupButton>
+              <InputGroupButton data-vb="cCariPemasok" title="Cari supplier" aria-label="Cari supplier" onClick={() => setCari("mdpemasok")}>...</InputGroupButton>
             </InputGroupAddon>
           </InputGroup>
         </div>

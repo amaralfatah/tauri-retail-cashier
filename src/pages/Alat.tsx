@@ -26,7 +26,14 @@ const TAB_KHUSUS_PUSAT = new Set([0, 1, 3, 4, 5]);
 const TAB_BAHAYA = new Set([2, 4, 6]);
 const URUT_TAB = [...TABS.keys()].filter((i) => !TAB_BAHAYA.has(i)).concat([...TABS.keys()].filter((i) => TAB_BAHAYA.has(i)));
 const BERDASAR_TANGGAL = new Set(["jual", "beli", "opname", "stokawal", "piutang", "hutang", "kas"]);
-const JENIS_TRANS = ["Penjualan", "Retur Penjualan", "Pelunasan Piutang Customer", "Pembelian", "Retur Pembelian", "Pelunasan Hutang Supplier"];
+const JENIS_TRANS: [string, string][] = [
+  ["Penjualan", "Penjualan"],
+  ["Retur Penjualan", "Retur Penjualan"],
+  ["Pelunasan Piutang Customer", "Pelunasan Piutang Pelanggan"],
+  ["Pembelian", "Pembelian"],
+  ["Retur Pembelian", "Retur Pembelian"],
+  ["Pelunasan Hutang Supplier", "Pelunasan Hutang Supplier"],
+];
 const kunciTrans = (r: Row) => String(r.kunci ?? r.notrans);
 const kb = (n: number) => `${Math.max(1, Math.round(n / 1024)).toLocaleString("id-ID")} KB`;
 
@@ -97,7 +104,7 @@ export function Alat() {
     const r = await dbApi.cek(true);
     return r.ok ? "Data Anda dalam keadaan baik. Tidak ada data yang rusak." : `Ditemukan masalah di data: ${r.masalah.slice(0, 3).join("; ")}. Klik Perbaiki Data untuk memperbaikinya.`;
   });
-  const perbaiki = () => msg.confirm("Program akan membuat cadangan dulu, lalu merapikan dan memperbaiki indeks data. Lanjutkan?", () => void jalan(async () => {
+  const perbaiki = () => msg.confirm("Toko Pro akan membuat cadangan dulu, lalu merapikan dan memperbaiki indeks data. Lanjutkan?", () => void jalan(async () => {
     const r = await dbApi.perbaiki(fld);
     return `Perbaikan selesai. Cadangan sebelum perbaikan ada di ${r.cadangan}.`;
   }), undefined, undefined, "Ya, perbaiki");
@@ -108,10 +115,10 @@ export function Alat() {
   };
   const restore = () => {
     if (!fileRestore.trim()) return msg.alert("Pilih dulu file backup yang akan dipulihkan.");
-    msg.confirm("Data Anda saat ini akan diganti dengan isi file backup ini. Program membuat cadangan dulu dari data sekarang. Lanjutkan?", () => void jalan(async () => {
+    msg.confirm("Data Anda saat ini akan diganti dengan isi file backup ini. Toko Pro akan membuat cadangan data sekarang dulu. Lanjutkan?", () => void jalan(async () => {
       const r = await dbApi.restore(fileRestore.trim(), fld);
       setTimeout(() => window.location.reload(), 2500);
-      return `Data sudah dipulihkan. Data Anda yang sebelumnya disimpan di ${r.cadangan}. Program akan dimuat ulang, silakan masuk lagi.`;
+      return `Data sudah dipulihkan. Cadangan data sebelumnya disimpan di ${r.cadangan}. Aplikasi akan dimuat ulang, silakan masuk lagi.`;
     }), undefined, undefined, "Ya, pulihkan");
   };
 
@@ -122,7 +129,7 @@ export function Alat() {
     const ada = pilih.some((i) => i.kunci === "jual" || i.kunci === "beli" || i.kunci === "opname" || i.kunci === "stokawal");
     msg.confirm(
       `Data yang akan dihapus: ${pilih.map((i) => i.nama).join(", ")}.${rentang ? ` Periode ${tglID(rentang.dari)} sampai ${tglID(rentang.sampai)}.` : ""} ` +
-      `${ada ? "Stok barang dihitung ulang dari transaksi yang masih ada. " : ""}Data yang dihapus tidak bisa dikembalikan, tetapi program membuat cadangan dulu. Lanjutkan?`,
+      `${ada ? "Stok barang dihitung ulang dari transaksi yang masih ada. " : ""}Data yang dihapus tidak bisa dikembalikan, tetapi Toko Pro membuat cadangan dulu. Lanjutkan?`,
       () => void jalan(async () => {
         const r = await alatApi.hapusData([...hapusPick], rentang?.dari ?? "", rentang?.sampai ?? "", fld);
         setHapusPick(new Set());
@@ -148,11 +155,11 @@ export function Alat() {
       return "Perintah sudah dijalankan.";
     });
     if (/^\s*(select|with|explain|pragma)/i.test(q)) jalanSql();
-    else msg.confirm("Perintah ini akan mengubah data Anda. Program membuat cadangan dulu. Lanjutkan?", jalanSql, undefined, undefined, "Ya, jalankan");
+    else msg.confirm("Perintah ini akan mengubah data Anda. Toko Pro membuat cadangan dulu. Lanjutkan?", jalanSql, undefined, undefined, "Ya, jalankan");
   };
 
   /* ---- Repair ---- */
-  const hitungStok = () => msg.confirm("Program akan menghitung ulang stok akhir semua barang. Lanjutkan?", () => void jalan(async () => {
+  const hitungStok = () => msg.confirm("Toko Pro akan menghitung ulang stok akhir semua barang. Lanjutkan?", () => void jalan(async () => {
     const r = await alatApi.hitungStok();
     return `Stok akhir sudah dihitung ulang. ${r.berubah} barang stoknya berubah.`;
   }));
@@ -160,7 +167,7 @@ export function Alat() {
     const r = await alatApi.sinkronHargaBeli(fld);
     return `Harga beli sudah diperbaiki. ${r.berubah} baris transaksi diperbarui.`;
   }));
-  const sinkronJual = () => msg.confirm("Program akan menghapus transaksi penjualan yang tidak punya barang, beserta kas dan piutangnya. Program membuat cadangan dulu. Lanjutkan?", () => void jalan(async () => {
+  const sinkronJual = () => msg.confirm("Toko Pro akan menghapus transaksi penjualan yang tidak punya barang, beserta kas dan piutangnya, serta membuat cadangan dulu. Lanjutkan?", () => void jalan(async () => {
     const r = await alatApi.sinkronJual(fld);
     return `Selesai. ${r.dihapus} transaksi penjualan tanpa barang sudah dihapus.`;
   }), undefined, undefined, "Ya, hapus");
@@ -178,7 +185,7 @@ export function Alat() {
       : lunas
         ? "Tagihan yang tadinya lunas kembali terbuka sebesar pembayaran itu, dan uang pelunasan di kas ikut dihapus."
         : "Kartu piutang, stok, dan data keuangan yang terkait ikut terhapus.";
-    msg.confirm(`Anda akan menghapus ${lunas ? "data pelunasan" : "data transaksi"}. ${akibat} ${transPick.size} ${lunas ? "pembayaran" : "transaksi"} dipilih. Data yang dihapus tidak bisa dikembalikan, tetapi program membuat cadangan dulu.`, () => void jalan(async () => {
+    msg.confirm(`Anda akan menghapus ${lunas ? "data pelunasan" : "data transaksi"}. ${akibat} ${transPick.size} ${lunas ? "pembayaran" : "transaksi"} dipilih. Data yang dihapus tidak bisa dikembalikan, tetapi Toko Pro membuat cadangan dulu.`, () => void jalan(async () => {
       const r = await alatApi.hapusTransaksi([...transPick], fld);
       await tampil();
       return `Data transaksi sudah dihapus (${r.dihapus} transaksi). Cadangan sebelum menghapus ada di ${r.cadangan}.`;
@@ -250,6 +257,7 @@ export function Alat() {
                     data-vb="cOpenFolderBackup"
                     className="h-8 px-2.5 text-xs"
                     title="Pilih lokasi folder backup"
+                    aria-label="Pilih lokasi folder backup"
                     onClick={() => void pilihFolderBackup()}
                   >
                     ...
@@ -280,7 +288,7 @@ export function Alat() {
                 <Label className="text-xs font-medium text-foreground">File Backup yang Akan Dipulihkan</Label>
                 <div className="flex gap-1.5">
                   <Input value={fileRestore} onChange={(e) => setFileRestore(e.target.value)} placeholder="Pilih file backup..." className="h-8 flex-1 font-mono text-xs" />
-                  <Button type="button" variant="outline" size="default" data-vb="cOpenBackup" className="h-8 px-2.5 text-xs" onClick={() => void bukaDaftar()}>
+                  <Button type="button" variant="outline" size="default" data-vb="cOpenBackup" className="h-8 px-2.5 text-xs" title="Pilih file backup" aria-label="Pilih file backup" onClick={() => void bukaDaftar()}>
                     ...
                   </Button>
                 </div>
@@ -394,7 +402,7 @@ export function Alat() {
                     onChange={(e) => { setJenisTrans(e.target.value); setTrans([]); setTransPick(new Set()); }}
                     className="w-full"
                   >
-                    {JENIS_TRANS.map((j) => <NativeSelectOption key={j} value={j}>{j}</NativeSelectOption>)}
+                    {JENIS_TRANS.map(([v, label]) => <NativeSelectOption key={v} value={v}>{label}</NativeSelectOption>)}
                   </NativeSelect>
                 </div>
                 <div className="flex flex-col gap-1" data-vb="tNoTrans">
@@ -471,7 +479,7 @@ export function Alat() {
             <div className="flex justify-end gap-2 border-t border-border pt-3">
               <Button type="button" variant="outline" size="default" className="h-8 px-3 text-xs" onClick={() => setPeriode(null)}>Batal</Button>
               <Button type="button" variant="default" size="default" data-vb="cOK" className="h-8 px-4 text-xs font-semibold" onClick={() => { const p = periode; setPeriode(null); hapusData(p); }}>
-                OK
+                Lanjutkan
               </Button>
             </div>
           </div>

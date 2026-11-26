@@ -176,7 +176,7 @@ pub fn periksa_penjualan(conn: &Connection, user: &User, input: &TransInput) -> 
                 .query_row("SELECT COALESCE(stokakhir,0) FROM mdbarang WHERE kodebarang = ?1 AND jenis = 'Barang'", params![kode], |r| r.get(0))
                 .ok();
             if stok.is_some_and(|s| jml > s + 0.005) {
-                return Err("Stok tidak mencukupi".into());
+                return Err("Stok tidak mencukupi.".into());
             }
         }
     }

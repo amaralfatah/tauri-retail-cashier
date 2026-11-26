@@ -98,7 +98,7 @@ export function Laporan(props: { initial?: Tab }) {
 
   if (!def || !bolehKasir) {
     return (
-      <Modal title="Informasi" onClose={() => go("home")} footer={<Button autoFocus onClick={() => go("home")}>OK</Button>}>
+      <Modal title="Informasi" onClose={() => go("home")} footer={<Button autoFocus onClick={() => go("home")}>Tutup</Button>}>
         <p>{def ? "Laporan ini hanya bisa dibuka oleh pengguna selain kasir." : "Laporan ini belum tersedia di versi ini."}</p>
       </Modal>
     );

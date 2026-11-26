@@ -53,7 +53,7 @@ export function PoinMember(props: { kode?: string; onClose?: () => void }) {
       await poinApi.tukar(member.kodepelanggan, tukarN, catatan);
       batal();
       await muat(member.kodepelanggan);
-      msg.alert("Data penukaran poin sudah tersimpan");
+      msg.alert("Penukaran poin tersimpan.");
     } catch (e) { msg.alert(errText(e)); }
   };
 

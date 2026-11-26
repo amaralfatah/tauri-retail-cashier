@@ -269,10 +269,10 @@ pub fn simpan_user(conn: &rusqlite::Connection, actor: &User, data: &Map<String,
     let kar = teks(data, "kodekaryawan");
     let pswd = data.get("password").and_then(Value::as_str).unwrap_or("");
     if id.is_empty() {
-        return Err("Nama user belum diisi.".into());
+        return Err("Nama pengguna belum diisi.".into());
     }
     if id.chars().count() > 30 {
-        return Err("Nama user terlalu panjang. Pakai maksimal 30 karakter.".into());
+        return Err("Nama pengguna terlalu panjang. Pakai maksimal 30 karakter.".into());
     }
     if !LEVELS.contains(&level.as_str()) {
         return Err("Level belum dipilih.".into());
@@ -290,7 +290,7 @@ pub fn simpan_user(conn: &rusqlite::Connection, actor: &User, data: &Map<String,
     let lama = load(conn, &id)?;
     if baru {
         if lama.is_some() {
-            return Err(format!("Nama user {id} sudah dipakai. Silakan pilih nama lain."));
+            return Err(format!("Nama pengguna {id} sudah dipakai. Pilih nama lain."));
         }
         let h = if pswd.is_empty() { None } else { Some(hash(pswd)?) };
         satu_akun_per_karyawan(conn, actor, &id, &kar)?;
@@ -310,7 +310,7 @@ pub fn simpan_user(conn: &rusqlite::Connection, actor: &User, data: &Map<String,
             return Err("Level akun yang sedang Anda pakai tidak bisa diubah.".into());
         }
         if !pswd.is_empty() {
-            return Err("Untuk mengganti kata sandi Anda sendiri, pakai tombol Ganti Password.".into());
+            return Err("Untuk mengganti kata sandi Anda sendiri, klik Profil Pengguna di Pengaturan Program.".into());
         }
     }
     satu_akun_per_karyawan(conn, actor, &id, &kar)?;

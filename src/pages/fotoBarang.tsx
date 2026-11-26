@@ -61,7 +61,7 @@ export function AlamatFoto(props: { onPick: (path: string) => void; onClose: () 
   const ok = () => path.trim() && props.onPick(path.trim().replace(/^"|"$/g, ""));
   return (
     <Modal title="Pilih Gambar/Foto Barang" onClose={props.onClose}
-      footer={<><Button variant="outline" onClick={props.onClose}>Batal</Button><Button onClick={ok} disabled={!path.trim()}>OK</Button></>}>
+      footer={<><Button variant="outline" onClick={props.onClose}>Batal</Button><Button onClick={ok} disabled={!path.trim()}>Pilih</Button></>}>
       <p>Klik Cari untuk memilih gambar di komputer Anda, atau ketik alamat filenya.</p>
       <div className="flex gap-1.5">
         <Input className="flex-1" autoFocus value={path} onChange={(e) => setPath(e.target.value)}
@@ -102,17 +102,17 @@ export function ImportFoto(props: { barang?: Row; onClose: () => void; onSaved?:
     if (!k) return;
     try {
       const hit = await inventoriApi.labelFind(k);
-      if (!hit) { setB(null); return msg.alert("Data tidak ditemukan!"); }
+      if (!hit) { setB(null); return msg.alert("Barang tidak ditemukan."); }
       setB(hit);
     } catch (e) { msg.alert(errText(e)); }
   };
   const simpan = async () => {
-    if (!b) return msg.alert("Pilih dulu barangnya. Isi kode atau barcode, lalu klik OK.");
+    if (!b) return msg.alert("Pilih barang dulu dengan kode atau barcode, lalu klik Cari.");
     if (!path.trim()) return msg.alert("Isi dulu alamat file gambarnya.");
     if (await simpanFoto(b.kodebarang, path.trim().replace(/^"|"$/g, ""), msg.alert, hapus)) {
       props.onSaved?.(b.kodebarang);
       kosongkan();
-      msg.alert("File sudah disimpan", "Informasi");
+      msg.alert("Foto barang tersimpan.", "Informasi");
     }
   };
 
@@ -149,7 +149,7 @@ export function ImportFoto(props: { barang?: Row; onClose: () => void; onSaved?:
                 placeholder="Ketik kode atau barcode lalu Enter..."
               />
               <InputGroupAddon align="inline-end">
-                <InputGroupButton data-vb="cOK" onClick={() => void temukan()}>OK</InputGroupButton>
+                <InputGroupButton data-vb="cOK" onClick={() => void temukan()}>Cari</InputGroupButton>
               </InputGroupAddon>
             </InputGroup>
           </div>

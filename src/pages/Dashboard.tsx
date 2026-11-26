@@ -84,9 +84,9 @@ export function Dashboard(props: { onTutup: () => void }) {
 
   const kpis = [
     { id: "lblRata2Penjualan", label: "Rata-Rata Penjualan", value: uang(d?.rata_jual) },
-    { id: "lblRata2Profit", label: "Rata-Rata Profit", value: uang(d?.rata_laba) },
+    { id: "lblRata2Profit", label: "Rata-Rata Laba", value: uang(d?.rata_laba) },
     { id: "lblPenjualanHariIni", label: "Penjualan Hari Ini", value: uang(d?.hari_jual), highlight: true },
-    { id: "lblProfitHariIni", label: "Profit Hari Ini", value: uang(d?.hari_laba) },
+    { id: "lblProfitHariIni", label: "Laba Hari Ini", value: uang(d?.hari_laba) },
   ];
 
   const charts = [
@@ -178,7 +178,7 @@ export function Dashboard(props: { onTutup: () => void }) {
         <div className="flex flex-col rounded-md border border-border bg-card p-3">
           <div className="mb-2 flex items-center justify-between">
             <h2 className="text-xs font-semibold text-foreground">Daftar Piutang Pelanggan</h2>
-            <span className="text-[11px] text-muted-foreground">Klik ganda untuk pelunasan</span>
+            <span className="text-[11px] text-muted-foreground">Klik dua kali untuk pelunasan</span>
           </div>
           <div className="tp-scroll-always max-h-48 min-h-36 flex-1 rounded-md border border-border bg-card text-[13px]" data-vb="lstPiutang">
             <table className="w-full border-collapse">

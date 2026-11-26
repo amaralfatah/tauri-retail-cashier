@@ -506,7 +506,7 @@ export default function App() {
           <span className="shrink-0 truncate font-semibold text-foreground" aria-live="polite">{child.caption}</span>
           <Separator orientation="vertical" className="h-3.5 bg-foreground/20 data-vertical:self-center" />
           <span className="flex shrink-0 items-center gap-1">
-            <span className="text-muted-foreground">User:</span>
+            <span className="text-muted-foreground">Pengguna:</span>
             <span className="font-semibold text-foreground">{user.iduser}</span>
           </span>
           <Separator orientation="vertical" className="h-3.5 bg-foreground/20 data-vertical:self-center" />
@@ -563,7 +563,7 @@ export default function App() {
       )}
       <Notifikasi aktif diKasir={adaKasir(page)} onBuka={() => open("piutang", undefined, "jatuhtempo" as Tab)} />
       {info && (
-        <Modal title="Informasi" onClose={() => setInfo("")} footer={<Button autoFocus onClick={() => setInfo("")}>OK</Button>}>
+        <Modal title="Informasi" onClose={() => setInfo("")} footer={<Button autoFocus onClick={() => setInfo("")}>Tutup</Button>}>
           <p>{info}</p>
         </Modal>
       )}

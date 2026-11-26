@@ -99,8 +99,8 @@ export function Pelunasan({ jenis, jatuhTempo, awalKontak }: { jenis: PelunasanJ
   const simpanBusy = useRef(false);
   const simpan = useCallback(async () => {
     if (simpanBusy.current) return;
-    if ((perTrans ? dicek : nominal) <= 0) return msg.alert("Jumlah pelunasan masih kosong");
-    if (!kontak) return msg.alert(`Silakan pilih ${piutang ? "pelanggan" : "supplier"} dulu.`);
+    if ((perTrans ? dicek : nominal) <= 0) return msg.alert("Isi jumlah pelunasan dulu.");
+    if (!kontak) return msg.alert(`Pilih ${piutang ? "pelanggan" : "Supplier"} dulu.`);
     simpanBusy.current = true;
     try {
       await pelunasanApi.simpan({

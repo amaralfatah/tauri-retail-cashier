@@ -97,7 +97,7 @@ export function Opname() {
   }, [msg]);
 
   const simpan = useCallback(async () => {
-    if (items.length === 0) return msg.alert("Belum ada barang yang dihitung. Silakan tambahkan barang dulu.");
+    if (items.length === 0) return msg.alert("Belum ada barang yang dihitung. Tambahkan barang dulu.");
     try {
       const r = await inventoriApi.saveOpname(tgl, catatan, items.map((i) => ({ kodebarang: i.b.kodebarang, stokbuku: Number(i.b.stokakhir) || 0, stokfisik: i.fisik })), kasir.kode);
       const data: Bukti = {
@@ -105,7 +105,7 @@ export function Opname() {
         baris: items.filter((i) => Math.abs(i.fisik - (Number(i.b.stokakhir) || 0)) >= 0.005).map((i) => ({ b: i.b, fisik: i.fisik })),
       };
       kosongkan();
-      msg.confirm("Data sudah disimpan.\nApakah akan cetak bukti stok opname?", () => void cetakBukti(data), "Konfirmasi");
+      msg.confirm("Stok opname tersimpan.\nCetak bukti stok opname?", () => void cetakBukti(data), "Konfirmasi");
     } catch (e) {
       msg.alert(errText(e));
     }

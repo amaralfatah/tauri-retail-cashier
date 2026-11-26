@@ -222,7 +222,7 @@ pub fn retur_beli_barang(conn: &mut Connection, user: &User, input: &ReturBrgInp
     check_date(&input.tgl)?;
     let pemasok = input.kodepemasok.trim();
     if pemasok.is_empty() {
-        return Err("Pilih dulu pemasok yang menerima retur.".into());
+        return Err("Pilih dulu Supplier yang menerima retur.".into());
     }
     if input.items.is_empty() {
         return Err("Belum ada barang yang diretur.".into());
@@ -230,7 +230,7 @@ pub fn retur_beli_barang(conn: &mut Connection, user: &User, input: &ReturBrgInp
     let tx = conn.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate).map_err(e)?;
     let nama_pemasok: String = tx
         .query_row("SELECT namapemasok FROM mdpemasok WHERE kodepemasok = ?1", params![pemasok], |r| r.get(0))
-        .map_err(|_| "Pemasok itu tidak ditemukan.".to_string())?;
+        .map_err(|_| "Supplier yang dipilih tidak ditemukan.".to_string())?;
     for it in &input.items {
         if it.jmljual <= 0.0 || it.konversi <= 0.0 || it.harga < 0.0 {
             return Err(format!("Jumlah atau harga {} tidak valid.", it.namabarang));

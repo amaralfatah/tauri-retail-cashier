@@ -90,7 +90,7 @@ export function CariBarang(props: { initial?: string; onPick: (b: Row) => void; 
     { title: props.showBeli ? "Hrg. Beli" : "Hrg. Jual", width: 100, align: "right", render: (r) => rp(props.showBeli ? r.hrgbeli : r.hrgjual) },
     { title: "Stok", width: 85, align: "right", render: (r) => (r.jenis === "Jasa" ? "" : qty2(r.stokakhir)) },
     { title: "Rak", width: 75, render: (r) => r.rak ?? "" },
-    { title: "Status", width: 70, render: (r) => (Number(r.aktif ?? 1) === 0 ? "Tdk.Aktif" : "Aktif") },
+    { title: "Status", width: 70, render: (r) => (Number(r.aktif ?? 1) === 0 ? "Nonaktif" : "Aktif") },
   ];
 
   return (

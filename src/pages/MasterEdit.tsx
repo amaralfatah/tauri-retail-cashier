@@ -439,7 +439,7 @@ function BarangSub(props: { kind: Sub; v: Row; orig: string | null; satuan: Row[
       const pokok = n(v.hrgbeli);
       const kolom = kind === "level" ? "hrglevel" : "hrgtingkat";
       if ([1, 2, 3, 4, 5].some((i) => n(patch[`${kolom}${i}`]) > 0 && n(patch[`${kolom}${i}`]) < pokok)) {
-        return msg.alert(`Harga ${kind === "level" ? "level" : "tingkat"} tidak boleh kurang dari harga pokok!`);
+        return msg.alert(`Harga ${kind === "level" ? "level" : "tingkat"} tidak boleh kurang dari harga pokok.`);
       }
     }
     if (props.orig) {

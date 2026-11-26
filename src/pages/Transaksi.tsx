@@ -755,7 +755,7 @@ function CariDataDialog(props: { jenis: CariJenis; onAmbil: (nomor: string) => v
         </div>
 
         {err && (
-          <Modal title={formCaption(formName)} onClose={() => setErr("")} footer={<Button autoFocus className="h-8 text-xs" onClick={() => setErr("")}>OK</Button>}>
+          <Modal title={formCaption(formName)} onClose={() => setErr("")} footer={<Button autoFocus className="h-8 text-xs" onClick={() => setErr("")}>Tutup</Button>}>
             <Alert>{err}</Alert>
           </Modal>
         )}
@@ -994,8 +994,8 @@ function TransaksiIsi({ mode, order = false }: { mode: Mode; order?: boolean }) 
     const sudah = ada?.jml ?? 0;
     if (maks !== null && sudah + jml > maks + 1e-9) {
       jml = Math.max(0, maks - sudah);
-      if (jml <= 0 && !ada) return setMsg("Stok tidak mencukupi");
-      setMsg("Stok tidak mencukupi");
+      if (jml <= 0 && !ada) return setMsg("Stok tidak mencukupi.");
+      setMsg("Stok tidak mencukupi.");
     } else setMsg(null);
     setLines((ls) => {
       const i = ls.findIndex((l) => l.b.kodebarang === b.kodebarang && l.ui === 0);
@@ -1066,7 +1066,7 @@ function TransaksiIsi({ mode, order = false }: { mode: Mode; order?: boolean }) 
       const maks = stokMaks(n.b, n.units[n.ui]);
       if (maks !== null && n.jml > maks + 1e-9) {
         patch = { ...patch, jml: maks };
-        setMsg("Stok tidak mencukupi");
+        setMsg("Stok tidak mencukupi.");
       }
     }
     setLines((ls) => ls.map((l) => {
@@ -1147,7 +1147,7 @@ function TransaksiIsi({ mode, order = false }: { mode: Mode; order?: boolean }) 
       });
       const o = await orderApi.getOrder(r.notrans);
       reset();
-      tanya.confirm(`Data sudah disimpan (${r.notrans}). Apakah akan cetak nota order?`, () => setUlangOrder(o));
+      tanya.confirm(`Order ${r.notrans} tersimpan. Cetak nota order?`, () => setUlangOrder(o));
     } catch (e) {
       setMsg(errText(e));
     }
@@ -1214,7 +1214,7 @@ function TransaksiIsi({ mode, order = false }: { mode: Mode; order?: boolean }) 
         items: itemsInput(), kodekasir: kasir.kode,
       });
       reset();
-      setMsg("Pending transaksi sudah tersimpan");
+      setMsg("Transaksi pending tersimpan.");
     } catch (e) {
       setMsg(errText(e));
     }
@@ -1253,7 +1253,7 @@ function TransaksiIsi({ mode, order = false }: { mode: Mode; order?: boolean }) 
   }, [ulangOrder]);
 
   const cekPoin = () => {
-    if (!kontak) return setMsg("Pilih dulu pelanggannya (tombol ? di samping kolom Pelanggan). Poin hanya dimiliki pelanggan terdaftar.");
+    if (!kontak) return setMsg("Pilih pelanggan terdaftar di kolom Pelanggan dulu. Hanya pelanggan terdaftar yang memiliki poin.");
     setModal("poin");
   };
 
@@ -1850,7 +1850,7 @@ function TransaksiIsi({ mode, order = false }: { mode: Mode; order?: boolean }) 
       {modal === "pending" && <CariDataDialog jenis="pending" onClose={() => setModal(null)} onAmbil={(n) => void ambilPending(n)} />}
       {msg && (
         <Modal title={formCaption(formName)} onClose={() => setMsg(null)}
-          footer={<Button autoFocus onClick={() => setMsg(null)}>OK</Button>}>
+          footer={<Button autoFocus onClick={() => setMsg(null)}>Tutup</Button>}>
           <Alert kind="info">{msg}</Alert>
         </Modal>
       )}
@@ -2102,10 +2102,10 @@ function BayarDialog(props: { mode: Mode; tgl: string; kontak: string; sales: st
     }
     if (caraKirim === "Kredit" && !props.kontak) {
       if (jual) {
-        return setErr("Transaksi piutang tidak bisa dilakukan untuk pelanggan 'Tunai'. Pilih nama pelanggan yang terdaftar untuk melanjutkan proses transaksi piutang.");
+        return setErr("Transaksi piutang tidak bisa dilakukan untuk pelanggan 'Tunai'. Pilih pelanggan yang terdaftar untuk melanjutkan.");
       }
       // Seperti aslinya: dialog bayar ditutup, kursor ke kolom pemasok di layar pembelian.
-      props.onTanpaPemasok("Transaksi hutang tidak bisa dilakukan ke Supplier 'Tunai'.\nPilih nama Supplier yang terdaftar untuk melanjutkan proses transaksi piutang");
+      props.onTanpaPemasok("Transaksi hutang tidak bisa dilakukan ke Supplier 'Tunai'.\nPilih Supplier yang terdaftar untuk melanjutkan.");
       return;
     }
     simpanBusy.current = true;
@@ -2252,7 +2252,7 @@ function BayarDialog(props: { mode: Mode; tgl: string; kontak: string; sales: st
           <Button variant="outline" onClick={() => selesai(tanyaCetak.notrans)}>Tidak</Button>
           <Button autoFocus onClick={() => selesai(tanyaCetak.notrans, tanyaCetak)}>Ya</Button>
         </>}>
-        <p>{jual ? "Apakah akan cetak faktur jual?" : "Apakah akan cetak nota pembelian?"}</p>
+        <p>{jual ? "Cetak faktur penjualan?" : "Cetak nota pembelian?"}</p>
       </Modal>
     )}
     </>
@@ -2431,7 +2431,7 @@ function BayarDialog(props: { mode: Mode; tgl: string; kontak: string; sales: st
             </Button>
           </footer>
           {err && <div className="absolute"><Modal title="Pembayaran" onClose={() => setErr("")}
-            footer={<Button autoFocus onClick={() => setErr("")}>OK</Button>}><Alert>{err}</Alert></Modal></div>}
+            footer={<Button autoFocus onClick={() => setErr("")}>Tutup</Button>}><Alert>{err}</Alert></Modal></div>}
         </div>
       </div>
       {dialogTanya}

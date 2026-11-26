@@ -47,7 +47,7 @@ export const distinct = (rows: Row[], col: string) =>
   [...new Set(rows.map((r) => String(r[col] ?? "").trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b));
 
 /** Aktif/nonaktif sebagai teks status di daftar. */
-export const statusText = (r: Row) => (Number(r.aktif ?? 1) === 0 ? "Tdk.Aktif" : "Aktif");
+export const statusText = (r: Row) => (Number(r.aktif ?? 1) === 0 ? "Nonaktif" : "Aktif");
 
 /**
  * Kode otomatis seperti AutoKode di EXE asli: awalan tetap + angka selebar `lebar`,

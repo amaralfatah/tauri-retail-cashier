@@ -36,7 +36,7 @@ const BAGIAN: Bagian[] = [
     isi: [
       { p: "Menu ada di bilah atas, masing-masing dengan ikon: Home, Log Off, Master Data, Penjualan, Pembelian, Inventori, Laporan, Keuangan, Pengaturan, Bantuan, dan Keluar. Klik Home untuk kembali ke layar utama." },
       { p: "Setiap layar punya tombol Tutup di kanan bawah, dengan petunjuk Esc di sebelahnya. Klik Tutup atau tekan Esc untuk menutup layar. Di layar kasir, kalau masih ada barang di tabel, program bertanya dulu karena transaksinya ikut dibatalkan." },
-      { p: "Nama layar yang sedang terbuka tampil di kiri bilah status di bagian bawah, disusul nama user, level, dan jam." },
+      { p: "Nama layar yang sedang terbuka tampil di kiri bilah status di bagian bawah, disusul nama pengguna, level, dan jam." },
       { p: "Tombol dan kolom yang punya tombol pintas menuliskannya langsung di tombol atau labelnya, misalnya F4 atau Alt+1. Anda tidak perlu menghafal daftarnya." },
       { p: "Tombol bulan atau matahari di bilah atas (tertulis Gelap atau Terang kalau jendela cukup lebar) mengganti tampilan program antara mode terang dan mode gelap. Pilihan Tema di Pengaturan Program, tab Info Usaha, juga bisa Ikut Sistem." },
       { p: "Pertanyaan yang menghapus atau membatalkan sesuatu memilih Tidak lebih dulu, jadi Enter yang tidak sengaja tidak menghapus apa pun. Anda bisa menjawab dengan huruf Y untuk Ya atau T untuk Tidak." },

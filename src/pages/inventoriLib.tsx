@@ -39,7 +39,7 @@ export function FilterBarang(props: { onClose: () => void; onAdd: (rows: Row[]) 
   return (
     <>
       <FilterWindow table="mdbarang" rows={[]} value={{}} onApply={(f) => void terapkan(f)} onClose={props.onClose} />
-      {err && <Modal title="Informasi" onClose={() => setErr("")} footer={<Button autoFocus onClick={() => setErr("")}>OK</Button>}><p>{err}</p></Modal>}
+      {err && <Modal title="Informasi" onClose={() => setErr("")} footer={<Button autoFocus onClick={() => setErr("")}>Tutup</Button>}><p>{err}</p></Modal>}
     </>
   );
 }

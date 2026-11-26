@@ -99,8 +99,8 @@ export function Retur({ mode }: { mode: ReturMode }) {
   const selesai = useCallback((h: { notrans: string; dipotong: number; kas: number }) => {
     const bagian = [`Retur ${h.notrans} tersimpan.`];
     if (h.dipotong > 0) bagian.push(`${mode === "jual" ? "Piutang" : "Hutang"} berkurang Rp ${rp(h.dipotong)}.`);
-    if (h.kas > 0) bagian.push(mode === "jual" ? `Uang Rp ${rp(h.kas)} dikembalikan ke pelanggan.` : `Uang Rp ${rp(h.kas)} diterima dari supplier.`);
-    bagian.push("Apakah akan cetak bukti retur?");
+    if (h.kas > 0) bagian.push(mode === "jual" ? `Uang Rp ${rp(h.kas)} dikembalikan ke pelanggan.` : `Uang Rp ${rp(h.kas)} diterima dari Supplier.`);
+    bagian.push("Cetak bukti retur?");
     reset();
     msg.confirm(bagian.join(" "), () => { api.getTransaksi(h.notrans).then(setBukti).catch((e) => msg.alert(errText(e))); });
   }, [mode, msg]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -134,15 +134,15 @@ export function Retur({ mode }: { mode: ReturMode }) {
 
   const simpan = useCallback(async () => {
     if (brg) {
-      if (!pemasok) return msg.alert("Silakan pilih supplier dulu.");
-      if (barisan.length === 0) return msg.alert("Belum ada barang yang diretur. Silakan tambahkan barang dulu.");
+      if (!pemasok) return msg.alert("Pilih Supplier dulu.");
+      if (barisan.length === 0) return msg.alert("Belum ada barang yang diretur. Tambahkan barang dulu.");
       return void kirim(false);
     }
-    if (!sumber) return msg.alert(`Silakan cari transaksi ${mode === "jual" ? "penjualan" : "pembelian"} dulu.`);
+    if (!sumber) return msg.alert(`Cari transaksi ${mode === "jual" ? "penjualan" : "pembelian"} dulu.`);
     if (!Object.values(jmlRetur).some((v) => v > 0)) return msg.alert("Belum ada jumlah retur yang diisi.");
     // Retur penjualan: tagihan transaksi asal yang masih terbuka hanya dipotong kalau Anda menjawab Ya.
     if (mode === "jual" && Number(sumber.piutang_terbuka) > 0) {
-      msg.confirm("Apakah jml piutang pelanggan akan dikurangi dengan jml retur?", () => void kirim(true), undefined, () => void kirim(false));
+      msg.confirm("Kurangi piutang pelanggan sebesar nilai retur ini?", () => void kirim(true), undefined, () => void kirim(false));
       return;
     }
     void kirim(false);

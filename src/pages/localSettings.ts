@@ -66,7 +66,7 @@ export const FORMAT_HRG = ["###,##0", "###,##0.00"];
 /** Urutan sama dengan nilai tersimpan: 0 = Grid, 1 = TextBox (kotak scan di atas tabel). */
 export const MODE_SCAN = ["Grid", "TextBox"];
 /** Nilai tersimpan "Home" atau "Dashboard"; tulisan di combo mengikuti aslinya. */
-export const HOME: [string, string][] = [["Home", "Home Backgroud"], ["Dashboard", "Dashboard Transaksi"]];
+export const HOME: [string, string][] = [["Home", "Home Background"], ["Dashboard", "Dashboard Transaksi"]];
 
 /** Pengaturan lama bisa berisi pilihan yang tidak ada lagi di combo (mis. Mini Printer atau COM); pakai pilihan pertama. */
 export function rapikan(l: LocalSettings): LocalSettings {

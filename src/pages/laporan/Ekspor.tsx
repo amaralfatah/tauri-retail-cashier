@@ -97,7 +97,7 @@ export function OpsiTextDialog(props: { nama: string; onClose: () => void; onSim
           <InputGroup className="h-8">
             <InputGroupInput id="eks-path" data-vb="txtFileName" className="text-xs" value={path} onChange={(e) => setPath(e.target.value)} />
             <InputGroupAddon align="inline-end">
-              <InputGroupButton data-vb="btnOpen" onClick={() => void pilihSimpan(path, "txt", "Text (*.txt)").then((p) => { if (p) setPath(p); })}>...</InputGroupButton>
+              <InputGroupButton data-vb="btnOpen" title="Pilih lokasi file" aria-label="Pilih lokasi file" onClick={() => void pilihSimpan(path, "txt", "Text (*.txt)").then((p) => { if (p) setPath(p); })}>...</InputGroupButton>
             </InputGroupAddon>
           </InputGroup>
         </div>

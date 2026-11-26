@@ -220,7 +220,7 @@ pub fn pelunasan(conn: &mut Connection, user: &User, input: &PelunasanInput) -> 
         }
     }
     if input.kode.trim().is_empty() {
-        return Err(format!("Silakan pilih {} dulu.", if piutang { "pelanggan" } else { "pemasok" }));
+        return Err(format!("Pilih {} dulu.", if piutang { "pelanggan" } else { "Supplier" }));
     }
     if rencana.is_empty() {
         return Err("Tidak ada tagihan yang bisa dilunasi.".into());

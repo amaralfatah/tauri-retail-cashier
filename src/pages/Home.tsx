@@ -103,7 +103,7 @@ export function Home() {
   type Kartu = { judul: string; nilai: string; ket: string; page?: Parameters<typeof go>[0]; tegas?: boolean; show: boolean };
   const kartu: Kartu[] = ([
     { judul: "Penjualan hari ini", nilai: ringkas.jual === null ? "–" : `Rp ${rp(ringkas.jual)}`, ket: ringkas.struk === null ? "Jumlah struk belum bisa dimuat" : `${rp(ringkas.struk)} struk`, page: !isKasir ? "laporan" : undefined, show: true },
-    { judul: "Transaksi pending", nilai: angka(ringkas.pending), ket: "Belanjaan yang belum dibayar. Buka di layar kasir.", page: "jual", show: true },
+    { judul: "Transaksi pending", nilai: angka(ringkas.pending), ket: "Belanjaan belum dibayar — buka di layar kasir", page: "jual", show: true },
     { judul: "Stok menipis", nilai: angka(ringkas.menipis), ket: "Barang yang stoknya sudah di batas minimum", page: "master", tegas: (ringkas.menipis ?? 0) > 0, show: !isKasir },
     { judul: "Piutang jatuh tempo", nilai: angka(ringkas.piutang), ket: "Transaksi yang belum dilunasi pelanggan", page: "piutang", tegas: (ringkas.piutang ?? 0) > 0, show: !isKasir },
   ] as Kartu[]).filter((k) => k.show);
@@ -198,7 +198,7 @@ export function Home() {
 
       <div className="flex w-full flex-wrap items-center justify-between gap-4 border-t border-border pt-2.5 text-xs text-muted-foreground">
         <div className="flex flex-wrap items-center gap-4">
-          <span className="font-semibold text-foreground">Pintas di layar kasir:</span>
+          <span className="font-semibold text-foreground">Pintasan di layar kasir:</span>
           <span className="flex items-center gap-1.5">
             <Kbd className="border border-border bg-card text-foreground">F1</Kbd>
             <span>Scan Barcode</span>

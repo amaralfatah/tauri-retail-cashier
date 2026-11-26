@@ -18,14 +18,14 @@ import { useDaftarFile } from "./daftarFile";
 const LEVELS = ["Kasir", "Supervisor", "Manager", "Direktur", "Lainnya"];
 const ACTIONS = ["Baru", "Hapus", "Filter", "Refresh", "Export", "Cetak", "Tutup"];
 
-const status = (r: Row) => (Number(r.aktif ?? 1) === 0 ? "Non Aktif" : Number(r.belum_ada_password) === 1 ? "Belum ada password" : "Aktif");
+const status = (r: Row) => (Number(r.aktif ?? 1) === 0 ? "Nonaktif" : Number(r.belum_ada_password) === 1 ? "Belum ada kata sandi" : "Aktif");
 
 const COLS: GridCol<Row>[] = [
   { title: "No", width: 42, align: "right", render: (_, i) => i + 1 },
   { title: "Nama Pengguna", width: 130, render: (r) => r.iduser },
   { title: "Level", width: 95, render: (r) => r.level },
   { title: "Karyawan", width: 160, render: (r) => r.namakaryawan ?? "" },
-  { title: "Status", width: 120, render: status },
+  { title: "Status", width: 135, render: status },
 ];
 
 /* ---- Hak akses: pohon menu dengan kotak centang ---- */
@@ -317,7 +317,7 @@ function FilterPengguna(props: { value: { cari: string; level: string; status: s
       footer={<><Button variant="outline" onClick={() => props.onApply({ cari: "", level: "", status: "" })}>Hapus Filter</Button><Button onClick={() => props.onApply(v)}>Tampilkan</Button></>}>
       <div className="flex min-w-70 flex-col gap-3">
         <div className="flex flex-col gap-1.5">
-          <Label className="text-xs font-medium text-foreground">Nama user atau karyawan</Label>
+          <Label className="text-xs font-medium text-foreground">Nama pengguna atau karyawan</Label>
           <Input value={v.cari} onChange={(e) => setV({ ...v, cari: e.target.value })} autoFocus />
         </div>
         <div className="flex flex-col gap-1.5">
@@ -329,7 +329,7 @@ function FilterPengguna(props: { value: { cari: string; level: string; status: s
         <div className="flex flex-col gap-1.5">
           <Label className="text-xs font-medium text-foreground">Status</Label>
           <NativeSelect className="w-full" value={v.status} onChange={(e) => setV({ ...v, status: e.target.value })}>
-            <option value="">Semua</option>{["Aktif", "Non Aktif", "Belum ada password"].map((x) => <option key={x} value={x}>{x}</option>)}
+            <option value="">Semua</option>{["Aktif", "Nonaktif", "Belum ada kata sandi"].map((x) => <option key={x} value={x}>{x}</option>)}
           </NativeSelect>
         </div>
       </div>

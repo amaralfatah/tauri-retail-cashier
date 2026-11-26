@@ -137,7 +137,7 @@ export function PindahLama({ onClose }: { onClose: () => void }) {
               <div className="h-full rounded-full bg-primary transition-[width] duration-200" style={{ width: `${persen}%` }} />
             </div>
             <p className="text-xs text-muted-foreground tabular-nums">{dari > 0 ? `${kemajuan?.ke ?? 0} dari ${dari}` : "Mohon tunggu"}</p>
-            <p className="text-xs text-muted-foreground">Ini bisa makan beberapa menit kalau datanya banyak. Jangan tutup aplikasi.</p>
+            <p className="text-xs text-muted-foreground">Ini bisa memerlukan beberapa menit kalau datanya banyak. Jangan tutup aplikasi.</p>
           </div>
         </ModalFrame>
         {msg.node}

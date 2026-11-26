@@ -559,7 +559,7 @@ fn pembelian_isi(tx: &Transaction, user: &User, input: &TransInput, jual_paksa: 
     let kredit = input.carabayar == "Kredit";
     if kredit {
         if pemasok == "Tunai" {
-            return Err("Pembelian kredit perlu pemasok terdaftar. Silakan pilih pemasok dulu.".into());
+            return Err("Pembelian kredit perlu Supplier terdaftar. Pilih Supplier dulu.".into());
         }
         check_date(&input.jthtempo).map_err(|_| "Tanggal jatuh tempo belum diisi dengan benar.".to_string())?;
     }

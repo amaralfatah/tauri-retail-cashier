@@ -211,14 +211,14 @@ export function Pengaturan() {
                 <Label className="text-xs font-medium text-foreground">File Logo</Label>
                 <div className="flex gap-1">
                   <Input value={l.logo} onChange={(e) => setLocalVal("logo", e.target.value)} className="h-8 flex-1 text-xs" />
-                  <Button type="button" variant="outline" size="sm" data-vb="cOpenLogo" className="h-8 px-2" onClick={() => void pilihGbr("logo")()}>...</Button>
+                  <Button type="button" variant="outline" size="sm" data-vb="cOpenLogo" title="Pilih file logo" aria-label="Pilih file logo" className="h-8 px-2" onClick={() => void pilihGbr("logo")()}>...</Button>
                 </div>
               </div>
               <div className="flex flex-col gap-1" data-vb="tBackground">
                 <Label className="text-xs font-medium text-foreground">File Background</Label>
                 <div className="flex gap-1">
                   <Input value={l.background} onChange={(e) => setLocalVal("background", e.target.value)} className="h-8 flex-1 text-xs" />
-                  <Button type="button" variant="outline" size="sm" data-vb="cOpenBG" className="h-8 px-2" onClick={() => void pilihGbr("background")()}>...</Button>
+                  <Button type="button" variant="outline" size="sm" data-vb="cOpenBG" title="Pilih file background" aria-label="Pilih file background" className="h-8 px-2" onClick={() => void pilihGbr("background")()}>...</Button>
                 </div>
               </div>
               <div className="flex items-center justify-end pt-1 sm:col-span-2">
@@ -296,7 +296,7 @@ export function Pengaturan() {
                     <CheckRow vb="chkAktifFoto" label="Tampilkan Foto Barang" checked={l.aktifFoto === "1"} onChange={(on) => setLocalVal("aktifFoto", on ? "1" : "0")} />
                     <div className="flex gap-1" data-vb="tLokasiFoto">
                       <Input value={l.lokasiFoto} onChange={(e) => setLocalVal("lokasiFoto", e.target.value)} placeholder="Folder foto barang" className="h-8 flex-1 text-xs" />
-                      <Button type="button" variant="outline" size="sm" data-vb="cOpenFoto" className="h-8 px-2" onClick={() => void pilihFolderFoto()}>...</Button>
+                      <Button type="button" variant="outline" size="sm" data-vb="cOpenFoto" title="Pilih folder foto barang" aria-label="Pilih folder foto barang" className="h-8 px-2" onClick={() => void pilihFolderFoto()}>...</Button>
                     </div>
                   </div>
                   {bisaUbah && (
@@ -448,10 +448,10 @@ export function Pengaturan() {
       {mulaiUlang && (
         <ModalFrame title="Software Toko Pro Unlimited" onClose={() => window.location.reload()} width={380}>
           <div className="flex flex-col gap-3 p-4 text-sm">
-            <p>Pengaturan Program sudah tersimpan.</p>
-            <p>Program akan dimulai ulang supaya pengaturan baru berlaku.</p>
+            <p>Pengaturan tersimpan.</p>
+            <p>Aplikasi akan dimuat ulang supaya pengaturan baru berlaku.</p>
             <div className="flex justify-end">
-              <Button type="button" className="min-w-20" autoFocus onClick={() => window.location.reload()}>OK</Button>
+              <Button type="button" className="min-w-20" autoFocus onClick={() => window.location.reload()}>Muat Ulang</Button>
             </div>
           </div>
         </ModalFrame>

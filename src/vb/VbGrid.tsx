@@ -582,7 +582,7 @@ export function useMsgBox() {
               <Button type="button" variant={msg.bahaya ? "destructive" : "default"} className="h-8 min-w-20 text-xs" autoFocus={!msg.bahaya} onClick={ya}><u>Y</u>{labelYa.slice(1)}</Button>
             </>
           ) : (
-            <Button type="button" className="h-8 min-w-20 text-xs" autoFocus onClick={() => setMsg(null)}>OK</Button>
+            <Button type="button" className="h-8 min-w-20 text-xs" autoFocus onClick={() => setMsg(null)}>Tutup</Button>
           )}
         </div>
       </div>

@@ -28,7 +28,7 @@ pub fn simpan_jenis(conn: &Connection, kode: &str, nama: &str, asli: Option<&str
     let (kode, nama) = (kode.trim(), nama.trim());
     let _ = asli;
     if kode.is_empty() || nama.is_empty() {
-        return Err("Item data harus diisi lengkap!".into());
+        return Err("Kode dan nama jenis pembayaran harus diisi lengkap.".into());
     }
     // Seperti aslinya (SaveData): kode yang sudah ada diperbarui namanya, kode baru ditambahkan (kode tidak dikunci saat mengubah).
     let ada: i64 = conn.query_row("SELECT COUNT(*) FROM mdjenisnontunai WHERE UPPER(kode) = UPPER(?1)", params![kode], |r| r.get(0)).map_err(e)?;
@@ -53,7 +53,7 @@ pub fn hapus_jenis(conn: &Connection, kode: &str) -> Res<()> {
 pub fn simpan_item(conn: &Connection, kode: &str, nama: &str, asli: Option<&str>) -> Res<()> {
     let (kode, nama) = (kode.trim(), nama.trim());
     if kode.is_empty() || nama.is_empty() {
-        return Err("Item data harus diisi lengkap!".into());
+        return Err("Kode jenis dan nama item harus diisi lengkap.".into());
     }
     let jenis: i64 = conn.query_row("SELECT COUNT(*) FROM mdjenisnontunai WHERE UPPER(kode) = UPPER(?1)", params![kode], |r| r.get(0)).map_err(e)?;
     if jenis == 0 {

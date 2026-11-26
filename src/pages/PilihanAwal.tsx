@@ -275,7 +275,7 @@ export function PilihanAwal(props: { namaUsaha?: string; onSelesai: () => void }
     const l = layar;
     if (l.peran === "pusat") {
       return (
-        <Kartu judul="Kami menemukan Toko Pro lama di komputer ini." atas={props.namaUsaha} label="Pindah dari Toko Pro lama"
+        <Kartu judul="Kami menemukan Toko Pro lama di komputer ini" atas={props.namaUsaha} label="Pindah dari Toko Pro lama"
           kaki={<>
             <Button type="button" variant="outline" className="h-8 text-xs font-semibold" onClick={() => keAturSendiri()}>Atur sendiri</Button>
             <Button type="button" autoFocus className="h-8 min-w-28 text-xs font-semibold" onClick={() => void mulaiPusat(l.folder)}>
@@ -319,7 +319,7 @@ export function PilihanAwal(props: { namaUsaha?: string; onSelesai: () => void }
     return (
       <Kartu judul="Mengambil data dari Toko Pro lama" atas={props.namaUsaha}>
         <Sedang>
-          <p>Tunggu sebentar dan jangan matikan komputer. Kalau datanya banyak, ini bisa makan beberapa menit.</p>
+          <p>Tunggu sebentar dan jangan matikan komputer. Kalau datanya banyak, ini bisa memerlukan beberapa menit.</p>
           {kemajuan && <p className="text-xs text-muted-foreground">{kemajuan}</p>}
         </Sedang>
       </Kartu>
@@ -329,7 +329,7 @@ export function PilihanAwal(props: { namaUsaha?: string; onSelesai: () => void }
   if (layar.jenis === "ringkasan-pusat") {
     const { hasil, sisa, pengaturan } = layar;
     return (
-      <Kartu judul="Komputer ini sudah jadi Pusat." atas={props.namaUsaha}
+      <Kartu judul="Komputer ini sudah jadi Pusat" atas={props.namaUsaha}
         kaki={<Button type="button" autoFocus className="h-8 min-w-28 text-xs font-semibold" onClick={props.onSelesai}><span>Mulai pakai</span><Kbd className="bg-primary-foreground/20 text-primary-foreground">Enter</Kbd></Button>}>
         <p>
           Data dari Toko Pro lama sudah pindah: {angka(hasil.barang)} barang, {angka(hasil.transaksi)} transaksi, dan {angka(hasil.pelanggan)} pelanggan.
@@ -379,7 +379,7 @@ export function PilihanAwal(props: { namaUsaha?: string; onSelesai: () => void }
   if (layar.jenis === "ringkasan-kasir") {
     const { pusat: namaPusat, sisa, pengaturan } = layar;
     return (
-      <Kartu judul={`Komputer ini sudah tersambung ke ${namaPusat}.`} atas={props.namaUsaha}
+      <Kartu judul={`Komputer ini sudah tersambung ke ${namaPusat}`} atas={props.namaUsaha}
         kaki={<Button type="button" autoFocus className="h-8 min-w-28 text-xs font-semibold" onClick={props.onSelesai}><span>Mulai pakai</span><Kbd className="bg-primary-foreground/20 text-primary-foreground">Enter</Kbd></Button>}>
         <p>{kalimatPengaturan(pengaturan)}</p>
         {sisa.length > 0 && (
