@@ -1,7 +1,7 @@
 {
   "name": "tokopro-app",
   "private": true,
-  "version": "0.2.0",
+  "version": "0.2.1",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -11,7 +11,8 @@
     "versi": "node tools/naikkan_versi.mjs",
     "tes:pengaturan": "node --test tools/pengaturan-lama.test.mjs",
     "tes:jam": "node --test tools/jam-pusat.test.mjs",
-    "tes:simpan": "node --test tools/perintah-simpan.test.mjs"
+    "tes:simpan": "node --test tools/perintah-simpan.test.mjs",
+    "tes:menu": "node --test tools/menu-shell.test.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.9.0",

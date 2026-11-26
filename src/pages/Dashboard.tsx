@@ -190,7 +190,12 @@ export function Dashboard(props: { onTutup: () => void }) {
               </thead>
               <tbody>
                 {piutang.map((p, i) => (
-                  <tr key={i} title="Klik dua kali untuk membuka Pelunasan Piutang" className="h-7 cursor-pointer border-b border-foreground/15 odd:bg-card even:bg-muted/25 hover:bg-[color-mix(in_oklab,var(--primary)_12%,var(--card))]" onDoubleClick={() => go("piutang")}>
+                  <tr
+                    key={i}
+                    title="Klik dua kali untuk membuka Pelunasan Piutang"
+                    className="h-7 cursor-pointer border-b border-foreground/15 odd:bg-card even:bg-muted/25 hover:bg-[color-mix(in_oklab,var(--primary)_12%,var(--card))]"
+                    onDoubleClick={() => go("piutang", p.kode ? { kode: String(p.kode), nama: String(p.nama || p.kode) } : undefined)}
+                  >
                     <td className="border-r border-foreground/15 px-2 font-medium">{p.nama}</td>
                     <td className="px-2 text-right font-semibold text-destructive tabular-nums">{uang(p.piutang)}</td>
                   </tr>

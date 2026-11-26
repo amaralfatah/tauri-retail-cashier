@@ -2,6 +2,8 @@ import { CSSProperties, ReactNode, useLayoutEffect, useRef, useState } from "rea
 import { Button } from "@/components/ui/button";
 import { Row } from "../../api";
 import { qty, rp, tglID, today } from "../../format";
+import { usePratinjau } from "../fotoBarang";
+import { getLocal } from "../localSettings";
 import { Kind, kertasLaporan } from "./defs";
 
 type Al = "l" | "r" | "c";
@@ -471,6 +473,8 @@ export function Kertas(props: { kind: Kind; title: string; periode: string; sett
   const baris2 = [s.tlp || s.fax ? `Tlp/Fax : ${s.tlp ?? ""} / ${s.fax ?? ""}` : "", s.kodepos ? `Kode Pos ${s.kodepos}` : ""].filter(Boolean).join(", ");
   const baris3 = [s.website ? `Website : ${s.website}` : "", s.email ? `Email ${s.email}` : ""].filter(Boolean).join("  ");
   const alamat = [[[s.alamat, s.kota].filter(Boolean).join(", "), s.provinsi].filter(Boolean).join(" - "), baris2, baris3].filter(Boolean).join("\n");
+  const logoSrc = usePratinjau(getLocal("logo"));
+  const [logoSiap, setLogoSiap] = useState(0);
   const ukur = useRef<HTMLDivElement>(null);
   const [halaman, setHalaman] = useState<Halaman[]>([{ baris: built.rows.map((_, i) => i) }]);
 
@@ -484,11 +488,12 @@ export function Kertas(props: { kind: Kind; title: string; periode: string; sett
     const ruang = tinggiIsi - TINGGI_FOOTER - (kop ? kop.getBoundingClientRect().height : 0) - 12;
     const baru = bagiHalaman(built.rows, tinggi, Math.max(60, ruang));
     setHalaman((lama) => (JSON.stringify(lama) === JSON.stringify(baru) ? lama : baru));
-  }, [built, props.kosong, props.title, props.periode, s, tinggiIsi]);
+  }, [built, props.kosong, props.title, props.periode, s, tinggiIsi, logoSrc, logoSiap]);
 
-  const kop = (
+  const kop = (ukurMode = false) => (
     <div className="lap-kop">
       <div className="lap-cetak">Tgl. Cetak : {tglID(today())}</div>
+      {logoSrc && <img src={logoSrc} alt="" className="lap-logo" onLoad={ukurMode ? () => setLogoSiap((v) => v + 1) : undefined} />}
       <div className="lap-nama">{s.namausaha}</div>
       <div className="lap-alamat">{alamat}</div>
       <div className="lap-judul">{props.title}</div>
@@ -501,13 +506,13 @@ export function Kertas(props: { kind: Kind; title: string; periode: string; sett
       <style>{`@media print { @page { size: ${k.ukuran} ${k.arah}; margin: ${k.margin}mm; } }`}</style>
       {!props.kosong && (
         <div className="lap-page lap-ukur" ref={ukur} aria-hidden="true">
-          {kop}
+          {kop(true)}
           <Tabel built={built} baris={built.rows.map((_, i) => i)} />
         </div>
       )}
       {halaman.map((h, n) => (
         <div key={n} className="lap-page">
-          {kop}
+          {kop()}
           {props.kosong
             ? (
               <div className="lap-kosong">

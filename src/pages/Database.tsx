@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { errText } from "../api";
 import { autoBackup } from "../api/cadangan";
+import { pilihFolder } from "../api/dialog";
 import { dbApi, folderBackup } from "../api/keuangan";
 import { useApp } from "../appContext";
 import { useMsgBox } from "../vb/VbGrid";
@@ -47,6 +48,11 @@ export function Database() {
     msg.alert("Pengaturan database sudah disimpan.");
   });
 
+  const pilihFolderBackup = async () => {
+    const p = await pilihFolder();
+    if (p) setBackup(p);
+  };
+
   if (kunci.terkunci) {
     return (
       <div className="vb-modern flex h-full flex-col justify-between gap-4 bg-background p-4 font-sans text-xs text-foreground" data-form="FrmZDatabase">
@@ -84,8 +90,8 @@ export function Database() {
               size="sm"
               data-vb="cOpenFolderBackup"
               className="h-7 px-2.5 text-xs"
-              title="Ubah lokasi folder backup"
-              onClick={() => document.querySelector<HTMLElement>('[data-vb="tLokasiBackup"] input')?.focus()}
+              title="Pilih lokasi folder backup"
+              onClick={() => void pilihFolderBackup()}
             >
               ...
             </Button>

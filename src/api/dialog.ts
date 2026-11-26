@@ -19,6 +19,9 @@ export const pilihExcel = () =>
 export const pilihDataLama = () =>
   satu({ title: "Pilih Data Toko Pro Lama", filters: [{ name: "Data Toko Pro lama (*.fdb;*.fdk)", extensions: ["fdb", "fdk"] }] });
 
+export const pilihBackup = () =>
+  satu({ title: "Pilih File Backup", filters: [{ name: "File Backup Toko Pro (*.db)", extensions: ["db"] }] });
+
 export const pilihFolder = () => satu({ title: "Pilih Folder", directory: true });
 
 export async function pilihSimpan(defaultPath: string, ext: string, nama: string): Promise<string | null> {

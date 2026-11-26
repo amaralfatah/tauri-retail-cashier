@@ -654,7 +654,7 @@ mockIPC((cmdAsli, argsAsli) => {
           { nama: "Ibu Rahma", total: 1450000 },
           { nama: "Pak Dedi", total: 980000 },
         ],
-        piutang: piutangKartu.map((k) => ({ nama: k.namapelanggan, piutang: k.kekurangan })),
+        piutang: piutangKartu.map((k) => ({ kode: k.kodepelanggan, nama: k.namapelanggan, piutang: k.kekurangan })),
       };
     case "notifikasi":
       // Sama dengan backend: piutang belum lunas yang jatuh temponya sampai tanggal ini.

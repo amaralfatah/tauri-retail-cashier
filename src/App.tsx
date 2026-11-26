@@ -4,7 +4,7 @@ import { ChevronDownIcon, ChevronRight, CircleArrowDownIcon, MoonIcon, SunIcon }
 import { cn } from "cn";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { AppCtx, useApp } from "./appContext";
+import { AppCtx, KontakAwal, useApp } from "./appContext";
 import { KasirAktifCtx } from "./lib/kasirAktif";
 import { useTheme } from "./lib/theme";
 import { getCurrentWindow } from "@tauri-apps/api/window";
@@ -65,9 +65,9 @@ const SPLASH_MS = 2600;
 const sebelumKeluar: Array<() => Promise<unknown>> = [cadanganSaatKeluar];
 
 
-interface Child { page: Page; caption: string; tab?: MasterTable | Tab; seq: number }
+interface Child { page: Page; caption: string; tab?: MasterTable | Tab; kontak?: KontakAwal; seq: number }
 /** Dialog modal (form VB BorderStyle 1) yang terbuka di atas halaman aktif. Yang terakhir ada di paling atas. */
-interface Dlg { page: Page; caption: string; seq: number }
+interface Dlg { page: Page; caption: string; kontak?: KontakAwal; seq: number }
 
 /** Layar kasir yang dibiarkan hidup (disembunyikan) saat Anda membuka layar lain, supaya keranjang tidak hilang. */
 type Kasir = "jual" | "beli";
@@ -80,7 +80,7 @@ const adaKasir = (p: Page): p is Kasir => p === "jual" || p === "beli";
 function KasirHidup(props: { aktif: boolean; onLepas: () => void; onIsi: (n: number) => void; children: React.ReactNode }) {
   const app = useApp();
   const ref = useRef<HTMLDivElement>(null);
-  const go = useCallback((p: Page) => { if (p === "home") props.onLepas(); app.go(p); }, [app, props]);
+  const go = useCallback((p: Page, kontak?: KontakAwal) => { if (p === "home") props.onLepas(); app.go(p, kontak); }, [app, props]);
   const laporIsi = props.onIsi;
   // Kembali ke kasir: fokus ke kotak scan lagi, karena fokus lama hilang saat layar disembunyikan.
   const pernahAktif = useRef(props.aktif);
@@ -102,10 +102,10 @@ function KasirHidup(props: { aktif: boolean; onLepas: () => void; onIsi: (n: num
 }
 
 /** Isi dialog: komponen yang sama dengan halamannya, dibingkai pada ukuran asli form VB. */
-function DialogBody({ page }: { page: Page }) {
+function DialogBody({ page, kontak }: { page: Page; kontak?: KontakAwal }) {
   switch (page) {
-    case "piutang": return <Pelunasan jenis="Piutang" />;
-    case "hutang": return <Pelunasan jenis="Hutang" />;
+    case "piutang": return <Pelunasan jenis="Piutang" awalKontak={kontak} />;
+    case "hutang": return <Pelunasan jenis="Hutang" awalKontak={kontak} />;
     case "barcode": return <CetakLabel mode="barcode" />;
     case "pricetag": return <CetakLabel mode="pricetag" />;
     case "katalog": return <Katalog />;
@@ -246,7 +246,7 @@ export default function App() {
     return () => { batal = true; lepas?.(); };
   }, []);
 
-  const open = useCallback((page: Page, caption?: string, tab?: MasterTable | Tab) => {
+  const open = useCallback((page: Page, caption?: string, tab?: MasterTable | Tab, kontak?: KontakAwal) => {
     const cur = childRef.current.page;
     // Layar kasir ikut dipertahankan saat Anda pindah ke layar lain; yang keranjangnya kosong dilepas.
     setHidup((h) => {
@@ -257,22 +257,22 @@ export default function App() {
       return n;
     });
     seq.current += 1;
-    setChild({ page, caption: caption ?? DEFAULT_CAPTION[page], tab, seq: seq.current });
+    setChild({ page, caption: caption ?? DEFAULT_CAPTION[page], tab, kontak, seq: seq.current });
   }, []);
 
-  const openDialog = useCallback((page: Page, caption?: string) => {
+  const openDialog = useCallback((page: Page, caption?: string, kontak?: KontakAwal) => {
     seq.current += 1;
-    const dlg = { page, caption: caption ?? DEFAULT_CAPTION[page], seq: seq.current };
+    const dlg = { page, caption: caption ?? DEFAULT_CAPTION[page], kontak, seq: seq.current };
     setDialogs((d) => [...d, dlg]);
   }, []);
   const closeDialog = useCallback((s: number) => setDialogs((d) => d.filter((x) => x.seq !== s)), []);
   // Dipakai halaman dan dialog: "home" menutup dialog teratas, dialog lain menumpuk, halaman biasa menggantikan halaman aktif.
-  const go = (p: Page) => {
+  const go = (p: Page, kontak?: KontakAwal) => {
     const d = dialogsRef.current;
     if (p === "home" && d.length) return closeDialog(d[d.length - 1].seq);
-    if (isDialog(p)) return openDialog(p);
+    if (isDialog(p)) return openDialog(p, undefined, kontak);
     setDialogs([]);
-    open(p);
+    open(p, undefined, undefined, kontak);
   };
 
   // Judul pendek: nama toko lalu layar yang sedang dibuka.
@@ -496,8 +496,8 @@ export default function App() {
               {page === "returjual" && <Retur key="rj" mode="jual" />}
               {page === "returbeli" && <Retur key="rb" mode="beli" />}
               {page === "returbelibrg" && <Retur key="rbb" mode="brg" />}
-              {page === "piutang" && <Pelunasan key={`piutang-${child.seq}`} jenis="Piutang" jatuhTempo={child.tab === ("jatuhtempo" as Tab)} />}
-              {page === "hutang" && <Pelunasan key="hutang" jenis="Hutang" />}
+              {page === "piutang" && <Pelunasan key={`piutang-${child.seq}`} jenis="Piutang" jatuhTempo={child.tab === ("jatuhtempo" as Tab)} awalKontak={child.kontak} />}
+              {page === "hutang" && <Pelunasan key={`hutang-${child.seq}`} jenis="Hutang" awalKontak={child.kontak} />}
             </div>
           </section>
         </main>
@@ -550,7 +550,7 @@ export default function App() {
         const { width, height } = sz ?? formSize(DIALOG_FORM[d.page] ?? "");
         return (
           <ModalFrame key={d.seq} title={d.caption} width={width + (sz ? 0 : 2)} height={height + (sz ? 0 : tinggiJudul)} onClose={() => closeDialog(d.seq)}>
-            <DialogBody page={d.page} />
+            <DialogBody page={d.page} kontak={d.kontak} />
           </ModalFrame>
         );
       })}

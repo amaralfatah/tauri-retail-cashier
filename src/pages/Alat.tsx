@@ -8,6 +8,7 @@ import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { errText, Row } from "../api";
+import { pilihBackup, pilihFolder } from "../api/dialog";
 import { alatApi, dbApi, FileBackup, folderBackup, HasilSql, imporApi } from "../api/keuangan";
 import { useApp } from "../appContext";
 import { rp, tglID, today } from "../format";
@@ -79,6 +80,14 @@ export function Alat() {
   });
 
   /* ---- Backup ---- */
+  const pilihFolderBackup = async () => {
+    const p = await pilihFolder();
+    if (p) setFolder(p);
+  };
+  const pilihFileRestore = async () => {
+    const p = await pilihBackup();
+    if (p) { setFileRestore(p); setDaftarBackup(null); }
+  };
   const backup = () => jalan(async () => {
     const r = await dbApi.backup(fld);
     folderBackup.set(folder);
@@ -240,7 +249,8 @@ export function Alat() {
                     size="default"
                     data-vb="cOpenFolderBackup"
                     className="h-8 px-2.5 text-xs"
-                    onClick={() => document.querySelector<HTMLElement>('[data-vb="tLokasiBackup"] input')?.focus()}
+                    title="Pilih lokasi folder backup"
+                    onClick={() => void pilihFolderBackup()}
                   >
                     ...
                   </Button>
@@ -468,10 +478,33 @@ export function Alat() {
         </ModalFrame>
       )}
       {daftarBackup && (
-        <ModalFrame title="File Backup" width={560} height={320} onClose={() => setDaftarBackup(null)}>
-          <div className="h-70 p-2">
+        <ModalFrame
+          title="File Backup"
+          width={560}
+          height={340}
+          onClose={() => setDaftarBackup(null)}
+          footer={
+            <>
+              <Button type="button" variant="outline" className="mr-auto h-8 text-xs" onClick={() => void pilihFileRestore()}>
+                Pilih File Lain…
+              </Button>
+              <Button type="button" variant="outline" className="h-8 text-xs" onClick={() => setDaftarBackup(null)}>
+                Tutup <Kbd>Esc</Kbd>
+              </Button>
+              <Button
+                type="button"
+                className="h-8 text-xs"
+                disabled={!backupSel}
+                onClick={() => { if (backupSel) { setFileRestore(backupSel); setDaftarBackup(null); } }}
+              >
+                Pilih
+              </Button>
+            </>
+          }
+        >
+          <div className="h-full min-h-0 p-2">
             {daftarBackup.length === 0
-              ? <p className="p-3 text-sm text-muted-foreground">Belum ada file backup di folder ini. Anda juga bisa mengetik lokasi file backup langsung.</p>
+              ? <p className="p-3 text-sm text-muted-foreground">Belum ada file backup di folder ini. Klik Pilih File Lain… untuk memilih file backup dari folder lain.</p>
               : <VbGrid cols={[
                 { title: "No", width: 42, align: "right", render: (_r: FileBackup, i: number) => i + 1 },
                 { title: "Nama File", width: 260, render: (r: FileBackup) => r.nama },

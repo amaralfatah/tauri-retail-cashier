@@ -9,7 +9,20 @@ import type { Tab } from "../pages/Laporan";
 export type Page = "panduan" | "keuangan" | "database" | "alat" | "poin" | "nontunai" | "stokawal" | "barcode" | "pricetag" | "katalog" | "promodiskon" | "promobonus" | "promopdp" | "home" | "jual" | "beli" | "orderjual" | "orderbeli" | "opname" | "master" | "satuan" | "kelompok" | "kategori" | "laporan" | "pengaturan" | "pengguna" | "returjual" | "returbeli" | "returbelibrg" | "piutang" | "hutang";
 
 export interface MenuNode { id: string; nama: string; caption: string; children: MenuNode[] }
-export const MENU = menuData as MenuNode[];
+
+/** Menu aplikasi lama yang sengaja dihilangkan (registrasi/aktivasi lisensi). */
+export const MENU_SEMBUNYI: ReadonlySet<string> = new Set(["mnBantuanRegistrasi"]);
+
+function saringMenu(nodes: MenuNode[]): MenuNode[] {
+  return nodes.flatMap((n) => {
+    if (MENU_SEMBUNYI.has(n.nama)) return [];
+    if (!n.children.length) return [n];
+    const children = saringMenu(n.children);
+    return children.length ? [{ ...n, children }] : [];
+  });
+}
+
+export const MENU = saringMenu(menuData as MenuNode[]);
 
 export interface Target { page: Page; tab?: MasterTable | Tab }
 
@@ -98,6 +111,7 @@ export const KASIR_LAPORAN: string[] = ["penjualan", "stok"];
  * kasir tetap dibatasi aturan halaman kasir di atas.
  */
 export function allowedFor(kasir: boolean, node: MenuNode, ditolak?: ReadonlySet<string>): boolean {
+  if (MENU_SEMBUNYI.has(node.nama)) return false;
   if (node.children.length) return node.children.some((c) => allowedFor(kasir, c, ditolak));
   if (ditolak?.has(node.nama)) return false;
   const t = TARGETS[node.nama];

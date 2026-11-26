@@ -16,20 +16,20 @@ Jendela utama meniru FrmMain: toolbar 11 tombol, menu popup dari tabel `MDMENU`,
 | Inventori | Stok awal, stok opname, cetak barcode, cetak price tag, katalog, promo diskon, promo bonus, diskon PDP. |
 | Laporan | Filter asli lalu preview cetak: penjualan, pembelian, order, retur, pelunasan, piutang, hutang, stok, terlaris, omset, opname, laba rugi, kas. |
 | Keuangan | Transaksi kas masuk/keluar dengan saldo berjalan. |
-| Pengaturan | Pengaturan program, database, alat bantu (backup, restore, cek, perbaikan, hapus data), impor Excel/CSV, jenis non tunai, pengguna dengan hak akses per menu, Verifikasi Admin, panduan, dashboard, notifikasi jatuh tempo. |
+| Pengaturan | Pengaturan program (termasuk cetak struk langsung RAW/ESC-POS & pembuka laci kasir), database, alat bantu (backup, restore, cek, perbaikan, hapus data), impor Excel/CSV, jenis non tunai, pengguna dengan hak akses per menu, Verifikasi Admin, panduan, dashboard, notifikasi jatuh tempo. |
 
-Belum ada: registrasi/aktivasi (sengaja tidak ditiru), laci uang (cash drawer), tukar poin sebagai pembayaran (tidak ditemukan di aplikasi lama). Dialog pilih file bawaan sistem sudah dipakai untuk impor Excel, foto barang, folder foto, dan ekspor laporan; lokasi folder backup masih diketik.
+Belum ada: registrasi/aktivasi (sengaja tidak ditiru) dan tukar poin sebagai pembayaran di layar kasir (tidak ditemukan di aplikasi lama; penukaran dan koreksi poin tersedia di layar Poin Member). Dialog pilih file/folder bawaan sistem sudah dipakai di semua pengaturan file (impor Excel, foto barang, folder foto, logo/latar, folder backup, pilih file backup, dan ekspor laporan).
 
 ## Aturan yang ditiru dari aplikasi lama
 
-- Nomor transaksi: `KODE + yymm + "-" + 5 digit`, misalnya `TJ2611-00001`. Kas `KS…`, piutang `PS…`, hutang `HS…`.
+- Nomor transaksi: `KODE + yymm + "-" + 5 digit`, misalnya `TJ2611-00001`. Kas `KS…`, piutang `PS…`, hutang `HP…`.
 - Stok diubah oleh trigger SQLite `transaksidetil_insert`, port langsung dari trigger Firebird `TRANSAKSIDETIL_INSERT`.
   `STOKAKHIR = STOKAWAL + STOKMASUK - STOKKELUAR + STOKOPNAME`, hanya untuk jenis `Barang`.
 - `TRANSAKSIDETIL.JML` = jumlah dalam satuan dasar, `JMLJUAL` = jumlah dalam satuan transaksi, `HRGTERJUAL` = harga per satuan transaksi.
 - Pelanggan/pemasok umum memakai kode `Tunai`.
 
-Yang merupakan keputusan desain baru (tidak terbukti dari aplikasi lama): kode `HS` untuk hutang pemasok, kategori kas pembelian
-"Harga pokok penjualan", pembayaran non tunai dicatat sebagai kas masuk, dan `SUBTOTAL` sekarang diisi (data lama menyimpan 0,
+Yang merupakan keputusan desain baru (tidak terbukti dari aplikasi lama): kategori kas pembelian
+"Harga pokok penjualan", pembayaran non tunai dicatat sebagai kas masuk (bila pengaturan Hubungkan Kas aktif), dan `SUBTOTAL` sekarang diisi (data lama menyimpan 0,
 jadi laporan menghitung `JMLJUAL × HRGTERJUAL`).
 
 ## Menjalankan

@@ -25,13 +25,13 @@ const angka = (t: string) => Number(t.replace(/\D/g, "")) || 0;
 const n = (v: unknown) => Number(v) || 0;
 
 /** Pelunasan piutang pelanggan atau hutang ke supplier, sebagai dialog di atas halaman yang sedang terbuka. */
-/** `jatuhTempo`: dibuka dari pemberitahuan piutang jatuh tempo. */
-export function Pelunasan({ jenis, jatuhTempo }: { jenis: PelunasanJenis; jatuhTempo?: boolean }) {
+/** `jatuhTempo`: dibuka dari pemberitahuan piutang jatuh tempo; `awalKontak`: dibuka dari daftar piutang di Ringkasan Toko. */
+export function Pelunasan({ jenis, jatuhTempo, awalKontak }: { jenis: PelunasanJenis; jatuhTempo?: boolean; awalKontak?: Kontak }) {
   const { user, go } = useApp();
   const msg = useMsgBox();
   const piutang = jenis === "Piutang";
   const [tgl, setTgl] = useState(today());
-  const [kontak, setKontak] = useState<Kontak | null>(null);
+  const [kontak, setKontak] = useState<Kontak | null>(awalKontak ?? null);
   const [kartu, setKartu] = useState<Row[]>([]);
   const [mode, setMode] = useState(MODE[0]);
   const [nominal, setNominal] = useState(0);
@@ -77,6 +77,14 @@ export function Pelunasan({ jenis, jatuhTempo }: { jenis: PelunasanJenis; jatuhT
     setCariJth(false);
     void muat(k);
   };
+
+  // Dibuka dengan pelanggan awal (mis. klik ganda daftar piutang di Ringkasan Toko): langsung muat kartunya.
+  useEffect(() => {
+    if (!awalKontak?.kode) return;
+    const k = { kode: awalKontak.kode, nama: awalKontak.nama || awalKontak.kode };
+    setKontak(k);
+    void muat(k);
+  }, [awalKontak?.kode, awalKontak?.nama, muat]);
 
   // Dibuka dari pemberitahuan: satu pelanggan langsung ditampilkan piutangnya; lebih dari satu, pilih dari daftar jatuh tempo.
   useEffect(() => {
