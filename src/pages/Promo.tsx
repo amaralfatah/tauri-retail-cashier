@@ -176,6 +176,7 @@ export function Promo({ jenis }: { jenis: PromoJenis }) {
   );
   const kode = (r: R, field: Kode) => (
     <GridKodeInput
+      data-kode={field}
       value={r[field]}
       onSearch={() => setCari({ uid: r.uid, field })}
       onChange={(e) => {
@@ -239,7 +240,7 @@ export function Promo({ jenis }: { jenis: PromoJenis }) {
       const x = rows[i];
       if (!x) { trs.push(<tr key={`e${i}`}><td className="no">{i + 1}</td>{cols.map((_, k) => <td key={k} />)}</tr>); continue; }
       trs.push(
-        <tr key={x.uid} className={sel === x.uid ? "cur" : ""} onMouseDown={() => setSel(x.uid)} onFocus={() => setSel(x.uid)}>
+        <tr key={x.uid} data-uid={x.uid} className={sel === x.uid ? "cur" : ""} onMouseDown={() => setSel(x.uid)} onFocus={() => setSel(x.uid)}>
           <td className="no">{i + 1}</td>
           {cols.map((c, k) => <td key={k} className={c.r ? "r" : c.t.startsWith("Nama") ? "nm" : ""}>{c.cell(x)}</td>)}
         </tr>,
@@ -331,7 +332,21 @@ export function Promo({ jenis }: { jenis: PromoJenis }) {
       </div>
 
       {msg.node}
-      {cari && <CariBarang onClose={() => setCari(null)} onPick={(b) => { pilih(cari.uid, cari.field, b); setCari(null); }} />}
+      {cari && (
+        <CariBarang
+          onClose={() => {
+            const c = cari;
+            setCari(null);
+            setTimeout(() => gridRef.current?.querySelector<HTMLInputElement>(`tr[data-uid="${c.uid}"] input[data-kode="${c.field}"]`)?.focus(), 0);
+          }}
+          onPick={(b) => {
+            const c = cari;
+            pilih(c.uid, c.field, b);
+            setCari(null);
+            setTimeout(() => gridRef.current?.querySelector<HTMLInputElement>(`tr[data-uid="${c.uid}"] input[data-kode="${c.field}"]`)?.focus(), 0);
+          }}
+        />
+      )}
     </div>
   );
 }

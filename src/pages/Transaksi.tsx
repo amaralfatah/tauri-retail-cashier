@@ -185,6 +185,8 @@ function DetailGrid(props: {
   /** Kode atau barcode yang diketik di sel Kode baris yang ada: ganti barang di baris itu. Hasil false = tidak ditemukan. */
   onGantiKode: (key: number, kode: string) => Promise<boolean>;
   onCariSatuan: (key: number) => void;
+  /** Dipanggil saat pengguna mengaktifkan sel di tabel, supaya fokus kembali ke sel ini setelah dialog ditutup. */
+  onFokusSel?: () => void;
   stokKurang: (l: Line) => boolean;
   /** Stok sisa setelah barang ini terjual sudah sampai batas minimum (hanya penanda, tidak memblokir). */
   stokTipis?: (l: Line) => boolean;
@@ -239,6 +241,20 @@ function DetailGrid(props: {
   const urutan: Kol[] = props.hargaTerkunci ? ["kode", "satuan", "jml"] : props.jual ? ["kode", "satuan", "jml", "hrg"] : ["kode", "satuan", "jml", "hrg", "hjual", "margin"];
   const navCols: Kol[] = props.jual ? ["kode", "nama", "satuan", "jml", "hrg", "subtotal"] : ["kode", "nama", "satuan", "jml", "hrg", "hjual", "margin", "subtotal"];
   const pindah = (c: Kol) => { wantFocus.current = true; setCol(c); };
+  const bukaKode = (k: number) => {
+    setEntryFocus(false);
+    setCol("kode");
+    if (selected !== k) props.onSelect(k);
+    props.onFokusSel?.();
+    props.onCariKode(k);
+  };
+  const bukaSatuan = (k: number) => {
+    setEntryFocus(false);
+    setCol("satuan");
+    if (selected !== k) props.onSelect(k);
+    props.onFokusSel?.();
+    props.onCariSatuan(k);
+  };
 
   const idx = lines.findIndex((l) => l.key === selected);
   const onKeyDown = (e: React.KeyboardEvent) => {
@@ -310,9 +326,9 @@ function DetailGrid(props: {
       if (baru && baru !== lama) {
         const el = e.target as HTMLInputElement;
         void props.onGantiKode(selected, baru).then((ok) => { if (ok) setKodeDraft(null); else { delete el.dataset.edit; el.select(); } });
-      } else { setKodeDraft(null); props.onCariKode(selected); }
+      } else { setKodeDraft(null); bukaKode(selected); }
     }
-    else if (act === "satuan" && selected != null) props.onCariSatuan(selected);
+    else if (act === "satuan" && selected != null) bukaSatuan(selected);
     else if (act === "nama") pindah("jml");
     // Layar jual lama: Enter di Jml langsung ke baris baru (mode Grid) atau kotak scan (mode TextBox), kolom harga dilewati.
     else if (act === "jml" && !props.hargaTerkunci && !props.jual) pindah("hrg");
@@ -364,7 +380,11 @@ function DetailGrid(props: {
         setEntryFocus(false);
         setCol(c);
         if (selected !== l.key) props.onSelect(l.key);
-        setTimeout(() => props.gridRef.current?.querySelector<HTMLInputElement>("input[data-act]")?.focus(), 0);
+        props.onFokusSel?.();
+        setTimeout(() => {
+          if (document.activeElement?.closest('[role="dialog"], .modal-backdrop')) return;
+          props.gridRef.current?.querySelector<HTMLInputElement>("input[data-act]")?.focus();
+        }, 0);
       };
       const kodeTampil = l.b.kodebarang;
       const act = (c: Kol) => cur && col === c;
@@ -397,7 +417,7 @@ function DetailGrid(props: {
                   }}
                   className={cn(GRID_INPUT, "pr-6!")}
                 />
-                <GridSearchButton title="Cari barang [F10]" onClick={() => props.onCariKode(l.key)} />
+                <GridSearchButton title="Cari barang [F10]" onClick={() => bukaKode(l.key)} />
               </div>
             ) : kodeTampil}
           </TableCell>
@@ -430,11 +450,11 @@ function DetailGrid(props: {
               </>
             )}
           </TableCell>
-          <TableCell className={cn(GRID_TD, "px-1! text-center", act("satuan") && ACT_CELL)} onMouseDown={klik("satuan")} onDoubleClick={() => props.onCariSatuan(l.key)}>
+          <TableCell className={cn(GRID_TD, "px-1! text-center", act("satuan") && ACT_CELL)} onMouseDown={klik("satuan")} onDoubleClick={() => bukaSatuan(l.key)}>
             {act("satuan") ? (
               <div className="relative h-full">
                 <Input readOnly data-act="satuan" value={l.units[l.ui].satuan} className={cn(GRID_INPUT, "cursor-default pr-6! text-center")} />
-                <GridSearchButton title="Cari satuan" onClick={() => props.onCariSatuan(l.key)} />
+                <GridSearchButton title="Cari satuan" onClick={() => bukaSatuan(l.key)} />
               </div>
             ) : l.units[l.ui].satuan}
           </TableCell>
@@ -881,6 +901,8 @@ function TransaksiIsi({ mode, order = false }: { mode: Mode; order?: boolean }) 
   const [dok, setDok] = useState<{ jenis: "sj" | "spk"; header: Row; detail: Row[] } | null>(null);
   const scanRef = useRef<HTMLInputElement>(null);
   const gridRef = useRef<HTMLDivElement>(null);
+  /** Tempat fokus terakhir sebelum dialog dibuka, supaya menutup dialog dengan Esc kembali ke sel atau kolom semula. */
+  const fokusTerakhirRef = useRef<{ jenis: "scan" } | { jenis: "sel" } | { jenis: "lain"; el: HTMLElement }>({ jenis: "scan" });
   const [fokusJml, setFokusJml] = useState(0);
   /** Barang yang terakhir masuk, ditampilkan besar di panel total dan disorot di tabel. */
   const [flash, setFlash] = useState<{ key: number; n: number }>({ key: -1, n: 0 });
@@ -929,9 +951,22 @@ function TransaksiIsi({ mode, order = false }: { mode: Mode; order?: boolean }) 
     batasiStok && b.jenis === "Barang" ? Math.max(0, Math.floor((Number(b.stokakhir) / u.konversi) * 100 + 1e-9) / 100) : null;
   /** Setelah barang masuk: kursor ke kolom jumlah (pengaturan "Arahkan kursor ke kolom jumlah") atau kembali ke kotak scan. */
   const setelahTambah = () => {
-    if (kursorKeJml) setFokusJml((n) => n + 1);
-    else setTimeout(() => scanRef.current?.focus(), 0);
+    if (kursorKeJml) { fokusTerakhirRef.current = { jenis: "sel" }; setFokusJml((n) => n + 1); }
+    else { fokusTerakhirRef.current = { jenis: "scan" }; setTimeout(() => scanRef.current?.focus(), 0); }
   };
+  /** Kembalikan fokus ke sel tabel atau kolom yang aktif sebelum dialog dibuka; kalau tidak ada, ke kotak scan. */
+  const fokusKembali = useCallback(() => {
+    const asal = fokusTerakhirRef.current;
+    if (asal.jenis === "sel") {
+      const act = gridRef.current?.querySelector<HTMLInputElement>("input[data-act]");
+      if (act) { act.focus(); return; }
+    } else if (asal.jenis === "lain" && asal.el.isConnected) {
+      asal.el.focus();
+      return;
+    }
+    fokusTerakhirRef.current = { jenis: "scan" };
+    scanRef.current?.focus();
+  }, []);
   useEffect(() => {
     if (!promoAktif || lines.length === 0) { setPromo(null); return; }
     let batal = false;
@@ -1043,7 +1078,10 @@ function TransaksiIsi({ mode, order = false }: { mode: Mode; order?: boolean }) 
     setLines((ls) => {
       const i = ls.findIndex((l) => l.key === key);
       const rest = ls.filter((l) => l.key !== key);
-      setSelected(rest.length ? rest[Math.min(i, rest.length - 1)].key : null);
+      const next = rest.length ? rest[Math.min(i, rest.length - 1)].key : null;
+      setSelected(next);
+      if (next == null) { fokusTerakhirRef.current = { jenis: "scan" }; setTimeout(() => scanRef.current?.focus(), 0); }
+      else if (fokusTerakhirRef.current.jenis === "sel") setTimeout(() => gridRef.current?.querySelector<HTMLInputElement>("input[data-act]")?.focus(), 0);
       return rest;
     });
   };
@@ -1067,6 +1105,7 @@ function TransaksiIsi({ mode, order = false }: { mode: Mode; order?: boolean }) 
     setMsg(null);
     setSelected(null);
     setPromo(null);
+    fokusTerakhirRef.current = { jenis: "scan" };
     refreshNo();
     setTimeout(() => scanRef.current?.focus(), 0);
   };
@@ -1317,7 +1356,7 @@ function TransaksiIsi({ mode, order = false }: { mode: Mode; order?: boolean }) 
         ? { F1: batal, F4: bayar, F10: cariBarangF10, ...(jual ? {} : { F6: stokMin }) }
         : jual
           ? {
-            F1: () => { setScan(""); scanRef.current?.focus(); }, F3: () => setModal("ambilorder"), F4: bayar, F6: reset, F10: cariBarangF10,
+            F1: () => { setScan(""); fokusTerakhirRef.current = { jenis: "scan" }; scanRef.current?.focus(); }, F3: () => setModal("ambilorder"), F4: bayar, F6: reset, F10: cariBarangF10,
             ...(modern ? { F7: simpanPending, F8: () => setModal("pending"), ...(poinAktif ? { F9: cekPoin } : {}) } : {}),
           }
           : { F1: batal, F3: () => setModal("ambilorder"), F4: bayar, F6: stokMin, F10: cariBarangF10 };
@@ -1338,14 +1377,24 @@ function TransaksiIsi({ mode, order = false }: { mode: Mode; order?: boolean }) 
 
   // Enter di kolom kepala pindah ke kolom berikutnya: Tanggal, Kasir, Pelanggan/Pemasok, Sales, Catatan, lalu kotak scan.
   const rantai = ["dtTglTrans", "tKasirNama", kontakKey, "tSalesNama", "tCatatan"];
-  // Dialog atau pesan ditutup tanpa menaruh kursor di mana pun: kembalikan ke kotak scan, seperti MsgBox dan form modal VB
-  // yang mengembalikan fokus. Tanpa ini scan berikutnya hilang.
+  // Dialog atau pesan ditutup tanpa menaruh kursor di mana pun: kembalikan ke sel atau kolom terakhir, seperti MsgBox
+  // dan form modal VB yang mengembalikan fokus ke kontrol sebelumnya.
   const adaDialog = !!modal || !!msg || !!tanya.node;
+  const catatFokus = (e: React.FocusEvent) => {
+    if (adaDialog) return;
+    const t = e.target;
+    if (!(t instanceof HTMLElement) || t.closest('[role="dialog"], .modal-backdrop')) return;
+    if (t === scanRef.current || t.dataset.entry === "1") fokusTerakhirRef.current = { jenis: "scan" };
+    else if (t.dataset.act !== undefined) fokusTerakhirRef.current = { jenis: "sel" };
+    else if (t instanceof HTMLInputElement || t instanceof HTMLTextAreaElement || t instanceof HTMLSelectElement) {
+      fokusTerakhirRef.current = { jenis: "lain", el: t };
+    }
+  };
   useEffect(() => {
     if (adaDialog) return;
-    const t = setTimeout(() => { const a = document.activeElement; if (!a || a === document.body) scanRef.current?.focus(); }, 0);
+    const t = setTimeout(() => { const a = document.activeElement; if (!a || a === document.body) fokusKembali(); }, 0);
     return () => clearTimeout(t);
-  }, [adaDialog]);
+  }, [adaDialog, fokusKembali]);
   const enterKepala = (e: React.KeyboardEvent) => {
     if (e.key !== "Enter" || modal || msg || tanya.node) return;
     const nama = (e.target as HTMLElement).closest<HTMLElement>("[data-vb]")?.dataset.vb ?? "";
@@ -1359,7 +1408,7 @@ function TransaksiIsi({ mode, order = false }: { mode: Mode; order?: boolean }) 
   };
 
   return (
-    <div className="flex size-full flex-col overflow-hidden bg-background" data-form={formName} onKeyDown={enterKepala}>
+    <div className="flex size-full flex-col overflow-hidden bg-background" data-form={formName} onKeyDown={enterKepala} onFocusCapture={catatFokus}>
       {tanya.node}
       <>
           <div className="grid grid-cols-2 items-end gap-3 border-b bg-background px-3 py-1.5 sm:grid-cols-3 lg:grid-cols-6">
@@ -1619,6 +1668,7 @@ function TransaksiIsi({ mode, order = false }: { mode: Mode; order?: boolean }) 
                 onCariKode={(k) => { setGantiKey(k); setCariAwal(""); setModal("cari"); }}
                 onGantiKode={gantiKode}
                 onCariSatuan={(k) => { setSatuanKey(k); setModal("satuan"); }}
+                onFokusSel={() => { fokusTerakhirRef.current = { jenis: "sel" }; }}
                 stokKurang={stokKurang}
                 stokTipis={stokTipis}
                 gridRef={gridRef}
@@ -1737,19 +1787,26 @@ function TransaksiIsi({ mode, order = false }: { mode: Mode; order?: boolean }) 
       </>
 
       {modal === "cari" && (
-        <CariBarang initial={cariAwal} showBeli={!jual} kasir={jual && !order} onClose={() => { setModal(null); setGantiKey(null); scanRef.current?.focus(); }}
+        <CariBarang initial={cariAwal} showBeli={!jual} kasir={jual && !order} onClose={() => { setModal(null); setGantiKey(null); setTimeout(fokusKembali, 0); }}
           onPick={(b) => {
             if (gantiKey != null) {
               update(gantiKey, { b, units: unitsOf(b), ui: 0, manual: false });
-              setGantiKey(null); setModal(null); setelahTambah();
+              setGantiKey(null); setModal(null);
+              if (kursorKeJml) { fokusTerakhirRef.current = { jenis: "sel" }; setFokusJml((n) => n + 1); }
+              else setTimeout(fokusKembali, 0);
             } else { addBarang(b); setModal(null); setelahTambah(); }
           }} />
       )}
       {modal === "satuan" && lines.find((l) => l.key === satuanKey) && (() => {
         const l = lines.find((x) => x.key === satuanKey)!;
         return <CariSatuan units={l.units} aktif={l.ui} jual={jual}
-          onClose={() => { setModal(null); setSatuanKey(null); scanRef.current?.focus(); }}
-          onPick={(i) => { update(l.key, { ui: i, manual: false }); setModal(null); setSatuanKey(null); setelahTambah(); }} />;
+          onClose={() => { setModal(null); setSatuanKey(null); setTimeout(fokusKembali, 0); }}
+          onPick={(i) => {
+            update(l.key, { ui: i, manual: false });
+            setModal(null); setSatuanKey(null);
+            if (kursorKeJml) { fokusTerakhirRef.current = { jenis: "sel" }; setFokusJml((n) => n + 1); }
+            else setTimeout(fokusKembali, 0);
+          }} />;
       })()}
       {modal === "kontak" && (
         <PilihModal title={jual ? "Pilih Pelanggan" : "Pilih Supplier"} kosong="Tunai"
@@ -1792,7 +1849,7 @@ function TransaksiIsi({ mode, order = false }: { mode: Mode; order?: boolean }) 
           <Alert kind="info">{msg}</Alert>
         </Modal>
       )}
-      {modal === "poin" && <PoinMember kode={kontak} onClose={() => { setModal(null); scanRef.current?.focus(); }} />}
+      {modal === "poin" && <PoinMember kode={kontak} onClose={() => { setModal(null); setTimeout(fokusKembali, 0); }} />}
       {modal === "editbarang" && (() => {
         const l = lines.find((x) => x.key === selected);
         return l ? <BarangEdit row={l.b} isNew={false} onClose={() => setModal(null)} onChanged={(k) => void barangBerubah(k)} /> : null;

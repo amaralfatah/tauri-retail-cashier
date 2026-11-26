@@ -65,3 +65,18 @@ test("dialog folder backup dan klik ganda piutang Dashboard tersambung", () => {
   assert.match(dashSrc, /go\("piutang",\s*p\.kode/, "Dashboard.tsx harus meneruskan kode pelanggan ke Pelunasan");
   assert.match(lunasSrc, /awalKontak\?\.kode/, "Pelunasan.tsx harus memuat piutang dari awalKontak");
 });
+
+test("menutup modal satuan/cari di Transaksi mengembalikan fokus ke sel aktif, bukan paksa ke baris baru", () => {
+  const transSrc = baca("../src/pages/Transaksi.tsx");
+  assert.doesNotMatch(
+    transSrc,
+    /<CariSatuan[\s\S]*?onClose=\{[^}]*scanRef\.current\?\.focus/,
+    "CariSatuan onClose tidak boleh memaksa fokus ke scanRef (baris baru)",
+  );
+  assert.doesNotMatch(
+    transSrc,
+    /<CariBarang[\s\S]*?onClose=\{[^}]*scanRef\.current\?\.focus/,
+    "CariBarang onClose tidak boleh memaksa fokus ke scanRef (baris baru)",
+  );
+  assert.match(transSrc, /fokusKembali/, "Transaksi.tsx harus memulihkan fokus lewat fokusKembali");
+});
