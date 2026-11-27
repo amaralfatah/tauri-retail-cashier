@@ -60,6 +60,9 @@ test("modeScan hanya 0 atau 1", () => {
   assert.equal(peta({ modescan: "0" }).modeScan, "0");
   assert.equal(peta({ modescan: "1" }).modeScan, "1");
   assert.equal(peta({ modescan: "5" }).modeScan, "0");
+  // Settings.ini asli menyimpan teks pilihan combo.
+  assert.equal(peta({ modescan: "TextBox" }).modeScan, "1");
+  assert.equal(peta({ modescan: "Grid" }).modeScan, "0");
 });
 
 test("terapkan: rapikan pilihan yang tidak ada, simpan, dan hanya sekali", () => {

@@ -116,7 +116,8 @@ export function petakanPengaturanLama(kv: Record<string, string>, peran: PeranLa
   centang("pakaidrawer", "drawer");
   langsung("kodedrawer", "kodeDrawer");
   langsung("portdrawer", "portDrawer");
-  if (ada("modescan")) h.modeScan = teks("modescan") === "1" ? "1" : "0";
+  // Settings.ini lama menyimpan teks pilihan cmbModeScan ("Grid"/"TextBox"); indeks "1" juga diterima.
+  if (ada("modescan")) h.modeScan = ["1", "textbox"].includes(teks("modescan").toLowerCase()) ? "1" : "0";
   centang("konfirmasicetakstrukjual", "konfirmasiCetak");
   langsung("formatqtystruk", "formatQty");
   langsung("formathrgstruk", "formatHrg");

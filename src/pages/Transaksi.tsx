@@ -187,6 +187,8 @@ function DetailGrid(props: {
   onCariSatuan: (key: number) => void;
   /** Dipanggil saat pengguna mengaktifkan sel di tabel, supaya fokus kembali ke sel ini setelah dialog ditutup. */
   onFokusSel?: () => void;
+  /** Kursor sedang di kotak scan (mode TextBox): tabel tidak menampilkan baris dan sel aktif. */
+  pasif?: boolean;
   stokKurang: (l: Line) => boolean;
   /** Stok sisa setelah barang ini terjual sudah sampai batas minimum (hanya penanda, tidak memblokir). */
   stokTipis?: (l: Line) => boolean;
@@ -374,7 +376,7 @@ function DetailGrid(props: {
         );
         continue;
       }
-      const cur = selected === l.key && !diBarisBaru;
+      const cur = selected === l.key && !diBarisBaru && !props.pasif;
       // Klik sel: aktifkan sel itu dan taruh kursor di kotaknya, juga saat kursor sedang di baris kosong (kotak scan).
       // Kotak sel aktif baru ada setelah render, jadi fokusnya menunggu sebentar.
       const klik = (c: Kol) => (e: React.MouseEvent) => {
@@ -953,8 +955,10 @@ function TransaksiIsi({ mode, order = false }: { mode: Mode; order?: boolean }) 
   const stokMaks = (b: Row, u: Unit): number | null =>
     batasiStok && b.jenis === "Barang" ? Math.max(0, Math.floor((Number(b.stokakhir) / u.konversi) * 100 + 1e-9) / 100) : null;
   /** Setelah barang masuk: kursor ke kolom jumlah (pengaturan "Arahkan kursor ke kolom jumlah") atau kembali ke kotak scan. */
+  /** Kursor masuk ke kolom Jml baris terpilih. Sorotan tabel baru tampil di sini, bukan selama kursor di kotak scan. */
+  const keJml = () => { setScanFokus(false); fokusTerakhirRef.current = { jenis: "sel" }; setFokusJml((n) => n + 1); };
   const setelahTambah = () => {
-    if (kursorKeJml) { fokusTerakhirRef.current = { jenis: "sel" }; setFokusJml((n) => n + 1); }
+    if (kursorKeJml) keJml();
     else { fokusTerakhirRef.current = { jenis: "scan" }; setTimeout(() => scanRef.current?.focus(), 0); }
   };
   /** Kembalikan fokus ke sel tabel atau kolom yang aktif sebelum dialog dibuka; kalau tidak ada, ke kotak scan. */
@@ -1584,6 +1588,12 @@ function TransaksiIsi({ mode, order = false }: { mode: Mode; order?: boolean }) 
                   onKeyDown={(e) => {
                     if (e.key === "Enter") onScan();
                     else if (e.key === "Escape" && scan) { e.preventDefault(); e.stopPropagation(); setScan(""); }
+                    else if (e.key === "ArrowDown" && shown.length > 0) {
+                      // Seperti tScanBarcode_KeyDown lama (KeyCode 40): kursor turun ke kolom Jml baris terpilih.
+                      e.preventDefault();
+                      if (selected == null || !shown.some((l) => l.key === selected)) setSelected(shown[shown.length - 1].key);
+                      keJml();
+                    }
                   }}
                 />
                 {scan ? (
@@ -1673,7 +1683,8 @@ function TransaksiIsi({ mode, order = false }: { mode: Mode; order?: boolean }) 
                 onCariKode={(k) => { setGantiKey(k); setCariAwal(""); setModal("cari"); }}
                 onGantiKode={gantiKode}
                 onCariSatuan={(k) => { setSatuanKey(k); setModal("satuan"); }}
-                onFokusSel={() => { fokusTerakhirRef.current = { jenis: "sel" }; }}
+                onFokusSel={() => { setScanFokus(false); fokusTerakhirRef.current = { jenis: "sel" }; }}
+                pasif={kotakScan && scanFokus}
                 stokKurang={stokKurang}
                 stokTipis={stokTipis}
                 gridRef={gridRef}
@@ -1797,7 +1808,7 @@ function TransaksiIsi({ mode, order = false }: { mode: Mode; order?: boolean }) 
             if (gantiKey != null) {
               update(gantiKey, { b, units: unitsOf(b), ui: 0, manual: false });
               setGantiKey(null); setModal(null);
-              if (kursorKeJml) { fokusTerakhirRef.current = { jenis: "sel" }; setFokusJml((n) => n + 1); }
+              if (kursorKeJml) keJml();
               else setTimeout(fokusKembali, 0);
             } else { addBarang(b); setModal(null); setelahTambah(); }
           }} />
@@ -1809,7 +1820,7 @@ function TransaksiIsi({ mode, order = false }: { mode: Mode; order?: boolean }) 
           onPick={(i) => {
             update(l.key, { ui: i, manual: false });
             setModal(null); setSatuanKey(null);
-            if (kursorKeJml) { fokusTerakhirRef.current = { jenis: "sel" }; setFokusJml((n) => n + 1); }
+            if (kursorKeJml) keJml();
             else setTimeout(fokusKembali, 0);
           }} />;
       })()}
