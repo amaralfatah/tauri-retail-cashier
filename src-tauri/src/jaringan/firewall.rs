@@ -1,13 +1,13 @@
 //! Aturan firewall Windows untuk port Pusat (rancangan 5.3).
 //!
-//! Aturannya satu, bernama `Toko Pro Pusat`: masuk, TCP, hanya port Pusat, hanya untuk program ini, hanya dari subnet yang sama
+//! Aturannya satu, bernama `Kasir Jet Pusat`: masuk, TCP, hanya port Pusat, hanya untuk program ini, hanya dari subnet yang sama
 //! (`remoteip=localsubnet`, sudah mencakup 169.254.0.0/16), untuk profil Private, Public, dan Domain.
 //! Membuatnya butuh hak administrator, jadi `netsh` dijalankan lewat PowerShell dengan `-Verb RunAs` (dialog UAC).
 //! Memeriksanya tidak butuh hak administrator. Di macOS dan Linux semua fungsi di sini tidak melakukan apa-apa.
 
 use crate::db::Res;
 
-pub const NAMA_ATURAN: &str = "Toko Pro Pusat";
+pub const NAMA_ATURAN: &str = "Kasir Jet Pusat";
 
 /// Keadaan izin firewall untuk komputer ini.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -18,7 +18,7 @@ pub enum Izin {
     Ada,
     /// Belum ada aturan.
     Belum,
-    /// Aturan ada, tetapi port atau lokasi programnya berbeda (mis. Toko Pro dipindah atau port diubah).
+    /// Aturan ada, tetapi port atau lokasi programnya berbeda (mis. Kasir Jet dipindah atau port diubah).
     Berbeda,
 }
 
@@ -55,12 +55,12 @@ pub fn argumen_tambah(port: u16, program: &str) -> Vec<String> {
     .into()
 }
 
-/// `netsh advfirewall firewall delete rule name="Toko Pro Pusat"`.
+/// `netsh advfirewall firewall delete rule name="Kasir Jet Pusat"`.
 pub fn argumen_hapus() -> Vec<String> {
     ["advfirewall", "firewall", "delete", "rule"].iter().map(|s| s.to_string()).chain([format!("name=\"{NAMA_ATURAN}\"")]).collect()
 }
 
-/// `netsh advfirewall firewall show rule name="Toko Pro Pusat" verbose`. Tidak butuh hak administrator.
+/// `netsh advfirewall firewall show rule name="Kasir Jet Pusat" verbose`. Tidak butuh hak administrator.
 pub fn argumen_cek() -> Vec<String> {
     ["advfirewall", "firewall", "show", "rule"].iter().map(|s| s.to_string()).chain([format!("name=\"{NAMA_ATURAN}\""), "verbose".to_string()]).collect()
 }
@@ -120,7 +120,7 @@ pub fn aturan_cocok(keluaran: &str, port: u16, program: &str) -> bool {
 
 /// Alamat program tanpa awalan `\\?\` yang kadang ikut dari `current_exe`.
 fn alamat_program() -> Res<String> {
-    let p = std::env::current_exe().map_err(|e| format!("Lokasi Toko Pro tidak terbaca ({e})."))?;
+    let p = std::env::current_exe().map_err(|e| format!("Lokasi Kasir Jet tidak terbaca ({e})."))?;
     let s = p.display().to_string();
     Ok(s.strip_prefix(r"\\?\").map(str::to_string).unwrap_or(s))
 }

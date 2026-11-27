@@ -5,7 +5,7 @@ Status: nama sudah diputuskan (27 November 2026). Logo, warna, dan langkah pengg
 ## Ringkasan
 
 - **Nama merek: Kasir Jet.** Ditulis dua kata, huruf besar di awal tiap kata.
-- **Di dalam aplikasi cukup "Kasir".** Nama lengkap dipakai di Play Store, halaman unduh, installer, dan obrolan dari mulut ke mulut.
+- **Di dalam aplikasi tertulis "Kasir Jet".** Jangan disingkat jadi "Kasir": di versi PC kata itu sudah berarti komputer kasir (lawan dari komputer Pusat), jadi kalimat seperti "Tutup lalu buka lagi Kasir" membingungkan. Label ikon di HP boleh "Kasir" kalau "Kasir Jet" terpotong.
 - **Sararia hanya di belakang layar:** nama penerbit di Play Store dan installer, serta "oleh Sararia" di Pengaturan → Tentang. Sararia tidak muncul di nama, ikon, atau materi promosi.
 - **Satu nama untuk dua aplikasi yang datanya terpisah.** Ini harus dikatakan terang-terangan (lihat bagian 3).
 - **Semua fitur gratis saat rilis.** Versi berbayar nanti bernama "Kasir Jet Pro".
@@ -17,17 +17,18 @@ Status: nama sudah diputuskan (27 November 2026). Logo, warna, dan langkah pengg
 | `flutter_sararia_cashier` + `laravel-sararia-cashier` | Sararia Kasir (`kasir.sararia.com`) | **Kasir Jet** | HP dan tablet, data dikirim ke server, pemilik mengelola toko dari web |
 | `tokopro-app` | Toko Pro | **Kasir Jet untuk PC** | Komputer Windows, data di komputer toko, beberapa komputer kasir tersambung lewat jaringan toko, tanpa akun dan tanpa internet |
 
-Kata "untuk PC" hanya dipakai di halaman unduh, nama file installer, dan judul toko aplikasi. Di dalam aplikasi tetap "Kasir".
+Kata "untuk PC" hanya dipakai di halaman unduh, nama file installer, dan judul toko aplikasi. Di dalam aplikasi cukup "Kasir Jet".
 
 ## 2. Aturan penulisan nama
 
 | Tempat | Tulisan |
 |---|---|
-| Label ikon di HP, judul jendela PC, layar login, di dalam aplikasi | Kasir |
+| Judul jendela PC, layar login, pesan, dan panduan di dalam aplikasi | Kasir Jet |
+| Label ikon di HP | Kasir Jet (atau "Kasir" kalau terpotong) |
 | Play Store (HP dan tablet) | Kasir Jet: Kasir Gratis (23 huruf, batas Play Store 30) |
 | Halaman unduh dan installer versi komputer | Kasir Jet untuk PC |
 | Versi berbayar nanti | Kasir Jet Pro |
-| Pengaturan → Tentang | Kasir, versi, lalu "oleh Sararia" |
+| Pengaturan → Tentang | Kasir Jet, versi, lalu "oleh Sararia" |
 
 Jangan tulis "KasirJet", "Kasir JET", "Kasir Jet by Sararia", atau "Sararia Kasir Jet".
 
@@ -118,8 +119,8 @@ Biru tombol di situs Apple, `#0071e3`, untuk warna merek dan tombol utama di ked
 
 ### Tahap 3: ganti nama di aplikasi
 
-- **Kasir Jet untuk PC (`tokopro-app`):** ganti `productName` di `src-tauri/tauri.conf.json`, judul jendela, `<title>`, dan teks "Toko Pro" yang tampil di layar. Ganti juga `identifier` (`com.tokopro.app`) **sebelum rilis pertama**: setelah ada pengguna, identifier tidak bisa diganti tanpa memutus pembaruan otomatis dan memindahkan folder data. Instalasi uji di VM perlu dipasang ulang setelahnya.
-- **Kasir Jet (Flutter):** ganti label di `AndroidManifest.xml` (sekarang `flutter_sararia_cashier`) dan nama tampilan iOS menjadi "Kasir".
+- **Kasir Jet untuk PC (`tokopro-app`):** **sudah dikerjakan** (27 November 2026). `productName`, judul jendela, dan `<title>` menjadi "Kasir Jet"; identifier menjadi `com.kasirjet.pc`; aturan firewall menjadi "Kasir Jet Pusat"; semua teks "Toko Pro" yang berarti aplikasi ini menjadi "Kasir Jet". "Toko Pro lama" tetap dipakai untuk aplikasi VB6, karena di sana namanya memang Toko Pro. Nama internal tetap: paket `tokopro-app`, file `tokopro.db`, kunci `localStorage` `tokopro.*`, variabel `TOKOPRO_*`. Karena identifier berganti, folder data juga pindah (di macOS `~/Library/Application Support/com.kasirjet.pc/`) dan pengaturan per komputer kembali ke bawaan; instalasi uji di VM perlu dipasang ulang.
+- **Kasir Jet (Flutter):** ganti label di `AndroidManifest.xml` (sekarang `flutter_sararia_cashier`) dan nama tampilan iOS menjadi "Kasir Jet".
 - **Web:** ganti `APP_NAME` dan judul halaman. Putuskan apakah web pindah ke `kasirjet.com` atau tetap di `kasir.sararia.com`.
 
 ### Tahap 4: menjangkau pembeli
@@ -131,7 +132,6 @@ Biru tombol di situs Apple, `#0071e3`, untuk warna merek dan tombol utama di ked
 
 Urut dari yang paling memengaruhi pekerjaan berikutnya:
 
-1. **Identifier baru** untuk versi PC.
-2. **Alamat web:** pindah ke `kasirjet.com` atau tetap `kasir.sararia.com`.
-3. **Membekukan Flutter untuk Windows dan macOS**, karena versi komputer sudah ditangani `tokopro-app`.
-4. **Satu istilah untuk barang dagangan:** "barang" (dipakai versi PC) atau "produk" (dipakai web).
+1. **Alamat web:** pindah ke `kasirjet.com` atau tetap `kasir.sararia.com`.
+2. **Membekukan Flutter untuk Windows dan macOS**, karena versi komputer sudah ditangani `tokopro-app`.
+3. **Satu istilah untuk barang dagangan:** "barang" (dipakai versi PC) atau "produk" (dipakai web).

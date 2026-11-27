@@ -276,9 +276,9 @@ export default function App() {
   };
 
   // Judul pendek: nama toko lalu layar yang sedang dibuka.
-  const windowTitle = `${setting.namausaha || "Toko Pro"} — ${child.caption}`;
+  const windowTitle = `${setting.namausaha || "Kasir Jet"} — ${child.caption}`;
   useEffect(() => {
-    document.title = user ? windowTitle : "Software Toko Pro Unlimited";
+    document.title = user ? windowTitle : "Kasir Jet";
     try { getCurrentWindow().setTitle(document.title).catch(() => undefined); } catch { /* bukan di jendela Tauri */ }
   }, [windowTitle, user]);
 
@@ -571,7 +571,7 @@ export default function App() {
         <Modal title="Keluar" onClose={() => setKonfirmKeluar(false)}
           footer={<><Button variant="outline" onClick={() => setKonfirmKeluar(false)}>Tidak</Button><Button autoFocus variant={kasirMasihAda > 0 ? "destructive" : "default"} onClick={keluar}>Ya, keluar</Button></>}>
           {kasirMasihAda > 0 && (
-            <p className="font-semibold">Masih ada {kasirMasihAda} komputer kasir yang tersambung. Kalau Anda menutup Toko Pro di sini, kasir tidak bisa menyimpan transaksi. Tetap tutup?</p>
+            <p className="font-semibold">Masih ada {kasirMasihAda} komputer kasir yang tersambung. Kalau Anda menutup Kasir Jet di sini, kasir tidak bisa menyimpan transaksi. Tetap tutup?</p>
           )}
           {(kasirBelumBayar() || kasirMasihAda === 0) && (
             <p>{kasirBelumBayar()

@@ -1,7 +1,7 @@
-# Toko Pro (Tauri 2 + Rust + React)
+# Kasir Jet untuk PC (Tauri 2 + Rust + React)
 
 Aplikasi kasir dan stok toko. Ini versi baru dari aplikasi VB6 milik pemilik proyek sendiri (lihat README.md),
-jadi nama, ikon, dan tata letak layar lama boleh dipakai.
+jadi tata letak layar lama boleh dipakai. Nama aplikasinya sekarang Kasir Jet (lihat `docs/rancangan-branding.md`).
 
 ## Perintah
 
@@ -168,7 +168,7 @@ Cara database dari berbagai asal sampai ke versi terbaru:
 | Restore backup lama | `pulihkan` memanggil `db::open`, jadi diperlakukan sebagai database yang ada. |
 | Restore backup yang lebih baru dari aplikasi | Ditolak di `cek_file_backup`, sebelum file diganti. |
 | Impor dari aplikasi lama (`pindah_lama.rs`) | Dibangun dari `schema.sql` lalu langsung ditandai versi terbaru (`migrasi::tandai_terbaru`), jadi tidak ada langkah yang jalan. |
-| Database dengan versi lebih tinggi dari aplikasi | `db::open` menolak dengan pesan "Data ini dibuat oleh Toko Pro versi yang lebih baru". |
+| Database dengan versi lebih tinggi dari aplikasi | `db::open` menolak dengan pesan "Data ini dibuat oleh Kasir Jet versi yang lebih baru". |
 
 Karena `schema.sql` dijalankan setelah langkah pada database yang ada, indeks atau trigger di `schema.sql` boleh memakai kolom baru.
 Langkah 1 adalah titik awal: ia hanya menyusul `migrasi_pending` (pending lama dipindah ke transaksi).
@@ -177,7 +177,7 @@ Langkah 1 adalah titik awal: ia hanya menyusul `migrasi_pending` (pending lama d
 
 Teks yang dilihat kasir dan pemilik toko memakai sapaan "Anda", kalimat aktif, dan kata sehari-hari di toko
 (barang, pelanggan, bayar, struk), bukan istilah teknis. Pesan error menyebut apa yang terjadi dan apa yang bisa dilakukan.
-Istilah baku: "Supplier" (bukan Pemasok), "Pengguna" untuk akun (layar Login tetap "Nama User"). Label kolom kepala transaksi
+Nama aplikasi ditulis "Kasir Jet", jangan disingkat "Kasir" karena kata itu sudah berarti komputer kasir; aplikasi VB6 disebut "Toko Pro lama". Istilah baku: "Supplier" (bukan Pemasok), "Pengguna" untuk akun (layar Login tetap "Nama User"). Label kolom kepala transaksi
 mengikuti caption form VB-nya (Kasir/Petugas). Uang ditulis `Rp 4.500` (tanpa titik setelah Rp, tanpa ",-").
 
 ## Komputer Pusat (jaringan toko)
@@ -188,7 +188,7 @@ Mode Tunggal (bawaan), Pusat, dan Kasir, diatur di `pusat.json`. Rancangan, kepu
 | File | Isi |
 |---|---|
 | `src-tauri/src/jaringan/` | `kendali.rs` (mode, server, status), `server.rs` (axum: `/halo`, `/sambung`, `/jalankan`), `klien.rs` (komputer Kasir), `golongan.rs`, `perangkat.rs`, `batas.rs`, `firewall.rs` |
-| `src-tauri/src/jaringan/firewall.rs` | Aturan firewall Windows "Toko Pro Pusat" lewat `netsh` dengan UAC. Di luar Windows tidak melakukan apa-apa |
+| `src-tauri/src/jaringan/firewall.rs` | Aturan firewall Windows "Kasir Jet Pusat" lewat `netsh` dengan UAC. Di luar Windows tidak melakukan apa-apa |
 | `src-tauri/windows/hooks.nsh` | Hook NSIS (`NSIS_HOOK_POSTUNINSTALL`) yang menghapus aturan firewall saat uninstall |
 | `src-tauri/src/pindah_otomatis.rs` | Pindah otomatis dari Toko Pro lama saat dibuka pertama kali |
 | `src/pages/KomputerPusat.tsx`, `PilihanAwal.tsx`, `src/components/StatusPusat.tsx` | Layar Komputer Pusat, layar pilihan awal, ikon status |

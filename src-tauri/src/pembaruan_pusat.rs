@@ -38,7 +38,7 @@ const GAGAL_CEK: &str = "Pembaruan belum bisa diperiksa. Pastikan komputer ini t
 /// Cari pembaruan ke versi Pusat. `None` bila komputer ini sudah di versi itu (atau lebih baru: tidak pernah turun versi).
 #[tauri::command]
 pub async fn pembaruan_pusat_cek(app: AppHandle, klien: State<'_, Arc<Klien>>, tertunda: State<'_, Tertunda>) -> Result<Option<Info>, String> {
-    let versi = klien.versi_pusat().ok_or("Toko Pro belum tahu versi Pusat. Sambungkan komputer ini ke Pusat dulu.")?;
+    let versi = klien.versi_pusat().ok_or("Kasir Jet belum tahu versi Pusat. Sambungkan komputer ini ke Pusat dulu.")?;
     let terbaru = app
         .config()
         .plugins

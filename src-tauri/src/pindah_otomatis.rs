@@ -1,4 +1,4 @@
-//! Pindah otomatis dari Toko Pro lama saat Toko Pro baru dibuka pertama kali (rancangan bagian 8).
+//! Pindah otomatis dari Toko Pro lama saat Kasir Jet dibuka pertama kali (rancangan bagian 8).
 //! Menentukan peran komputer dari `Settings.ini` lama, menyalin foto, logo, dan gambar latar, membaca pengaturan lama,
 //! dan menyiapkan komputer Pusat. Pemetaan pengaturan ke setelan per komputer ada di `src/pages/localSettings.ts`.
 
@@ -15,9 +15,9 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tauri::{Emitter, Manager};
 
-const PESAN_TERBUKA: &str = "Toko Pro lama masih terbuka di komputer ini. Tutup Toko Pro lama, lalu Toko Pro baru akan melanjutkan sendiri.";
+const PESAN_TERBUKA: &str = "Toko Pro lama masih terbuka di komputer ini. Tutup Toko Pro lama, lalu Kasir Jet akan melanjutkan sendiri.";
 const PESAN_BUKAN_PUSAT: &str = "Toko Pro lama di komputer ini bukan tempat data toko Anda, jadi komputer ini belum bisa dijadikan Pusat.";
-const PESAN_TIDAK_ADA_DATA: &str = "Toko Pro tidak menemukan data toko di komputer ini. Pilih Atur sendiri, lalu sambungkan komputer ini ke komputer Pusat.";
+const PESAN_TIDAK_ADA_DATA: &str = "Kasir Jet tidak menemukan data toko di komputer ini. Pilih Atur sendiri, lalu sambungkan komputer ini ke komputer Pusat.";
 const PESAN_TIDAK_ADA_LAMA: &str = "Toko Pro lama tidak ditemukan di komputer ini.";
 
 /// Kunci `[Database]`; kunci lain dicari di bagian `[Application]` lebih dulu (rancangan 8.4).
@@ -343,7 +343,7 @@ fn kode_barang(db: &Db) -> Res<HashMap<String, String>> {
 
 // ---------------------------------------------------------------- perintah Tauri (layar pilihan awal)
 
-/// Hasil pemindaian saat Toko Pro baru dibuka pertama kali: ada Toko Pro lama atau tidak, dan peran komputer ini.
+/// Hasil pemindaian saat Kasir Jet dibuka pertama kali: ada Toko Pro lama atau tidak, dan peran komputer ini.
 #[tauri::command]
 pub async fn lama_deteksi(app: tauri::AppHandle) -> Value {
     tauri::async_runtime::spawn_blocking(move || {

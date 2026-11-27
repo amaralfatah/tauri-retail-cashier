@@ -142,7 +142,7 @@ const NAMA_PILIHAN: Partial<Record<LocalKey, string>> = {
 };
 
 /**
- * Pilihan dari Toko Pro lama yang tidak ada lagi di Toko Pro baru, sehingga `rapikan` menggantinya (mis. port COM menjadi USB).
+ * Pilihan dari Toko Pro lama yang tidak ada lagi di Kasir Jet, sehingga `rapikan` menggantinya (mis. port COM menjadi USB).
  * Dihitung sebelum `terapkanPengaturanLama`, karena sesudahnya pilihan yang diganti sudah tersimpan.
  */
 export function pilihanDiganti(kv: Record<string, string>, peran: PeranLama): { nama: string; dulu: string; jadi: string }[] {
