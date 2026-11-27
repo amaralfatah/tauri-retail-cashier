@@ -1,177 +1,137 @@
-# Rancangan Branding dan Posisi Kasir Sararia
+# Rancangan Branding Kasir Jet
 
-Status: usulan, belum diputuskan. Rancangan ini mencakup dua aplikasi kasir milik Anda:
+Status: nama sudah diputuskan (27 November 2026). Logo, warna, dan langkah penggantian nama di aplikasi masih usulan.
 
-| Folder | Nama sekarang | Cara kerja |
-|---|---|---|
-| `tokopro-app` | Toko Pro | Aplikasi Windows dan macOS (Tauri), data di komputer toko, beberapa komputer kasir tersambung lewat jaringan toko, tanpa akun dan tanpa internet |
-| `flutter_sararia_cashier` + `laravel-sararia-cashier` | Sararia Kasir (`kasir.sararia.com`) | Aplikasi HP dan tablet (Flutter), data dikirim ke server, pemilik mengelola toko dari web dengan akun yang sama |
+## Ringkasan
 
-Anggapan: belum ada pengguna lama. Nama "Toko Pro" tidak punya nilai yang perlu dijaga.
+- **Nama merek: Kasir Jet.** Ditulis dua kata, huruf besar di awal tiap kata.
+- **Di dalam aplikasi cukup "Kasir".** Nama lengkap dipakai di Play Store, halaman unduh, installer, dan obrolan dari mulut ke mulut.
+- **Sararia hanya di belakang layar:** nama penerbit di Play Store dan installer, serta "oleh Sararia" di Pengaturan → Tentang. Sararia tidak muncul di nama, ikon, atau materi promosi.
+- **Satu nama untuk dua aplikasi yang datanya terpisah.** Ini harus dikatakan terang-terangan (lihat bagian 3).
+- **Semua fitur gratis saat rilis.** Versi berbayar nanti bernama "Kasir Jet Pro".
 
-## Ringkasan usulan
+## 1. Dua aplikasi di bawah satu nama
 
-1. **Satu merek kasir: Sararia Kasir.** Ada dua edisi, dibedakan menurut perangkatnya:
-   - **Sararia Kasir** untuk HP dan tablet, dengan web toko (yang sudah ada di `kasir.sararia.com`).
-   - **Sararia Kasir Desktop** untuk komputer Windows (sekarang bernama Toko Pro).
-2. **Edisi Desktop dibangun dari Toko Pro, bukan dari Flutter.** Toko Pro sudah terasa seperti aplikasi komputer: keyboard, Enter pindah kolom, F-key, tabel padat. Kerja Flutter untuk Windows dan macOS bisa dibekukan.
-3. **Data kedua edisi terpisah, dan ini dikatakan terang-terangan.** Pembeli memilih satu edisi sesuai cara tokonya. Pola ini sudah dikenal pemilik usaha di Indonesia, misalnya Accurate dan Zahir yang punya edisi desktop dan online dengan data terpisah.
-4. **Satu ikon, satu warna, satu nada untuk kedua edisi.** Ikon keduanya sekarang masih bawaan framework: logo Tauri di Toko Pro, logo Laravel di `kasir.sararia.com`.
+| Folder | Nama sekarang | Nama baru | Cara kerja |
+|---|---|---|---|
+| `flutter_sararia_cashier` + `laravel-sararia-cashier` | Sararia Kasir (`kasir.sararia.com`) | **Kasir Jet** | HP dan tablet, data dikirim ke server, pemilik mengelola toko dari web |
+| `tokopro-app` | Toko Pro | **Kasir Jet untuk PC** | Komputer Windows, data di komputer toko, beberapa komputer kasir tersambung lewat jaringan toko, tanpa akun dan tanpa internet |
 
-## 1. Kenapa satu merek, bukan dua
+Kata "untuk PC" hanya dipakai di halaman unduh, nama file installer, dan judul toko aplikasi. Di dalam aplikasi tetap "Kasir".
 
-Pilihan yang ditimbang:
+## 2. Aturan penulisan nama
 
-| Pilihan | Untung | Rugi |
-|---|---|---|
-| **A. Satu merek, dua edisi: Sararia Kasir dan Sararia Kasir Desktop (usulan)** | Satu nama untuk dipasarkan, satu domain, satu ikon. Pembeli yang mencari "aplikasi kasir" menemukan keduanya di satu tempat. Sesuai keinginan awal Anda: Sararia Kasir juga ada di komputer. | Pembeli bisa mengira datanya menyatu. Harus dijelaskan di halaman unduh dan di dalam aplikasi. |
-| B. Dua produk: Sararia Kasir dan Sararia Toko (atau Sararia POS) | Jelas bahwa keduanya aplikasi berbeda | Dua nama yang artinya mirip membingungkan. "Toko" bisa dikira pembuat toko online. Biaya promosi dua kali. |
-| C. Dua merek: Sararia Kasir dan Toko Pro berdiri sendiri | Toko Pro bebas dari aturan keluarga Sararia | "Toko Pro" nama umum yang sulit didaftarkan sebagai merek dan sulit dicari. Tanpa pengguna lama, tidak ada alasan menyimpannya. |
+| Tempat | Tulisan |
+|---|---|
+| Label ikon di HP, judul jendela PC, layar login, di dalam aplikasi | Kasir |
+| Play Store (HP dan tablet) | Kasir Jet: Kasir Gratis (23 huruf, batas Play Store 30) |
+| Halaman unduh dan installer versi komputer | Kasir Jet untuk PC |
+| Versi berbayar nanti | Kasir Jet Pro |
+| Pengaturan → Tentang | Kasir, versi, lalu "oleh Sararia" |
 
-Usulan: **pilihan A.** Kalau suatu hari edisi Desktop bisa mengirim data ke akun `kasir.sararia.com` (misalnya komputer Pusat menyalin penjualan ke server), dua edisi ini menjadi satu produk sungguhan tanpa ganti nama.
+Jangan tulis "KasirJet", "Kasir JET", "Kasir Jet by Sararia", atau "Sararia Kasir Jet".
 
-### Soal bahasa nama
+Kata "POS" tidak dipakai sebagai nama, tetapi boleh muncul di judul atau deskripsi toko aplikasi sebagai kata kunci tambahan, seperti yang dilakukan pesaing ("Kasir Pintar® - POS").
 
-`FAMILY.md` bagian 2 meminta nama produk berbahasa Inggris (Tasks, Prayer, Portfolio). "Sararia Kasir" melanggar aturan itu, tetapi tetap disarankan dipakai. Pembelinya pemilik toko di Indonesia, yang mencari "aplikasi kasir", bukan "cashier app". Usulan: tambahkan pengecualian di `FAMILY.md` untuk produk usaha yang pembelinya berbahasa Indonesia. Kalau Anda ingin tetap patuh aturan lama, padanannya "Sararia POS", tetapi kata itu kurang akrab bagi toko kecil.
+## 3. Data terpisah, dikatakan terang-terangan
 
-## 2. Posisi
+Kedua aplikasi memakai nama yang sama, jadi pembeli bisa mengira datanya menyatu. Tulis sekali di halaman unduh dan di layar pertama Kasir Jet untuk PC:
 
-### Pembagian edisi
+> Data tersimpan di komputer ini, terpisah dari Kasir Jet di HP.
 
-| | Sararia Kasir | Sararia Kasir Desktop |
+Bantu pembeli memilih dengan satu pertanyaan di halaman unduh:
+
+> **Kasir Anda pakai HP atau komputer?**
+> HP atau tablet: Kasir Jet. Komputer dengan scanner: Kasir Jet untuk PC.
+
+## 4. Posisi
+
+| | Kasir Jet | Kasir Jet untuk PC |
 |---|---|---|
 | Perangkat kasir | HP Android dan tablet | Komputer Windows dengan scanner dan printer struk |
 | Internet | Perlu sesekali, untuk mengirim data ke server | Tidak perlu (hanya untuk pembaruan aplikasi) |
-| Data | Di server, bisa dibuka dari web | Di komputer toko |
-| Banyak kasir | Banyak HP, satu akun toko | Beberapa komputer, satu komputer Pusat, lewat kabel atau Wi-Fi toko |
 | Pemilik memantau | Dari mana saja, lewat web | Di toko |
-| Cocok untuk | Warung, toko kecil, usaha yang baru mulai, pemilik yang sering tidak di toko | Toko grosir, sembako, bangunan, onderdil, swalayan kecil: barang ribuan, multi satuan, harga level, jual dan beli tempo |
-| Tidak cocok untuk | Toko yang internetnya sering mati, kasir yang mengetik cepat di keyboard | Pemilik yang ingin melihat laporan dari HP, usaha banyak cabang |
+| Cocok untuk | Warung, toko kecil, pemilik yang sering tidak di toko | Semua toko yang berjualan dengan komputer: kasir bekerja dengan scan dan ketik, tanpa gambar barang |
 
-Kolom "Cocok untuk" adalah dugaan dari fitur kedua aplikasi. Cocokkan dengan calon pembeli nyata.
+Kalimat utama (usulan):
 
-### Satu pertanyaan untuk memilih edisi
+| Untuk | Kalimat |
+|---|---|
+| Kasir Jet | "Kasir jalan di HP, toko Anda kelola dari laptop." (sudah dipakai di `welcome.tsx`) |
+| Kasir Jet untuk PC | "Aplikasi kasir PC gratis. Scan, ketik, bayar, secepat kasir minimarket." |
 
-Di halaman unduh, bantu pembeli memilih dengan satu pertanyaan:
+Jangan memakai klaim yang belum ada di aplikasi, misalnya laporan versi PC di HP atau sinkron antara kedua aplikasi.
 
-> **Kasir Anda pakai HP atau komputer?**
-> HP atau tablet: Sararia Kasir. Komputer dengan scanner: Sararia Kasir Desktop.
+## 5. Dasar keputusan
 
-### Pernyataan posisi (untuk pegangan internal)
+Data yang dipakai saat memilih nama (dicek 24 sampai 27 November 2026):
 
-> Sararia Kasir adalah aplikasi kasir dan stok untuk toko di Indonesia, di HP maupun di komputer. Edisi HP untuk pemilik yang ingin memantau toko dari mana saja. Edisi Desktop untuk toko ramai yang tidak boleh berhenti berjualan saat internet mati.
+- **Google Trends, Indonesia, 5 tahun.** Orang mencari "aplikasi kasir" (rata-rata 55), bukan "software pos" (4). "Aplikasi pos" (47) bercampur dengan pencarian Pos Indonesia. Kata tambahan yang paling sering dicari adalah "gratis" (35). Untuk komputer, orang menulis "pc" (19), bukan "komputer" (4) atau "laptop" (1).
+- **Play Store.** Aplikasi kasir yang dikenal memakai pola "Kasir + satu kata" (Kasir Pintar, KasirGo, Bisakasir). Nama umum bisa dipakai lebih dari satu penerbit: "Kasir Warung" dipakai dua penerbit. Belum ada aplikasi bernama "Kasir Jet". Ada "JET Merchant" dan "JET Courier", tetapi keduanya bukan aplikasi kasir.
+- **PDKI (pangkalan merek DJKI).** Tidak ada data untuk "kasir jet" maupun "kasirjet". Permohonan merek "KASIRKU" di kelas 9 (perangkat lunak) ditolak. Artinya nama berpola "kasir + kata" bisa dianggap terlalu umum kalau didaftarkan sebagai tulisan saja.
+- **Domain.** `kasirjet.com`, `kasirjet.id`, dan `kasirjet.co.id` belum terdaftar per 27 November 2026.
 
-### Peta pesaing
-
-Bagian ini dugaan dari pengetahuan umum, belum diperiksa ulang. Cek harga dan fitur terbaru sebelum dipakai di materi promosi.
-
-| Edisi | Pesaing | Cara menang |
-|---|---|---|
-| Sararia Kasir | Kasir Pintar, Majoo, Moka, Qasir, Pawoon | Teks dan tampilan yang lebih jelas, web toko yang lengkap, harga (perlu diputuskan) |
-| Sararia Kasir Desktop | iPOS dan aplikasi kasir Windows lain | Tampilan modern, pembaruan otomatis, banyak kasir tanpa server, tanpa biaya bulanan (kalau model harga mendukung) |
-
-### Soal Flutter di komputer
-
-Commit terakhir `flutter_sararia_cashier` menunjukkan Anda sudah membuat tata letak desktop, mode Tabel, dan dukungan Windows. Usulannya:
-
-- Bekukan target Windows dan macOS di Flutter, dan jangan dipasarkan. Pembeli yang memakai komputer diarahkan ke edisi Desktop.
-- Tablet tetap didukung, karena tata letak lebar yang sudah dibuat berguna di sana.
-- Pemilik yang membuka laptop memakai web toko di `kasir.sararia.com`. Kebutuhan "Sararia Kasir di komputer" bagi pemilik sudah terjawab oleh web itu.
-
-## 3. Aturan penulisan nama
-
-- Tulis "Sararia Kasir" dan "Sararia Kasir Desktop". Setelah penyebutan pertama boleh "Kasir" dan "Kasir Desktop".
-- Jangan "SarariaKasir", "Sararia-Kasir", "Kasir by Sararia", atau "Sararia Kasir PC".
-- Di aplikasi HP: nama penuh di label launcher dan Play Store ("Sararia Kasir"). Sekarang labelnya masih `flutter_sararia_cashier` di `AndroidManifest.xml`.
-- Di aplikasi Desktop: "Sararia Kasir" di judul jendela dan layar login. Kata "Desktop" cukup di installer, nama file unduhan, dan halaman unduh, karena di dalam aplikasi pengguna sudah tahu sedang di komputer.
-- Di web toko: judul halaman memakai nama toko pengguna atau "Sararia Kasir". Tanda keluarga "Sararia" di footer (`FAMILY.md` bagian 7).
-
-## 4. Identitas visual
+## 6. Identitas visual
 
 ### Ikon
 
-Satu ikon untuk kedua edisi, seperti aplikasi Apple yang ikonnya sama di iPhone dan Mac. Syaratnya:
+Diputuskan 27 November 2026: **barcode yang miring ke depan.** Barcode ini asli (Code 128) dan terbaca sebagai teks `kasirjet` kalau di-scan. Garis mendatar di tengahnya adalah sinar scanner. Satu ikon dipakai di kedua aplikasi.
 
-- Ikut `FAMILY.md` bagian 4 sampai 6: satu benda nyata, siluet padat, detail dari garis negatif, tanpa huruf.
-- Terbaca di 16 px untuk taskbar Windows dan di ikon launcher Android.
-- Siluetnya berbeda dari ikon Sararia lain (centang, kawung, pohon, rosette, sajadah, pie).
+File dan pembuatnya ada di `branding/kasir-jet/` (`node branding/kasir-jet/generate.mjs`):
 
-Tiga konsep:
-
-| Konsep | Gambaran | Catatan |
-|---|---|---|
-| **Etalase toko (usulan)** | Bangunan toko tampak depan dengan tenda bergigi, belang tenda dibuat dari garis negatif | Langsung terbaca "toko". Bentuk lebar (70 × 52) belum dipakai ikon Sararia lain. Tenda jadi bagian aksen. |
-| Struk | Kertas struk tegak dengan tepi bawah bergerigi | Mudah tertukar dengan ikon dokumen, Sararia Certificates, dan Sararia Prayer |
-| Mesin kasir | Mesin kasir dengan laci | Detailnya banyak, sulit terbaca di 16 px |
-
-Warna: pola **tinta + satu aksen**. Etalase putih di atas tinta `#1d1d1f`, tenda biru. Latar biru penuh tidak disarankan karena Sararia Tasks sudah memakai latar biru `#1868db`.
-
-### Satu biru untuk kedua edisi
-
-| Aplikasi | Biru utama sekarang |
+| File | Dipakai untuk |
 |---|---|
-| Sararia Kasir (Flutter `brandBlue`, Laravel `--primary`) | `#0066cc`, gelap `#2997ff` |
-| Toko Pro (`src/index.css` `--primary`) | `oklch(0.576 0.196 253)` ≈ `#0077e8`, gelap ≈ `#0486f4` |
+| `icon.svg` | Ikon utama di layar: batang putih di biru, bentuk squircle (web, promosi, macOS) |
+| `icon-square.svg` | Sama, tapi persegi penuh: sumber `npx tauri icon` dan ikon Android |
+| `icon-dark.svg` | Latar tinta `#1d1d1f` |
+| `icon-small.svg` | Versi kecil, 48 px ke bawah (taskbar, favicon): lima batang tebal, tidak bisa di-scan |
+| `cetak.svg` | Untuk cetak yang ingin bisa di-scan (stiker, spanduk): batang tinta di latar putih |
+| `png/*-1024.png` | Hasil ekspor 1024 px dari setiap file di atas |
 
-Usulan: samakan Toko Pro ke `#0066cc` dan `#2997ff`, ditulis dalam oklch supaya tetap cocok dengan token lain di `index.css`. Cek ulang kontras teks putih di tombol setelah diganti.
+Yang sudah diuji, dengan pembaca barcode bawaan Chrome pada gambar digital: `icon`, `icon-dark`, `icon-square`, dan `cetak` terbaca `kasirjet` di ukuran 192 px ke atas. Di 160 px ke bawah tidak terbaca, karena 34 batang tipisnya menyatu. Jadi ikon di HP dan di taskbar tidak bisa di-scan. Itu sebabnya ada `icon-small`.
 
-### Huruf dan tampilan
+Yang belum diuji: scanner kasir sungguhan, kamera HP, dan hasil cetak. Banyak scanner kasir tidak membaca barcode terbalik (batang terang di latar gelap), jadi untuk materi cetak pakai `cetak.svg`. Sebelum mencetak banyak, cetak satu contoh lalu coba scan.
 
-Keduanya sudah memakai gaya yang sejalan: netral, biru hanya untuk aksi utama, shadcn di web dan desktop. Lockup produk: glyph etalase + "Sararia Kasir" dalam Inter SemiBold (`FAMILY.md` bagian 3), dipakai di layar login kedua edisi, header web toko, dan halaman unduh.
+### Warna
 
-## 5. Suara dan pesan
+Biru tombol di situs Apple, `#0071e3`, untuk warna merek dan tombol utama di kedua aplikasi. Teks putih di atasnya mencapai kontras 4,7 : 1 dan lolos batas 4,5. Untuk tautan pakai `#0066cc`, dan untuk mode gelap `#2997ff`.
 
-### Nada
-
-Sama di kedua edisi: sapaan "Anda", kata sehari-hari di toko (barang, pelanggan, bayar, struk), kalimat pendek. Aturan lengkapnya sudah ada di `CLAUDE.md` Toko Pro bagian "Teks untuk pengguna". Samakan juga istilahnya. Contoh yang perlu dicek: web toko memakai "produk", Toko Pro memakai "barang". Pilih satu, lalu pakai di kedua edisi.
-
-### Kalimat utama
-
-| Untuk | Usulan |
+| Aplikasi | Biru sekarang |
 |---|---|
-| Merek | "Kasir dan stok toko, di HP atau di komputer." |
-| Sararia Kasir | "Kasir jalan di HP, toko Anda kelola dari laptop." (sudah dipakai di `welcome.tsx`, pertahankan) |
-| Sararia Kasir Desktop | "Kasir komputer yang tetap jalan tanpa internet." |
+| Kasir Jet (Flutter `brandBlue`, Laravel `--primary`) | `#0066cc`, gelap `#2997ff` |
+| Kasir Jet untuk PC (`src/index.css` `--primary`) | `oklch(0.576 0.196 253)` ≈ `#0077e8` (kontras 4,4 : 1, belum lolos) |
 
-### Pesan pendukung edisi Desktop
+## 7. Urutan kerja
 
-1. **Tanpa internet.** Listrik menyala, kasir jalan.
-2. **Banyak kasir, satu stok.** Sambungkan komputer kasir lewat kabel atau Wi-Fi toko.
-3. **Data di komputer Anda.** Tanpa akun dan tanpa server. Cadangkan sendiri ke flashdisk atau folder lain.
+### Tahap 1: amankan nama
 
-Jangan memakai klaim yang belum ada di aplikasi. Contohnya laporan Desktop di HP, data Desktop di web toko, dan sinkron antarcabang.
+- Daftarkan `kasirjet.com` dan `kasirjet.id`.
+- Konsultasikan pendaftaran merek "Kasir Jet" bersama logonya ke konsultan KI, di kelas 9 dan 42 (dan 35 kalau perlu).
 
-## 6. Urutan kerja
+### Tahap 2: logo dan warna
 
-### Tahap 1: identitas dasar
+- Pasang ikon dari `branding/kasir-jet/` di ketiga tempat:
+  - Kasir Jet untuk PC: **sudah dipasang** (27 November 2026). `src-tauri/icons/` dibuat dengan `npx tauri icon branding/kasir-jet/png/icon-1024.png` (squircle bersudut transparan, cocok untuk taskbar Windows). Lalu ukuran 16, 24, 32, dan 48 px di `icon.ico`, serta `32x32.png`, `Square30x30Logo.png`, `Square44x44Logo.png`, dan `StoreLogo.png`, diganti dengan hasil dari `icon-small-1024.png`. `icon.icns` (macOS) dibuat terpisah dari `png/icon-mac-1024.png`, yang punya jarak tepi grid Apple (badan ikon 824 dari 1024 px), supaya ukurannya sama dengan ikon lain di Dock. Kalau ikon dibuat ulang, ulangi ketiga langkah ini. Saat `npm run tauri dev` berjalan, ikon baru baru terlihat setelah Rust di-compile ulang (misalnya dengan menyimpan ulang `src-tauri/src/lib.rs`), karena Cargo tidak memantau file ikon.
+  - Flutter: ikon launcher Android dan iOS.
+  - Laravel: `favicon.svg`, `favicon.ico`, dan `apple-touch-icon.png` (sekarang masih logo bawaan Laravel).
+- Samakan warna biru (bagian 6).
 
-- Buat glyph etalase di `sararia-logo/generate-apps.mjs`, ekspor PNG, lalu pasang di ketiga tempat:
-  - Toko Pro: `npx tauri icon`. Windows butuh `icon.ico` 16, 24, 32, 48, dan 256 px. Pakai varian kecil untuk 16 sampai 32 px.
-  - Flutter: ikon launcher Android dan iOS, plus label "Sararia Kasir".
-  - Laravel: `favicon.svg`, `favicon.ico`, dan `apple-touch-icon.png`.
-- Toko Pro: ganti `productName` jadi "Sararia Kasir", judul jendela, `<title>`, dan teks "Toko Pro" di layar. **Jangan ganti `identifier` (`com.tokopro.app`)**: folder data dan pembaruan otomatis bergantung padanya. Uji dulu apakah perubahan `productName` memindahkan folder pemasangan di Windows, dan apakah pembaruan otomatis dari versi sebelumnya masih jalan.
-- Samakan warna biru (bagian 4).
+### Tahap 3: ganti nama di aplikasi
 
-### Tahap 2: satu tempat unduh
+- **Kasir Jet untuk PC (`tokopro-app`):** ganti `productName` di `src-tauri/tauri.conf.json`, judul jendela, `<title>`, dan teks "Toko Pro" yang tampil di layar. Ganti juga `identifier` (`com.tokopro.app`) **sebelum rilis pertama**: setelah ada pengguna, identifier tidak bisa diganti tanpa memutus pembaruan otomatis dan memindahkan folder data. Instalasi uji di VM perlu dipasang ulang setelahnya.
+- **Kasir Jet (Flutter):** ganti label di `AndroidManifest.xml` (sekarang `flutter_sararia_cashier`) dan nama tampilan iOS menjadi "Kasir".
+- **Web:** ganti `APP_NAME` dan judul halaman. Putuskan apakah web pindah ke `kasirjet.com` atau tetap di `kasir.sararia.com`.
 
-- `kasir.sararia.com` menjadi rumah kedua edisi: halaman utama untuk HP dan web, lalu halaman unduh Desktop dengan pertanyaan "Kasir Anda pakai HP atau komputer?".
-- Sararia Kasir masuk katalog `next-sararia` (`content/apps/<slug>/`), dengan platform Android, web, dan Windows.
-- Kebijakan privasi per edisi. Isinya berbeda: edisi HP menyimpan data di server, edisi Desktop tidak mengirim data ke mana pun.
-
-### Tahap 3: menjangkau pembeli
+### Tahap 4: menjangkau pembeli
 
 - Tanda tangan kode (code signing) untuk installer Windows, supaya SmartScreen tidak memperingatkan pembeli.
-- Satu halaman perbandingan edisi untuk dibagikan lewat WhatsApp.
-- Kelak: impor data dari Sararia Kasir ke edisi Desktop untuk toko yang tumbuh dan pindah ke komputer kasir. Edisi Desktop sudah punya impor Excel. Edisi HP perlu ekspor yang formatnya cocok.
+- Penjual alat kasir di Tokopedia dan Shopee sering memberi software sebagai bonus paket laci, printer, dan scanner. Mereka calon mitra untuk aplikasi gratis.
 
-## 7. Keputusan untuk Anda
+## 8. Keputusan yang masih terbuka
 
-Urut dari yang paling memengaruhi rancangan:
+Urut dari yang paling memengaruhi pekerjaan berikutnya:
 
-1. **Satu merek dengan dua edisi (A), dua produk (B), atau dua merek (C)?** Rancangan ini mengusulkan A.
-2. **Model harga per edisi.** Edisi HP punya biaya server, jadi langganan masuk akal. Edisi Desktop tidak punya biaya server, jadi sekali bayar per komputer bisa jadi pembeda dari kasir HP berlangganan.
-3. **Nama berbahasa Indonesia** sebagai pengecualian di `FAMILY.md`.
-4. **Membekukan Flutter untuk Windows dan macOS.**
-5. **Satu istilah untuk barang dagangan:** "barang" atau "produk".
-6. **Konsep ikon:** etalase (usulan), struk, atau mesin kasir.
-7. **Nama penerbit** di installer dan Play Store.
+1. **Identifier baru** untuk versi PC.
+2. **Alamat web:** pindah ke `kasirjet.com` atau tetap `kasir.sararia.com`.
+3. **Membekukan Flutter untuk Windows dan macOS**, karena versi komputer sudah ditangani `tokopro-app`.
+4. **Satu istilah untuk barang dagangan:** "barang" (dipakai versi PC) atau "produk" (dipakai web).
