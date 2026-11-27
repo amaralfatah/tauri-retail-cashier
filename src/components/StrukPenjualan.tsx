@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Kbd } from "@/components/ui/kbd";
@@ -11,8 +11,10 @@ import { Struk, cetakStruk, strukTeks } from "./Struk";
  * kalau kotak "Preview Struk" dicentang. Cetak mencetak struk lalu menutup jendela; Tutup menutup tanpa mencetak.
  */
 export function StrukPenjualan(props: { trans: { header: Row; detail: Row[] }; setting: Row; onSelesai: () => void }) {
+  // Dibuat sekali supaya isi yang dicetak sama dengan yang tampil (tanggal dan jam saat struk dibuat).
+  const teks = useMemo(() => strukTeks(props.trans, props.setting), [props.trans, props.setting]);
   const cetak = () => {
-    cetakStruk(strukTeks(props.trans, props.setting))
+    cetakStruk(teks)
       .catch((e) => toast.error(errText(e)))
       .finally(props.onSelesai);
   };
@@ -34,9 +36,9 @@ export function StrukPenjualan(props: { trans: { header: Row; detail: Row[] }; s
         <div className="flex size-full min-h-0 flex-col justify-between gap-3 p-3 font-sans text-xs text-foreground" data-form="FrmTransJualBayarCetak">
           <pre
             data-vb="tStruk"
-            className="tp-scroll-always m-0 min-h-0 flex-1 rounded-md border border-border bg-card p-3 font-mono text-[12px] leading-snug whitespace-pre text-foreground select-text"
+            className="tp-scroll-always m-0 min-h-0 flex-1 rounded-md border border-border bg-card p-3 font-mono text-[12px] leading-snug whitespace-pre-wrap text-foreground select-text"
           >
-            {strukTeks(props.trans, props.setting)}
+            {teks}
           </pre>
           <div className="flex items-center justify-end gap-2 border-t border-border pt-2.5">
             <Button type="button" variant="outline" size="default" data-vb="cBatal" className="h-8 gap-1.5 px-3 text-xs font-medium" onClick={props.onSelesai}>
@@ -50,7 +52,7 @@ export function StrukPenjualan(props: { trans: { header: Row; detail: Row[] }; s
           </div>
         </div>
       </ModalFrame>
-      <Struk trans={props.trans} setting={props.setting} />
+      <Struk trans={props.trans} setting={props.setting} teks={teks} />
     </>
   );
 }

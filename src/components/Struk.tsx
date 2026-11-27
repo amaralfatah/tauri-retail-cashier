@@ -1,86 +1,17 @@
 import { createPortal } from "react-dom";
 import { api, Row } from "../api";
-import { tglID } from "../format";
-import { fmtHrgStruk as rp, fmtQtyStruk as qty, kertasStruk } from "../pages/kasirSettings";
+import { localDate, sekarang, tglID } from "../format";
+import { fmtHrgStruk as rp, fmtQtyStruk as qty, kertasStruk, polaAngka } from "../pages/kasirSettings";
 import { getLocal, KODE_DRAWER_BAWAAN } from "../pages/localSettings";
 
-/**
- * Baris kepala dan baris total struk penjualan, mengikuti struk aplikasi lama (CetakNotaKecil / CetakData):
- * No, Kasir, Sales, Pel., lalu Total Jenis, Total Item, Total Jual, Diskon Total, Biaya Lain, Total, Uang Muka, Tunai,
- * Non Tunai + Card, Piutang, Jatuh Tempo, Kembali (hanya bila lebih dari 0), Piutang belum terbayar, poin, dan Catatan.
- * Kertas 58 mm memakai label pendek seperti aslinya (Jth. Tempo, Piutang blm dibayar).
- */
-function barisStruk(trans: { header: Row; detail: Row[] }, kolom: number) {
-  const h = trans.header;
-  const pendek = kolom <= 32;
-  const kepala: [string, string][] = [[`No    : ${h.notrans}`, `${tglID(h.tgltrans)} ${String(h.jamupload ?? "").slice(0, 5)}`], [`Kasir : ${h.namakasir ?? ""}`, ""]];
-  if (h.namasales) kepala.push([`Sales : ${h.namasales}`, ""]);
-  if (h.namapelanggan && h.namapelanggan !== "Tunai") kepala.push([`Pel.  : ${h.namapelanggan}`, ""]);
-  const item = trans.detail.reduce((n, d) => n + Number(d.jmljual || 0), 0);
-  const kredit = h.carabayar === "Kredit";
-  const tunai = Number(h.jmlbayar) || 0;
-  const nonTunai = Number(h.bayarlain1) || 0;
-  const total: [string, string, boolean?][] = [
-    ["Total Jenis", String(trans.detail.length)],
-    ["Total Item", qty(item)],
-    ["Total Jual", rp(h.jmltrans)],
-  ];
-  if (Number(h.diskonnilai) > 0) total.push([pendek ? "Diskon" : "Diskon Total", rp(h.diskonnilai)]);
-  if (Number(h.biaya) > 0) total.push(["Biaya Lain", rp(h.biaya)]);
-  if (Number(h.ppnnilai) > 0) total.push([`PPN ${qty(h.ppn)}%`, rp(h.ppnnilai)]);
-  total.push(["Total", rp(h.totaltrans), true]);
-  if (kredit && tunai > 0) total.push(["Uang Muka", rp(tunai)]);
-  if (!kredit && (tunai > 0 || nonTunai === 0)) total.push(["Tunai", rp(tunai)]);
-  if (nonTunai > 0) {
-    total.push(["Non Tunai", rp(nonTunai)]);
-    const kartu = `${h.ketbayarlain1 ?? ""} ${h.kartu ?? ""}`.trim();
-    if (kartu) total.push([`Card : ${kartu}`, ""]);
-  }
-  if (kredit) {
-    total.push(["Piutang", rp(-Number(h.sisa))]);
-    if (h.tgljthtempo) total.push([pendek ? "Jth. Tempo" : "Jatuh Tempo", tglID(h.tgljthtempo)]);
-  }
-  if (!kredit && Number(h.sisa) > 0) total.push(["Kembali", rp(h.sisa)]);
-  if (Number(h.piutangpelanggan) > 0) total.push([pendek ? "Piutang blm dibayar" : "Piutang belum terbayar", rp(h.piutangpelanggan)]);
-  if (Number(h.poinmasuk) > 0) total.push(["Poin Anda bertambah", qty(h.poinmasuk)], ["Total poin Anda", qty(h.poinakhir)]);
-  return { kepala, total, catatan: String(h.catatan ?? "").trim() };
-}
-
-/** Struk 58/80 mm. Hanya tampil saat dicetak (lihat CSS body[data-print="struk"]). */
-export function Struk({ trans, setting }: { trans: { header: Row; detail: Row[] } | null; setting: Row | null }) {
+/** Struk 58/80 mm untuk dialog cetak sistem, isinya sama persis dengan teks struk. Hanya tampil saat dicetak (lihat CSS body[data-print="struk"]). */
+export function Struk({ trans, setting, teks, cetakUlang }: { trans: { header: Row; detail: Row[] } | null; setting: Row | null; teks?: string; cetakUlang?: boolean }) {
   if (!trans) return null;
-  const h = trans.header;
-  const s = setting ?? {};
   const kertas = kertasStruk();
-  const b = barisStruk(trans, kertas.kolom);
   return createPortal(
     <div className="struk" style={{ width: kertas.lebar, fontSize: kertas.fontPx }}>
       <style>{`@media print { @page { size: ${kertas.halaman}; margin: ${kertas.halaman.includes("auto") ? "2mm" : "10mm"}; } }`}</style>
-      <div className="center bold">{s.namausaha}</div>
-      {s.alamat && <div className="center">{s.alamat}{s.kota ? `, ${s.kota}` : ""}</div>}
-      {s.tlp && <div className="center">Telp. {s.tlp}</div>}
-      {s.header1 && <div className="center">{s.header1}</div>}
-      {s.header2 && <div className="center">{s.header2}</div>}
-      <hr />
-      {b.kepala.map(([a, c]) => <div key={a} className="row"><span>{a}</span><span>{c}</span></div>)}
-      <hr />
-      {trans.detail.map((d) => (
-        <div key={d.nourut}>
-          <div>{d.namabarang}</div>
-          {Number(d.hrgterjual) === 0 && Number(d.jmljual) > 0 && h.kode === "TJ" ? (
-            <div className="row"><span>{qty(d.jmljual)} {d.satuanjual} (bonus)</span><span>Gratis</span></div>
-          ) : (
-            <div className="row"><span>{qty(d.jmljual)} {d.satuanjual} x {rp(d.hrgterjual)}</span><span>{rp(d.subtotal)}</span></div>
-          )}
-          {Number(d.disknilai) > 0 && <div className="row"><span>  Potongan</span><span>-{rp(d.disknilai)}</span></div>}
-        </div>
-      ))}
-      <hr />
-      {b.total.map(([a, c, tebal]) => <div key={a} className={tebal ? "row bold" : "row"}><span>{c ? `${a} :` : a}</span><span>{c}</span></div>)}
-      {b.catatan && <div>Catatan: {b.catatan}</div>}
-      <hr />
-      {s.footer1 && <div className="center">{s.footer1}</div>}
-      {s.footer2 && <div className="center">{s.footer2}</div>}
+      <pre>{teks ?? strukTeks(trans, setting, { cetakUlang })}</pre>
     </div>,
     document.body,
   );
@@ -154,32 +85,137 @@ function pembantuTeks(W: number) {
   return { tengah, dua, garis: "-".repeat(W) };
 }
 
-/** Isi struk sebagai teks monospasi (kotak "tStruk" pada jendela Struk Penjualan dan cetak langsung ESC/POS). */
-export function strukTeks(trans: { header: Row; detail: Row[] }, setting: Row | null): string {
+/** Pembulatan CInt VB: setengah dibulatkan ke bilangan genap terdekat. */
+function bulatVb(x: number): number {
+  const f = Math.floor(x);
+  const sisa = x - f;
+  if (sisa > 0.5) return f + 1;
+  if (sisa < 0.5) return f;
+  return f % 2 === 0 ? f : f + 1;
+}
+
+/** Right(Space(n) & s, n) gaya VB: rata kanan sepanjang n, kelebihan di kiri terpotong. */
+const kananVb = (s: unknown, n: number) => String(s ?? "").padStart(n).slice(-n);
+/** Left(s & Space(n), n) gaya VB. */
+const kiriVb = (s: unknown, n: number) => String(s ?? "").padEnd(n).slice(0, n);
+const angkaBulat = (n: unknown) => String(Math.round(Number(n) || 0));
+
+/**
+ * Isi struk penjualan sebagai teks monospasi (kotak "tStruk" pada jendela Struk Penjualan dan cetak langsung ESC/POS).
+ * Susunannya disalin dari aplikasi lama: CetkNotaBesar (80 mm) dan CetakNotaKecil (58 mm) di FrmTransJualBayar untuk
+ * struk sesudah bayar, dan CetakData di FrmTransJual untuk Cetak Ulang (tanggal transaksi tanpa jam, poin berupa
+ * "Total poin Anda"). Lebar baris: 40 kolom (garis) dengan isi 39 kolom di 80 mm, 32 kolom di 58 mm.
+ */
+export function strukTeks(trans: { header: Row; detail: Row[] }, setting: Row | null, opsi: { cetakUlang?: boolean } = {}): string {
   const h = trans.header;
   const s = setting ?? {};
-  const kolom = kertasStruk().kolom;
-  const { tengah, dua, garis } = pembantuTeks(kolom);
-  const b = barisStruk(trans, kolom);
+  const kecil = kertasStruk().kolom <= 32;
+  const ulang = !!opsi.cetakUlang;
+  const lebarTengah = kecil ? 30 : 38;
+  const garis = "-".repeat(kecil ? 32 : 40);
+  const tengah = (t: unknown) => {
+    const x = String(t ?? "");
+    if (x.length >= lebarTengah) return x;
+    const n = bulatVb((lebarTengah - x.length) / 2);
+    return " ".repeat(n) + x + " ".repeat(n);
+  };
   const L: string[] = [];
-  const tambah = (t: unknown) => { if (t) L.push(tengah(t)); };
-  tambah(s.namausaha);
-  if (s.alamat) tambah(`${s.alamat}${s.kota ? `, ${s.kota}` : ""}`);
-  if (s.tlp) tambah(`Telp. ${s.tlp}`);
-  tambah(s.header1);
-  tambah(s.header2);
-  L.push(garis, ...b.kepala.map(([a, c]) => (c ? dua(a, c) : a)), garis);
-  for (const d of trans.detail) {
-    L.push(String(d.namabarang ?? ""));
-    if (Number(d.hrgterjual) === 0 && Number(d.jmljual) > 0 && h.kode === "TJ") L.push(dua(`${qty(d.jmljual)} ${d.satuanjual} (bonus)`, "Gratis"));
-    else L.push(dua(`${qty(d.jmljual)} ${d.satuanjual} x ${rp(d.hrgterjual)}`, rp(d.subtotal)));
-    if (Number(d.disknilai) > 0) L.push(dua("  Potongan", `-${rp(d.disknilai)}`));
+
+  // Kepala: nama usaha, alamat, dan kota selalu dicetak (baris kosong kalau tidak diisi); pesan header hanya bila diisi.
+  L.push(tengah(s.namausaha), tengah(s.alamat), tengah(s.kota));
+  if (String(s.header1 ?? "")) L.push(tengah(s.header1));
+  if (String(s.header2 ?? "")) L.push(tengah(s.header2));
+  L.push("");
+
+  // Struk sesudah bayar memakai tanggal dan jam saat dicetak; Cetak Ulang memakai tanggal transaksi.
+  const kini = sekarang();
+  const tgl = ulang ? tglID(h.tgltrans) : tglID(localDate(kini));
+  const jam = `${String(kini.getHours()).padStart(2, "0")}:${String(kini.getMinutes()).padStart(2, "0")}`;
+  const kasir = `Kasir : ${h.namakasir ?? ""}`;
+  if (kecil) {
+    L.push(`No    : ${h.notrans}${kananVb(`#${tgl}`, 12)}`);
+    L.push(ulang ? kasir : kiriVb(kasir, 20) + kananVb(jam, 12));
+  } else {
+    L.push(`No    : ${h.notrans}${kananVb(ulang ? `#${tgl}` : `#${tgl}-${jam}`, 19)}`);
+    L.push(kasir);
   }
-  L.push(garis, ...b.total.map(([a, c]) => (c ? dua(`${a} :`, c) : a)));
-  if (b.catatan) L.push("Catatan:", b.catatan);
+  if (String(h.namasales ?? "")) L.push(`Sales : ${h.namasales}`);
+  // Pelanggan Tunai tertulis "Tunai"; pelanggan lain dengan namanya.
+  L.push(`Pel.  : ${!h.kodepelanggan || h.kodepelanggan === "Tunai" ? "Tunai" : (h.namapelanggan ?? "")}`);
   L.push(garis);
-  tambah(s.footer1);
-  tambah(s.footer2);
+
+  // Barang: nama (dipotong), lalu "jml satuan X @harga : subtotal". Barang bonus (harga 0) dicetak dengan susunan yang sama.
+  for (const d of trans.detail) {
+    const jml = Number(d.jmljual) || 0;
+    const harga = Number(d.hrgterjual) || 0;
+    const sub = rp(harga * jml);
+    if (kecil) {
+      L.push(kiriVb(d.namabarang, 31));
+      L.push(`${kananVb(`${qty(jml)} ${String(d.satuanjual ?? "").slice(0, 3)}`, 9)} X ${kananVb(`@${rp(harga)}`, 9)}:${kananVb(sub, 10)}`);
+      if (Number(d.disknilai)) L.push(`            Potongan :${kananVb(polaAngka("-###,##0", Number(d.disknilai)), 10)}`);
+    } else {
+      L.push(kiriVb(d.namabarang, 39));
+      L.push(`${kananVb(`${qty(jml)} ${d.satuanjual ?? ""}`, 11)} X${kananVb(`@${rp(harga)}`, 11)} :${kananVb(sub, 13)}`);
+      if (Number(d.disknilai)) L.push(`                Potongan :${kananVb(polaAngka("-###,##0", Number(d.disknilai)), 13)}`);
+    }
+  }
+  L.push(garis);
+
+  // Total: label rata kanan dengan titik dua sejajar, nilai rata kanan.
+  const W = kecil ? 11 : 13;
+  const label: Record<string, string> = kecil
+    ? { jenis: "       Total Jenis : ", item: "       Total Item  : ", jual: "       Total Jual  : ", diskon: "       Diskon      : ",
+        biaya: "       Biaya Lain  : ", total: "       Total       : ", dp: "       Uang Muka   : ", tunai: "       Tunai       : ",
+        nontunai: "       Non Tunai   : ", piutang: "       Piutang     : ", tempo: "       Jth. Tempo  : ", kembali: "       Kembali     : ",
+        card: "       Card : ", belum: "Piutang blm dibayar:" }
+    : { jenis: "            Total Jenis  :", item: "            Total Item   :", jual: "            Total Jual   :", diskon: "            Diskon Total :",
+        biaya: "            Biaya Lain   :", total: "            Total        :", dp: "            Uang Muka    :", tunai: "            Tunai        :",
+        nontunai: "            Non Tunai    :", piutang: "            Piutang      :", tempo: "            Jatuh Tempo  :", kembali: "            Kembali      :",
+        card: "            Card : ", belum: "  Piutang belum terbayar :" };
+  const baris = (k: string, nilai: string, lebar = W) => L.push(label[k] + kananVb(nilai, lebar));
+  const totalItem = trans.detail.reduce((n, d) => n + (Number(d.jmljual) || 0), 0);
+  baris("jenis", polaAngka("###,##0", trans.detail.length));
+  baris("item", qty(totalItem));
+  baris("jual", rp(h.jmltrans));
+  L.push(garis);
+  if (Number(h.diskonnilai)) baris("diskon", rp(h.diskonnilai));
+  if (Number(h.biaya)) baris("biaya", rp(h.biaya));
+  // PPN tidak ada di aplikasi lama; dicetak hanya kalau toko memakainya, supaya total tetap terbaca.
+  if (Number(h.ppnnilai)) {
+    const ppn = `PPN ${qty(h.ppn)}%`;
+    L.push((kecil ? kiriVb(`       ${ppn}`, 19) + ": " : kiriVb(`            ${ppn}`, 25) + ":") + kananVb(rp(h.ppnnilai), W));
+  }
+  baris("total", rp(h.totaltrans));
+  const uangMuka = Number(h.uangmuka) || 0;
+  const tunai = h.tunaibayar != null ? Number(h.tunaibayar) || 0 : (Number(h.jmlbayar) || 0) - uangMuka;
+  const nonTunai = Number(h.bayarlain1) || 0;
+  const sisa = Number(h.sisa) || 0;
+  if (uangMuka) baris("dp", rp(uangMuka));
+  baris("tunai", rp(tunai));
+  if (nonTunai > 0) baris("nontunai", rp(nonTunai));
+  if (sisa < 0) {
+    baris("piutang", rp(-sisa));
+    baris("tempo", tglID(h.tgljthtempo));
+  } else {
+    baris("kembali", rp(sisa));
+  }
+  if (nonTunai > 0) L.push(`${label.card}${h.ketbayarlain1 ?? ""} ${h.kartu ?? ""}`);
+  // 58 mm: lebar nilai 12 (aslinya 13), supaya baris tidak melebihi 32 kolom kertas.
+  if (Number(h.piutangpelanggan) > 0) baris("belum", rp(h.piutangpelanggan), kecil ? 12 : 13);
+  L.push(garis);
+
+  // Poin: struk sesudah bayar menyebut tambahan dan total poin; Cetak Ulang menyebut poin pelanggan saat ini.
+  if (Number(h.poinmasuk) > 0) {
+    if (ulang) L.push(tengah(`Total poin Anda : ${angkaBulat(h.poinpelanggan ?? h.poinakhir)}`));
+    else L.push(tengah(`Poin Anda bertambah ${angkaBulat(h.poinmasuk)}`), tengah(`Total poin : ${angkaBulat(h.poinakhir)}`));
+    L.push(garis);
+  }
+  const catatan = String(h.catatan ?? "");
+  if (catatan) L.push("Catatan:", catatan, garis);
+  if (String(s.footer1 ?? "")) L.push(tengah(s.footer1));
+  if (String(s.footer2 ?? "")) L.push(tengah(s.footer2));
+  // Garis penutup lalu empat baris kosong untuk jarak sobek, seperti aslinya.
+  L.push(garis, "", "", "", "", "");
   return L.join("\n");
 }
 

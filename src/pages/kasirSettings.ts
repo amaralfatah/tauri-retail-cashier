@@ -24,7 +24,9 @@ export function kertasStruk(ukuran = getLocal("ukuranKertas")): Kertas {
   if (/58/.test(ukuran)) return { lebar: "48mm", halaman: "58mm auto", fontPx: 10, kolom: 32 };
   if (/A4/i.test(ukuran)) return { lebar: "180mm", halaman: "A4", fontPx: 13, kolom: 42 };
   if (/A5/i.test(ukuran)) return { lebar: "128mm", halaman: "A5", fontPx: 12, kolom: 42 };
-  return { lebar: "72mm", halaman: "80mm auto", fontPx: 11, kolom: 42 };
+  // 40 kolom seperti struk aplikasi lama (garis 40 karakter). Printer dot matrix 76/80 mm hanya muat 40 karakter;
+  // dengan 42, dua karakter paling kanan (angka subtotal dan total) terpotong.
+  return { lebar: "72mm", halaman: "80mm auto", fontPx: 11, kolom: 40 };
 }
 
 /** Pilihan "Lihat struk dulu" di dialog Bayar, per komputer. Bawaannya mati; pilihan yang sudah tersimpan tetap dipakai. */

@@ -710,13 +710,15 @@ pub fn list_transaksi(db: &Db, kode: String, dari: String, sampai: String, searc
 pub fn get_transaksi(db: &Db, notrans: String) -> Res<Value> {
     let conn = db.lock()?;
     // piutangpelanggan: baris "Piutang belum terbayar" di struk lama, total kekurangan piutang pelanggan yang belum lunas.
+    // poinpelanggan: poin pelanggan saat ini, untuk baris "Total poin Anda" pada Cetak Ulang.
     let mut header = one(
         &conn,
         "SELECT t.*, COALESCE(p.namapelanggan, t.kodepelanggan) AS namapelanggan, COALESCE(s.namapemasok, t.kodepemasok) AS namapemasok,
                 COALESCE(k.namakaryawan, t.kodekaryawan) AS namakasir, COALESCE(sl.namakaryawan, '') AS namasales,
                 CASE WHEN COALESCE(t.kodepelanggan, 'Tunai') = 'Tunai' THEN 0 ELSE
                   (SELECT COALESCE(SUM(kekurangan), 0) FROM trkartupiutang WHERE status = 0 AND UPPER(kodepelanggan) = UPPER(t.kodepelanggan)) END
-                  AS piutangpelanggan
+                  AS piutangpelanggan,
+                COALESCE(p.poin, 0) AS poinpelanggan
          FROM transaksi t
          LEFT JOIN mdpelanggan p ON p.kodepelanggan = t.kodepelanggan
          LEFT JOIN mdpemasok s ON s.kodepemasok = t.kodepemasok

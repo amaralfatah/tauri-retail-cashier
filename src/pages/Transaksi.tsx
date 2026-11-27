@@ -900,7 +900,8 @@ function TransaksiIsi({ mode, order = false }: { mode: Mode; order?: boolean }) 
   const [selected, setSelected] = useState<number | null>(null);
   const [modeScan] = useState(getModeScan);
   const kotakScan = jual && modeScan && !order;
-  const [ulang, setUlang] = useState<{ header: Row; detail: Row[] } | null>(null);
+  // cetakUlang: struk dari daftar Cetak Ulang (CetakData lama), bukan struk sesudah bayar.
+  const [ulang, setUlang] = useState<{ header: Row; detail: Row[]; cetakUlang?: boolean } | null>(null);
   const [ulangOrder, setUlangOrder] = useState<{ header: Row; detail: Row[] } | null>(null);
   const [promo, setPromo] = useState<PromoHitung | null>(null);
   const [dok, setDok] = useState<{ jenis: "sj" | "spk"; header: Row; detail: Row[] } | null>(null);
@@ -1326,14 +1327,14 @@ function TransaksiIsi({ mode, order = false }: { mode: Mode; order?: boolean }) 
   const cetakUlang = async (no: string) => {
     try {
       setModal(null);
-      setUlang(await api.getTransaksi(no));
+      setUlang({ ...(await api.getTransaksi(no)), cetakUlang: true });
     } catch (e) {
       setMsg(errText(e));
     }
   };
   useEffect(() => {
     if (!ulang) return;
-    cetakStruk(strukTeks(ulang, setting)).catch((e) => setMsg(errText(e))).finally(() => setUlang(null));
+    cetakStruk(strukTeks(ulang, setting, { cetakUlang: ulang.cetakUlang })).catch((e) => setMsg(errText(e))).finally(() => setUlang(null));
   }, [ulang]);
 
   const fokusCtl = (name: string) => document.querySelector<HTMLElement>(`[data-vb="${name}"] input, [data-vb="${name}"] textarea`)?.focus();
@@ -1871,7 +1872,7 @@ function TransaksiIsi({ mode, order = false }: { mode: Mode; order?: boolean }) 
         return l ? <BarangEdit row={l.b} isNew={false} onClose={() => setModal(null)} onChanged={(k) => void barangBerubah(k)} /> : null;
       })()}
       {dok && <DokumenGudang dok={dok} setting={setting} />}
-      {ulang && <Struk trans={ulang} setting={setting} />}
+      {ulang && <Struk trans={ulang} setting={setting} cetakUlang={ulang.cetakUlang} />}
       {ulangOrder && <StrukOrder order={ulangOrder} setting={setting} />}
     </div>
   );
@@ -2150,6 +2151,9 @@ function BayarDialog(props: { mode: Mode; tgl: string; kontak: string; sales: st
         const r = props.noorder ? await orderApi.savePenjualanOrder(input, props.noorder) : await kasirApi.savePenjualan(input);
         void bukaLaciOtomatis().catch((e) => toast.error(errText(e)));
         const trans = await api.getTransaksi(r.notrans);
+        // Struk lama memisahkan Uang Muka (DP order) dari Tunai; di database keduanya tergabung di jmlbayar.
+        trans.header.uangmuka = dp;
+        trans.header.tunaibayar = bayar;
         const poin = Number((r as { poin?: number }).poin) || 0;
         kembaliRef.current = caraKirim === "Tunai" ? Number(r.kembali) || 0 : undefined;
         if (preview) setHasil({ notrans: r.notrans, kembali: r.kembali, cara: caraKirim, poin, trans });
