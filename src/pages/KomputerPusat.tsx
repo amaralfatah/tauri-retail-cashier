@@ -104,14 +104,14 @@ function IsiPusat(props: { k: StatusKomputer; manager: boolean }) {
 
   return (
     <div className="flex flex-col gap-3">
-      {k.perluMulaiUlang && <Alert kind="info">Tutup lalu buka lagi Toko Pro supaya komputer ini mulai menjadi Pusat.</Alert>}
+      {k.perluMulaiUlang && <Alert kind="info">Tutup lalu buka lagi Kasir Jet supaya komputer ini mulai menjadi Pusat.</Alert>}
       {k.galat && <Alert>{k.galat}</Alert>}
       {err && <Alert>{err}</Alert>}
       {(k.izinFirewall === "belum" || k.izinFirewall === "berbeda") && (
         <div className="flex flex-col gap-2" data-slot="izin-windows">
           <Alert kind="info">
             {k.izinFirewall === "berbeda"
-              ? "Toko Pro sekarang ada di lokasi lain, jadi izin Windows yang lama tidak berlaku lagi. Komputer kasir belum bisa tersambung. Tekan Beri izin, lalu pilih Ya saat Windows bertanya."
+              ? "Kasir Jet sekarang ada di lokasi lain, jadi izin Windows yang lama tidak berlaku lagi. Komputer kasir belum bisa tersambung. Tekan Beri izin, lalu pilih Ya saat Windows bertanya."
               : "Komputer kasir belum bisa tersambung karena Windows di komputer ini belum mengizinkannya. Tekan Beri izin, lalu pilih Ya saat Windows bertanya."}
           </Alert>
           <div>
@@ -316,7 +316,7 @@ export function KomputerPusat() {
     try {
       const s = await terapkanPeran(n, false);
       setUbah(false);
-      if (s?.perluMulaiUlang) setInfo("Tutup lalu buka lagi Toko Pro supaya pilihan ini berlaku.");
+      if (s?.perluMulaiUlang) setInfo("Tutup lalu buka lagi Kasir Jet supaya pilihan ini berlaku.");
       else if (s?.cadangan) setInfo(`Data toko di komputer ini sudah disalin ke ${s.cadangan}.`);
     } catch (e) { setErr(errText(e)); } finally { setSibuk(false); }
   };
@@ -332,7 +332,7 @@ export function KomputerPusat() {
       {info && <Alert kind="ok">{info}</Alert>}
       {ubah ? (
         <div className="flex flex-col gap-3" onKeyDown={(e) => { if (e.key === "Escape") { e.stopPropagation(); setUbah(false); } }}>
-          <h3 className="text-sm font-semibold">Bagaimana Toko Pro dipakai di toko Anda?</h3>
+          <h3 className="text-sm font-semibold">Bagaimana Kasir Jet dipakai di toko Anda?</h3>
           <PilihanPeran nilai={n} onUbah={setN} disabled={sibuk} onEnter={mintaTerapkan} autoFocus />
           {err && <Alert>{err}</Alert>}
           <div className="flex justify-end gap-2">
@@ -344,7 +344,7 @@ export function KomputerPusat() {
         <>
           {k.mode === "tunggal" && (
             <Bagian judul="Komputer ini berdiri sendiri">
-              <p>Toko Pro dipakai hanya di komputer ini. Kalau toko Anda punya lebih dari satu komputer kasir, jadikan salah satunya Pusat.</p>
+              <p>Kasir Jet dipakai hanya di komputer ini. Kalau toko Anda punya lebih dari satu komputer kasir, jadikan salah satunya Pusat.</p>
             </Bagian>
           )}
           {k.mode === "pusat" && <IsiPusat k={k} manager={manager} />}
@@ -354,7 +354,7 @@ export function KomputerPusat() {
               <Button type="button" variant="outline" size="sm" className="h-8 px-3 text-xs font-medium" onClick={bukaUbah}>Ubah cara pakai</Button>
             </div>
           ) : (
-            <p className="text-muted-foreground">Minta akun Manager untuk mengubah cara Toko Pro dipakai di komputer ini.</p>
+            <p className="text-muted-foreground">Minta akun Manager untuk mengubah cara Kasir Jet dipakai di komputer ini.</p>
           )}
         </>
       )}

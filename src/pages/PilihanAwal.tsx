@@ -41,7 +41,7 @@ function kalimatPengaturan(n: NasibPengaturan): string {
   if (n.status === "gagal") return "Pengaturan struk dan kasir dari Toko Pro lama belum bisa dibaca, jadi komputer ini memakai pengaturan bawaan. Atur di menu Pengaturan.";
   if (n.status === "sebelumnya") return "Pengaturan struk dan kasir dari Toko Pro lama sudah dipindahkan sebelumnya.";
   return n.diganti.length > 0
-    ? "Pengaturan struk dan kasir dari Toko Pro lama sudah dipakai di sini. Sebagian pilihan lama tidak ada lagi di Toko Pro baru, jadi diganti. Periksa di menu Pengaturan."
+    ? "Pengaturan struk dan kasir dari Toko Pro lama sudah dipakai di sini. Sebagian pilihan lama tidak ada lagi di Kasir Jet, jadi diganti. Periksa di menu Pengaturan."
     : "Pengaturan struk dan kasir dari Toko Pro lama sudah dipakai di sini.";
 }
 
@@ -62,7 +62,7 @@ function Kartu(props: { judul: string; atas?: string; children: ReactNode; kaki?
       <div role="dialog" aria-modal="true" aria-label={props.label ?? props.judul}
         className="vb-modern flex max-h-full w-[520px] max-w-full flex-col overflow-hidden rounded-lg border border-border bg-background text-foreground shadow-2xl">
         <div className="flex flex-col gap-1 border-b border-border px-5 pt-4 pb-3">
-          <div className="text-xs font-medium text-muted-foreground">{props.atas || "Toko Pro"}</div>
+          <div className="text-xs font-medium text-muted-foreground">{props.atas || "Kasir Jet"}</div>
           <h1 className="text-base font-bold">{props.judul}</h1>
         </div>
         <div className="flex min-h-0 flex-col gap-3 overflow-auto p-5 text-sm">{props.children}</div>
@@ -86,7 +86,7 @@ const Daftar = (props: { butir: string[] }) => (
 /** Hal yang benar-benar perlu ditindaklanjuti pengguna setelah pindah (foto, izin Windows, atau pilihan lama yang diganti). */
 function daftarSisa(tidakCocok: number, gagal: number, izinGagal = false, nasib?: NasibPengaturan): string[] {
   const s: string[] = [];
-  for (const d of nasib?.diganti ?? []) s.push(`${d.charAt(0).toUpperCase()}${d.slice(1)}, karena pilihan lamanya tidak ada lagi di Toko Pro baru.`);
+  for (const d of nasib?.diganti ?? []) s.push(`${d.charAt(0).toUpperCase()}${d.slice(1)}, karena pilihan lamanya tidak ada lagi di Kasir Jet.`);
   if (izinGagal) s.push("Komputer kasir belum bisa tersambung karena Windows belum mengizinkannya. Buka Pengaturan, Alat Bantu, Komputer Pusat, tekan Beri izin, lalu pilih Ya. Kalau Windows meminta kata sandi administrator, minta bantuan orang yang memasang komputer ini.");
   if (tidakCocok > 0) s.push(`Ada ${angka(tidakCocok)} foto yang namanya tidak sama dengan kode barang mana pun, jadi tidak ikut pindah. Foto itu tetap ada di folder Toko Pro lama.`);
   if (gagal > 0) s.push(`${angka(gagal)} foto tidak bisa disalin karena rusak atau lebih dari 10 MB.`);
@@ -282,9 +282,9 @@ export function PilihanAwal(props: { namaUsaha?: string; onSelesai: () => void }
               <span>Mulai</span><Kbd className="bg-primary-foreground/20 text-primary-foreground">Enter</Kbd>
             </Button>
           </>}>
-          <p>Komputer ini adalah tempat data toko Anda. Toko Pro baru akan mengambil data barang, transaksi, pelanggan, dan pengguna dari Toko Pro lama, lalu menyiapkan komputer ini sebagai Pusat untuk komputer kasir lain.</p>
+          <p>Komputer ini adalah tempat data toko Anda. Kasir Jet akan mengambil data barang, transaksi, pelanggan, dan pengguna dari Toko Pro lama, lalu menyiapkan komputer ini sebagai Pusat untuk komputer kasir lain.</p>
           <p><strong>Tutup dulu Toko Pro lama di semua komputer toko.</strong> Data di Toko Pro lama tidak diubah. Transaksi yang dibuat di Toko Pro lama setelah data diambil tidak ikut pindah.</p>
-          <p>Setelah data pindah, Windows akan bertanya apakah Toko Pro boleh menerima komputer kasir. Pilih <strong>Ya</strong>.</p>
+          <p>Setelah data pindah, Windows akan bertanya apakah Kasir Jet boleh menerima komputer kasir. Pilih <strong>Ya</strong>.</p>
           {err && <Alert>{err}</Alert>}
         </Kartu>
       );
@@ -298,7 +298,7 @@ export function PilihanAwal(props: { namaUsaha?: string; onSelesai: () => void }
             <span>Sambungkan</span><Kbd className="bg-primary-foreground/20 text-primary-foreground">Enter</Kbd>
           </Button>
         </>}>
-        <p>Komputer ini adalah komputer kasir yang tersambung ke <strong>{namaPusat}</strong>. Toko Pro baru akan tersambung ke komputer yang sama, dan memakai pengaturan struk dan kasir yang sama dengan Toko Pro lama.</p>
+        <p>Komputer ini adalah komputer kasir yang tersambung ke <strong>{namaPusat}</strong>. Kasir Jet akan tersambung ke komputer yang sama, dan memakai pengaturan struk dan kasir yang sama dengan Toko Pro lama.</p>
         {err && <Alert>{err}</Alert>}
       </Kartu>
     );
@@ -309,7 +309,7 @@ export function PilihanAwal(props: { namaUsaha?: string; onSelesai: () => void }
       <Kartu judul="Menunggu Toko Pro lama ditutup" atas={props.namaUsaha}
         kaki={<Button type="button" variant="outline" className="h-8 text-xs font-semibold" onClick={() => keAturSendiri()}>Atur sendiri</Button>}>
         <Sedang>
-          <p>Toko Pro lama masih terbuka di komputer ini. Tutup Toko Pro lama, lalu Toko Pro baru akan melanjutkan sendiri.</p>
+          <p>Toko Pro lama masih terbuka di komputer ini. Tutup Toko Pro lama, lalu Kasir Jet akan melanjutkan sendiri.</p>
         </Sedang>
       </Kartu>
     );
@@ -363,7 +363,7 @@ export function PilihanAwal(props: { namaUsaha?: string; onSelesai: () => void }
             <p>Komputer {l.pusat} sedang mengambil data dari Toko Pro lama. Tunggu sebentar.</p>
           ) : (
             <>
-              <p>Pasang Toko Pro baru di komputer {l.pusat}, lalu buka sekali. Komputer ini akan tersambung sendiri begitu {l.pusat} siap.</p>
+              <p>Pasang Kasir Jet di komputer {l.pusat}, lalu buka sekali. Komputer ini akan tersambung sendiri begitu {l.pusat} siap.</p>
               <p>Toko Pro lama di komputer {l.pusat} juga harus ditutup.</p>
             </>
           )}
@@ -393,7 +393,7 @@ export function PilihanAwal(props: { namaUsaha?: string; onSelesai: () => void }
   }
 
   return (
-    <Kartu judul="Bagaimana Toko Pro dipakai di toko Anda?" atas={props.namaUsaha} label="Cara memakai Toko Pro"
+    <Kartu judul="Bagaimana Kasir Jet dipakai di toko Anda?" atas={props.namaUsaha} label="Cara memakai Kasir Jet"
       kaki={
         <Button type="button" variant="default" size="default" disabled={sibuk} className="h-8 min-w-28 text-xs font-semibold" onClick={() => void lanjut()}>
           <span>{n.mode === "kasir" ? "Sambungkan" : "Lanjut"}</span>
@@ -403,7 +403,7 @@ export function PilihanAwal(props: { namaUsaha?: string; onSelesai: () => void }
       <PilihanPeran nilai={n} onUbah={setN} dariLama={dariLama} disabled={sibuk} onEnter={() => void lanjut()} autoFocus />
       {info && <Alert kind="info">{info}</Alert>}
       {err && <Alert>{err}</Alert>}
-      {komputer?.perluMulaiUlang && <Alert kind="info">Tutup lalu buka lagi Toko Pro supaya pilihan ini berlaku.</Alert>}
+      {komputer?.perluMulaiUlang && <Alert kind="info">Tutup lalu buka lagi Kasir Jet supaya pilihan ini berlaku.</Alert>}
     </Kartu>
   );
 }

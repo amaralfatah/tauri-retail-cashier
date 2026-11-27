@@ -246,7 +246,7 @@ fn kasir_dengan_versi_lain_diblokir_dengan_pesan_jelas() {
     let (kode, _) = server.pusat.kode_baru().unwrap();
     jalan(baru.klien.sambung(Some(kode))).unwrap();
     assert_eq!(baru.klien.status(), Status::VersiBeda);
-    assert!(baru.perintah("my_menus", json!({})).unwrap_err().contains("Perbarui Toko Pro di komputer Pusat dulu"));
+    assert!(baru.perintah("my_menus", json!({})).unwrap_err().contains("Perbarui Kasir Jet di komputer Pusat dulu"));
 
     // Pusat sendiri juga menolak: tanpa header versi, atau dengan versi lain, walau Kasir belum tahu bedanya.
     let normal = hubungkan(&server);

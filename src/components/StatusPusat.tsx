@@ -34,7 +34,7 @@ export function ringkasStatus(k: StatusKomputer | null): Ringkasan | null {
     case "tersambung": return { ikon: WifiIcon, nada: "success", teks: `Tersambung ke ${nama}`, singkat: "Tersambung" };
     case "menyambung": return { ikon: WifiIcon, nada: "warning", kedip: true, teks: `Menyambung lagi ke ${nama}…`, singkat: "Menyambung" };
     case "terputus": return { ikon: WifiOffIcon, nada: "destructive", teks: "Pusat tidak terjangkau", singkat: "Terputus" };
-    case "versi-beda": return { ikon: TriangleAlertIcon, nada: "warning", teks: "Versi Toko Pro berbeda dengan Pusat", singkat: "Versi beda" };
+    case "versi-beda": return { ikon: TriangleAlertIcon, nada: "warning", teks: "Versi Kasir Jet berbeda dengan Pusat", singkat: "Versi beda" };
     case "perawatan": return { ikon: WrenchIcon, nada: "warning", teks: "Pusat sedang memulihkan data", singkat: "Perawatan" };
     case "ditolak": return { ikon: BanIcon, nada: "destructive", teks: "Diputus dari Pusat", singkat: "Diputus" };
     default: return { ikon: UnplugIcon, nada: "warning", teks: `Belum tersambung ke ${nama}`, singkat: "Belum tersambung" };
@@ -85,7 +85,7 @@ export function PeringatanPusat(props: { onBuka: () => void }) {
     const pusatBaru = !!versi && !!komputer.kasir.versiPusat && bandingVersi(komputer.kasir.versiPusat, versi) > 0;
     baris.push({
       kunci: "versi", ikon: TriangleAlertIcon,
-      teks: komputer.kasir.pesan || "Versi Toko Pro di komputer ini berbeda dengan Pusat.",
+      teks: komputer.kasir.pesan || "Versi Kasir Jet di komputer ini berbeda dengan Pusat.",
       aksi: pusatBaru ? (
         <Button type="button" size="sm" className="h-7 px-3 text-xs font-semibold" onClick={() => { void cekPembaruan().then(() => bukaPembaruan()); }}>
           Perbarui Sekarang

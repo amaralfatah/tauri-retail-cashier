@@ -7,7 +7,7 @@ memakai schema.sql yang sama dengan yang dipakai aplikasi Rust.
 Contoh:
   python3 -I tools/import_firebird.py \
       --container tokopro-fb --fdb /data/DATAPOS.FDB \
-      --out "$HOME/Library/Application Support/com.tokopro.app/tokopro.db"
+      --out "$HOME/Library/Application Support/com.kasirjet.pc/tokopro.db"
 
 Catatan:
 - Password user lama terenkripsi dengan algoritma VB6 (ModEncrypt) yang belum

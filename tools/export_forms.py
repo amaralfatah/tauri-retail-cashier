@@ -5,7 +5,7 @@ import json, os, re, sqlite3, sys
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SRC = os.path.join(ROOT, "..", "analisis", "ui", "forms.json")
 OUT = os.path.join(ROOT, "src", "vb")
-DB = os.path.expanduser("~/Library/Application Support/com.tokopro.app/tokopro.db")
+DB = os.path.expanduser("~/Library/Application Support/com.kasirjet.pc/tokopro.db")
 
 WANT = re.compile(r"^(FrmMain|FrmZLogin|FrmZHome|FrmTransJual|FrmTransJualOrder|FrmTransBeliOrder|FrmTransJualBayar|FrmTransJualBayarCetak|FrmZOtentikasi|FrmTransBeli|FrmTransBeliBayar|"
                   r"FrmTransStokOpname|FrmTransJualRetur|FrmTransBeliRetur|FrmTransBeliReturBrg|FrmTransJualPiutang|FrmTransBeliHutang|FrmZPengaturan|FrmZPengguna|FrmZEditProfil|FrmMD.*|FrmData.*|FrmCari.*|FrmFilter.*|"

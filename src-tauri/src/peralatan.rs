@@ -228,7 +228,7 @@ pub fn cetak_langsung(
     }
     let jalur = tentukan_jalur(&jenis_port, &tujuan, false)?;
     let data = siapkan_struk_mentah(&isi, potong.unwrap_or(true));
-    kirim_mentah(&jalur, "Struk Toko Pro", &data)
+    kirim_mentah(&jalur, "Struk Kasir Jet", &data)
 }
 
 /// Kirim perintah ESC/POS untuk membuka laci kasir (cash drawer).
@@ -241,7 +241,7 @@ pub fn buka_laci(
 ) -> Result<(), String> {
     let data = urai_kode_laci(&kode)?;
     let jalur = tentukan_jalur(&jenis_port, &tujuan, true)?;
-    kirim_mentah(&jalur, "Buka Laci Toko Pro", &data).map_err(|e| {
+    kirim_mentah(&jalur, "Buka Laci Kasir Jet", &data).map_err(|e| {
         if e.contains("hanya berjalan di Windows") {
             "Pembukaan laci kasir otomatis hanya berjalan di Windows.".into()
         } else {

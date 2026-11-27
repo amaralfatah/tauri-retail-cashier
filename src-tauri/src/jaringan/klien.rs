@@ -165,9 +165,9 @@ pub fn pesan_versi(versi_pusat: &str, versi_ini: &str) -> Option<String> {
         return None;
     }
     Some(if versi_angka(versi_pusat) > versi_angka(versi_ini) {
-        format!("Toko Pro di komputer ini (versi {versi_ini}) lebih lama dari Pusat (versi {versi_pusat}). Perbarui sekarang supaya bisa tersambung lagi.")
+        format!("Kasir Jet di komputer ini (versi {versi_ini}) lebih lama dari Pusat (versi {versi_pusat}). Perbarui sekarang supaya bisa tersambung lagi.")
     } else {
-        format!("Toko Pro di komputer Pusat masih versi {versi_pusat}. Perbarui Toko Pro di komputer Pusat dulu, lalu buka lagi komputer ini.")
+        format!("Kasir Jet di komputer Pusat masih versi {versi_pusat}. Perbarui Kasir Jet di komputer Pusat dulu, lalu buka lagi komputer ini.")
     })
 }
 
@@ -362,7 +362,7 @@ impl Klien {
     }
 
     fn pesan_tidak_terjangkau(&self) -> String {
-        format!("Komputer Pusat ({}) tidak bisa dihubungi. Pastikan komputer itu menyala dan Toko Pro terbuka di sana.", self.nama_tampil())
+        format!("Komputer Pusat ({}) tidak bisa dihubungi. Pastikan komputer itu menyala dan Kasir Jet terbuka di sana.", self.nama_tampil())
     }
 
     fn pesan_galat(&self, g: &Galat, s: &Sambungan) -> String {
@@ -813,5 +813,5 @@ impl Klien {
 const PESAN_DITOLAK: &str = "Komputer ini sudah diputus dari Pusat. Minta pemilik toko membuat kode sambung baru.";
 /// Pesan 7.3. Pusat mengenali simpan yang diulang lewat ID-nya dan memberi hasil yang lama, tetapi bila Pusat mati tepat
 /// sesudah menyimpan dan sebelum mencatat ID itu, hasilnya tidak bisa dikenali. Karena itu pesannya tidak berjanji lebih dari yang dikerjakan.
-pub const PESAN_BELUM_PASTI: &str = "Toko Pro belum tahu apakah transaksi ini sudah tersimpan. Tekan Coba Lagi. Toko Pro akan memeriksa dulu apakah transaksi ini sudah tersimpan.";
+pub const PESAN_BELUM_PASTI: &str = "Kasir Jet belum tahu apakah transaksi ini sudah tersimpan. Tekan Coba Lagi. Kasir Jet akan memeriksa dulu apakah transaksi ini sudah tersimpan.";
 const PESAN_BELUM_TERSIMPAN: &str = "Transaksi belum tersimpan karena Pusat tidak terjangkau. Isian Anda masih ada. Tekan Coba Lagi setelah Pusat menyala.";

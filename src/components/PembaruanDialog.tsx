@@ -6,7 +6,7 @@ import { pasangPembaruan, tutupPembaruan, usePembaruan, type Kemajuan } from "..
 import { ModalFrame } from "../vb/VbGrid";
 
 const mb = (n: number) => `${(n / 1048576).toLocaleString("id-ID", { minimumFractionDigits: 1, maximumFractionDigits: 1 })} MB`;
-const JUDUL = "Versi Baru Toko Pro";
+const JUDUL = "Versi Baru Kasir Jet";
 
 /** Dialog pembaruan: menjelaskan, mengunduh dengan kemajuan, lalu memasang dan membuka ulang aplikasi. Dipasang sekali di App. */
 export function PembaruanDialog() {

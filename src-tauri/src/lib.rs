@@ -231,7 +231,7 @@ async fn jalankan(app: tauri::AppHandle, window: tauri::WebviewWindow, perintah:
     let kendali = app.state::<jaringan::kendali::Kendali>();
     let kasir = kendali.mode() == jaringan::mode::Mode::Kasir;
     if !kasir && kendali.perlu_mulai_ulang() {
-        return Err("Toko Pro perlu dibuka ulang supaya memakai data di komputer ini. Tutup aplikasinya, lalu buka lagi.".into());
+        return Err("Kasir Jet perlu dibuka ulang supaya memakai data di komputer ini. Tutup aplikasinya, lalu buka lagi.".into());
     }
     let lokal = {
         let app = app.clone();
@@ -300,7 +300,7 @@ pub(crate) fn perlu_pilihan(kendali: &jaringan::kendali::Kendali, klien: &jaring
     !database::database_berisi(&conn)
 }
 
-/// Pilihan peran saat Toko Pro pertama kali dibuka, sebelum ada yang masuk (rancangan 7.1). Hanya diterima sekali,
+/// Pilihan peran saat Kasir Jet pertama kali dibuka, sebelum ada yang masuk (rancangan 7.1). Hanya diterima sekali,
 /// selama `perlu_pilihan`. Berikutnya peran diubah di Pengaturan, Alat Bantu, Komputer Pusat oleh Manager.
 #[tauri::command]
 fn awal_pilih(app: tauri::AppHandle, kendali: tauri::State<jaringan::kendali::Kendali>, klien: tauri::State<std::sync::Arc<jaringan::klien::Klien>>, db: tauri::State<db::Db>, mode: jaringan::mode::Mode, pusat: Option<String>) -> Result<serde_json::Value, String> {

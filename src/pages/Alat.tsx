@@ -104,7 +104,7 @@ export function Alat() {
     const r = await dbApi.cek(true);
     return r.ok ? "Data Anda dalam keadaan baik. Tidak ada data yang rusak." : `Ditemukan masalah di data: ${r.masalah.slice(0, 3).join("; ")}. Klik Perbaiki Data untuk memperbaikinya.`;
   });
-  const perbaiki = () => msg.confirm("Toko Pro akan membuat cadangan dulu, lalu merapikan dan memperbaiki indeks data. Lanjutkan?", () => void jalan(async () => {
+  const perbaiki = () => msg.confirm("Kasir Jet akan membuat cadangan dulu, lalu merapikan dan memperbaiki indeks data. Lanjutkan?", () => void jalan(async () => {
     const r = await dbApi.perbaiki(fld);
     return `Perbaikan selesai. Cadangan sebelum perbaikan ada di ${r.cadangan}.`;
   }), undefined, undefined, "Ya, perbaiki");
@@ -115,7 +115,7 @@ export function Alat() {
   };
   const restore = () => {
     if (!fileRestore.trim()) return msg.alert("Pilih dulu file backup yang akan dipulihkan.");
-    msg.confirm("Data Anda saat ini akan diganti dengan isi file backup ini. Toko Pro akan membuat cadangan data sekarang dulu. Lanjutkan?", () => void jalan(async () => {
+    msg.confirm("Data Anda saat ini akan diganti dengan isi file backup ini. Kasir Jet akan membuat cadangan data sekarang dulu. Lanjutkan?", () => void jalan(async () => {
       const r = await dbApi.restore(fileRestore.trim(), fld);
       setTimeout(() => window.location.reload(), 2500);
       return `Data sudah dipulihkan. Cadangan data sebelumnya disimpan di ${r.cadangan}. Aplikasi akan dimuat ulang, silakan masuk lagi.`;
@@ -129,7 +129,7 @@ export function Alat() {
     const ada = pilih.some((i) => i.kunci === "jual" || i.kunci === "beli" || i.kunci === "opname" || i.kunci === "stokawal");
     msg.confirm(
       `Data yang akan dihapus: ${pilih.map((i) => i.nama).join(", ")}.${rentang ? ` Periode ${tglID(rentang.dari)} sampai ${tglID(rentang.sampai)}.` : ""} ` +
-      `${ada ? "Stok barang dihitung ulang dari transaksi yang masih ada. " : ""}Data yang dihapus tidak bisa dikembalikan, tetapi Toko Pro membuat cadangan dulu. Lanjutkan?`,
+      `${ada ? "Stok barang dihitung ulang dari transaksi yang masih ada. " : ""}Data yang dihapus tidak bisa dikembalikan, tetapi Kasir Jet membuat cadangan dulu. Lanjutkan?`,
       () => void jalan(async () => {
         const r = await alatApi.hapusData([...hapusPick], rentang?.dari ?? "", rentang?.sampai ?? "", fld);
         setHapusPick(new Set());
@@ -155,11 +155,11 @@ export function Alat() {
       return "Perintah sudah dijalankan.";
     });
     if (/^\s*(select|with|explain|pragma)/i.test(q)) jalanSql();
-    else msg.confirm("Perintah ini akan mengubah data Anda. Toko Pro membuat cadangan dulu. Lanjutkan?", jalanSql, undefined, undefined, "Ya, jalankan");
+    else msg.confirm("Perintah ini akan mengubah data Anda. Kasir Jet membuat cadangan dulu. Lanjutkan?", jalanSql, undefined, undefined, "Ya, jalankan");
   };
 
   /* ---- Repair ---- */
-  const hitungStok = () => msg.confirm("Toko Pro akan menghitung ulang stok akhir semua barang. Lanjutkan?", () => void jalan(async () => {
+  const hitungStok = () => msg.confirm("Kasir Jet akan menghitung ulang stok akhir semua barang. Lanjutkan?", () => void jalan(async () => {
     const r = await alatApi.hitungStok();
     return `Stok akhir sudah dihitung ulang. ${r.berubah} barang stoknya berubah.`;
   }));
@@ -167,7 +167,7 @@ export function Alat() {
     const r = await alatApi.sinkronHargaBeli(fld);
     return `Harga beli sudah diperbaiki. ${r.berubah} baris transaksi diperbarui.`;
   }));
-  const sinkronJual = () => msg.confirm("Toko Pro akan menghapus transaksi penjualan yang tidak punya barang, beserta kas dan piutangnya, serta membuat cadangan dulu. Lanjutkan?", () => void jalan(async () => {
+  const sinkronJual = () => msg.confirm("Kasir Jet akan menghapus transaksi penjualan yang tidak punya barang, beserta kas dan piutangnya, serta membuat cadangan dulu. Lanjutkan?", () => void jalan(async () => {
     const r = await alatApi.sinkronJual(fld);
     return `Selesai. ${r.dihapus} transaksi penjualan tanpa barang sudah dihapus.`;
   }), undefined, undefined, "Ya, hapus");
@@ -185,7 +185,7 @@ export function Alat() {
       : lunas
         ? "Tagihan yang tadinya lunas kembali terbuka sebesar pembayaran itu, dan uang pelunasan di kas ikut dihapus."
         : "Kartu piutang, stok, dan data keuangan yang terkait ikut terhapus.";
-    msg.confirm(`Anda akan menghapus ${lunas ? "data pelunasan" : "data transaksi"}. ${akibat} ${transPick.size} ${lunas ? "pembayaran" : "transaksi"} dipilih. Data yang dihapus tidak bisa dikembalikan, tetapi Toko Pro membuat cadangan dulu.`, () => void jalan(async () => {
+    msg.confirm(`Anda akan menghapus ${lunas ? "data pelunasan" : "data transaksi"}. ${akibat} ${transPick.size} ${lunas ? "pembayaran" : "transaksi"} dipilih. Data yang dihapus tidak bisa dikembalikan, tetapi Kasir Jet membuat cadangan dulu.`, () => void jalan(async () => {
       const r = await alatApi.hapusTransaksi([...transPick], fld);
       await tampil();
       return `Data transaksi sudah dihapus (${r.dihapus} transaksi). Cadangan sebelum menghapus ada di ${r.cadangan}.`;

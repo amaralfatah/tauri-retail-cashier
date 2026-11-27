@@ -336,9 +336,9 @@ pub fn mulai(data: Arc<dyn Data>, ip: IpAddr, port: u16, nama_komputer: String, 
     let soket = std::net::TcpListener::bind((ip, port)).map_err(|err| {
         use std::io::ErrorKind::{AddrInUse, PermissionDenied};
         if matches!(err.kind(), AddrInUse | PermissionDenied) {
-            format!("Toko Pro belum bisa menerima komputer kasir karena ada program lain yang memakai jalurnya (port {port}). Tutup program itu, lalu buka lagi Toko Pro. Toko Pro di komputer ini tetap bisa dipakai.")
+            format!("Kasir Jet belum bisa menerima komputer kasir karena ada program lain yang memakai jalurnya (port {port}). Tutup program itu, lalu buka lagi Kasir Jet. Kasir Jet di komputer ini tetap bisa dipakai.")
         } else {
-            format!("Port {port} tidak bisa dibuka ({err}). Komputer kasir belum bisa tersambung, tetapi Toko Pro di komputer ini tetap bisa dipakai.")
+            format!("Port {port} tidak bisa dibuka ({err}). Komputer kasir belum bisa tersambung, tetapi Kasir Jet di komputer ini tetap bisa dipakai.")
         }
     })?;
     soket.set_nonblocking(true).map_err(e)?;
@@ -607,7 +607,7 @@ async fn jalankan(State(p): State<Arc<Pusat>>, ConnectInfo(dari): ConnectInfo<So
             StatusCode::CONFLICT,
             Json(json!({
                 "ok": false, "kode": "versi-beda", "versiPusat": versi_pusat,
-                "pesan": format!("Versi Toko Pro di komputer ini berbeda dengan Pusat (versi {versi_pusat}). Samakan dulu versinya."),
+                "pesan": format!("Versi Kasir Jet di komputer ini berbeda dengan Pusat (versi {versi_pusat}). Samakan dulu versinya."),
             })),
         )
             .into_response();
