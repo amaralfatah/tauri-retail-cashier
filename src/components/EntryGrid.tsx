@@ -332,8 +332,9 @@ export function EntryGrid({
     const target = e.target as HTMLElement | null;
     // Klik di dalam kotak yang sudah aktif: mulai mengedit, kursor teks di tempat klik.
     if (kotakSel(target) && document.activeElement === target) target.dataset.edit = "1";
+    // Sel kosong tanpa kotak isian tidak menerima kursor, jadi jangan ditandai: sel aktif tetap satu, di kotak yang fokus.
     const td = target?.closest?.("td");
-    if (td && e.currentTarget.contains(td)) {
+    if (td && e.currentTarget.contains(td) && td.querySelector("input, select, textarea, [tabindex]")) {
       markActiveTd(td);
     }
   };
@@ -474,7 +475,8 @@ export function EntryGrid({
                 className={cn(
                   GRID_TH,
                   h.align === "right" ? "text-right" : h.align === "center" ? "text-center" : "text-left",
-                  activeCol === i && "bg-primary/15! border-b-2! border-b-primary! text-foreground",
+                  // Kepala kolom sel aktif: latar abu, teks tetap warna biasa. Garis bawahnya (1px) ikut biru karena menutupi 1px atas bingkai sel aktif.
+                  activeCol === i && "bg-[color-mix(in_oklab,var(--foreground)_7%,var(--muted))]! border-b-ring!",
                 )}
               >
                 {h.label}

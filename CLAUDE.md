@@ -109,8 +109,10 @@ Ambil bentuk shadcn (sudut membulat, Inter, garis rapi), tetapi pertahankan keku
   (sudut warna 0° = merah), jadi mencampur biru dengan putih/abu-abu di oklch menghasilkan merah muda.
 - Tabel detail transaksi meniru Excel (`.tj-grid` di `modern.css`): garis sel tegas dan kolom No sebagai kepala baris.
   Sel aktif = `input[data-act]`; kalau tidak ada, kotak isian baris kosong untuk barang baru. Hanya sel aktif yang ditandai:
-  bingkai 2px di `td::before` (1px keluar, menutupi garis grid) dan pegangan kotak di `td::after`. Baris, kepala kolom,
-  dan nomor baris sengaja tidak disorot (pemilik toko memintanya dihapus). Kotak isian lain tampil tanpa bingkai.
+  bingkai 2px di `td::before` (1px keluar, menutupi garis grid) dan pegangan kotak di `td::after`. Seperti Excel, barisnya
+  tidak diwarnai; hanya kepala kolom dan nomor baris sel aktif yang diberi abu sedikit lebih gelap (teksnya tidak diwarnai aksen, permintaan pemilik toko),
+  dan garis 1px di sisi yang menempel ke sel aktif ikut berwarna `--ring`. Jangan tambah garis aksen terpisah: kepala kolom `sticky` menutupi 1px atas bingkai, jadi garis tambahan selalu tampak terpisah; dengan garis 1px biru, bingkai tampil satu dan sama tebal di keempat sisi (permintaan pemilik toko, 27-11-2026). Satu sel aktif saja: sel kosong tanpa kotak isian tidak ikut ditandai.
+  Kotak isian lain tampil tanpa bingkai.
 - **Perilaku sel seperti Excel ada di `EntryGrid`** (dipakai semua tabel isian: transaksi, retur, opname, stok awal, promo, cetak label),
   jadi jangan menulisnya ulang per layar. Masuk ke sel = seluruh isi terpilih dan panah kiri/kanan pindah sel. Mengetik, Backspace/Delete,
   F2, atau klik pada sel yang sudah aktif masuk mode edit (`data-edit="1"`, cek dengan `sedangDiedit`); baru di mode itu panah menggeser kursor teks.

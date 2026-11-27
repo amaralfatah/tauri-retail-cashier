@@ -172,6 +172,8 @@ const GRID_TD_EMPTY =
   "h-7! truncate border-r border-b border-foreground/15 px-2! py-0! text-[13px] tabular-nums last:border-r-0";
 const GRID_TD_NO =
   "h-7! border-r border-b border-foreground/15 bg-muted px-1.5! py-0! text-right text-xs font-semibold text-foreground/85 tabular-nums";
+const KEPALA_AKTIF_BARIS =
+  "bg-[color-mix(in_oklab,var(--foreground)_7%,var(--muted))]! border-r-ring!";
 const GRID_TD_NO_EMPTY =
   "h-7! border-r border-b border-foreground/15 bg-muted px-1.5! py-0! text-right text-xs font-medium text-foreground/75 tabular-nums";
 
@@ -399,11 +401,11 @@ function DetailGrid(props: {
           style={fillRowH ? { height: fillRowH } : undefined}
           className={cn(
             "border-0 hover:bg-transparent",
-            cur && "bg-[color-mix(in_oklab,var(--primary)_20%,var(--card))] hover:bg-[color-mix(in_oklab,var(--primary)_20%,var(--card))]",
             props.flash && props.flash.n > 0 && props.flash.key === l.key && `tp-flash-${props.flash.n % 2}`,
           )}
         >
-          <TableCell className={cn(GRID_TD_NO, cur && "bg-primary! text-primary-foreground!")}>{i + 1}</TableCell>
+          {/* Seperti Excel: baris tidak diwarnai, nomor barisnya berlatar abu (teks tetap warna biasa); garis kanannya (1px) ikut biru agar menyatu dengan bingkai sel aktif. */}
+          <TableCell className={cn(GRID_TD_NO, cur && KEPALA_AKTIF_BARIS)}>{i + 1}</TableCell>
           <TableCell className={cn(GRID_TD, act("kode") && ACT_CELL)} onMouseDown={klik("kode")}>
             {act("kode") ? (
               <div className="relative h-full">
