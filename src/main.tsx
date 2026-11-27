@@ -7,8 +7,12 @@ import { AppProviders } from "@/components/app/providers";
 import { initTheme } from "@/lib/theme";
 import { terapkanUkuran } from "@/lib/ukuranTampilan";
 import { mulaiPantauPusat } from "@/lib/statusPusat";
+import { pasangTahanFokus } from "@/lib/tahanFokus";
 
 initTheme();
+
+// Klik di label atau area kosong tidak memindahkan kursor, seperti form VB lama.
+pasangTahanFokus();
 
 // Dibuka di browser biasa saat pengembangan: tiru backend Tauri supaya tampilan bisa dilihat.
 if (import.meta.env.DEV && !("__TAURI_INTERNALS__" in window)) await import("./dev/tauriMock");
