@@ -51,6 +51,8 @@ mod tests_e2e;
 #[cfg(test)]
 mod tests_pindah_lama;
 #[cfg(test)]
+mod tests_banding_lama;
+#[cfg(test)]
 mod tests_migrasi;
 #[cfg(test)]
 mod tests_dispatch;
