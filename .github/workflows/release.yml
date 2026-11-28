@@ -123,18 +123,22 @@ jobs:
           KASIRJET_KUNCI_RESET: ${{ secrets.KASIRJET_KUNCI_RESET }}
         with:
           tagName: v__VERSION__
-          releaseName: 'Toko Pro v__VERSION__'
+          releaseName: 'KasirJet v__VERSION__'
           # Bagian "Yang baru" tampil sebagai catatan di dialog pembaruan di aplikasi (latest.json memakai isi ini).
           releaseBody: |
             ### Yang baru
-            Perbaikan dan peningkatan di Toko Pro v__VERSION__.
+            - Toko Pro kini bernama KasirJet, dengan ikon baru.
+            - Manager yang lupa password bisa meminta kode reset tanpa internet lewat tombol Lupa password di layar Login.
+            - Tabel isian bekerja seperti Excel: hanya satu sel aktif yang ditandai.
+            - Susunan struk penjualan dan kotak scan kembali sama dengan Toko Pro lama.
+            - Teks di layar lebih jelas dan konsisten.
 
             ### Pasang manual
-            Installer aplikasi desktop **Toko Pro v__VERSION__** untuk Windows dan macOS.
+            Installer aplikasi desktop **KasirJet v__VERSION__** untuk Windows dan macOS.
 
             ### Pilih file yang sesuai
-            - **Windows 64-bit:** `Toko.Pro_..._x64-setup.exe`
-            - **Windows 32-bit:** `Toko.Pro_..._x86-setup.exe`
+            - **Windows 64-bit:** `KasirJet_..._x64-setup.exe`
+            - **Windows 32-bit:** `KasirJet_..._x86-setup.exe`
             - **macOS (Apple Silicon, M1 ke atas):** `..._aarch64.dmg`
             - **macOS (Intel):** `..._x64.dmg`
 
@@ -144,7 +148,7 @@ jobs:
 
             ### Pindah dari Toko Pro lama
             Tutup Toko Pro lama di semua komputer toko, pasang aplikasi ini, lalu buka.
-            Toko Pro baru akan otomatis mendeteksi Toko Pro lama di komputer Pusat maupun komputer kasir dan memindahkan data serta pengaturannya.
+            KasirJet akan otomatis mendeteksi Toko Pro lama di komputer Pusat maupun komputer kasir dan memindahkan data serta pengaturannya.
             Jika ingin mengambil ulang data di lain waktu, buka **Alat Bantu → Restore Data → Ambil dari Toko Pro Lama**.
           releaseDraft: true
           prerelease: false
