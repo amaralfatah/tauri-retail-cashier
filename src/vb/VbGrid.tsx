@@ -517,6 +517,9 @@ export function VbGrid<T>(props: {
 /* ---- Bilah alat (Toolbar): tombol tegas dengan pemisah ---- */
 export interface ToolItem { caption: string; onClick: () => void; sepBefore?: boolean }
 
+/** Nama aksi tetap seperti di aplikasi lama (dipakai sebagai kunci); yang tampil di tombol memakai kata sehari-hari. */
+const LABEL_AKSI: Record<string, string> = { Edit: "Ubah", Refresh: "Muat Ulang", Export: "Ekspor", "Import Foto": "Impor Foto" };
+
 export function VbToolbar({ items }: { items: ToolItem[] }) {
   return (
     <div data-slot="vb-toolbar" className="flex w-full flex-wrap items-center gap-1 border-b border-border bg-muted px-2.5 py-1.5">
@@ -538,7 +541,7 @@ export function VbToolbar({ items }: { items: ToolItem[] }) {
                 isDanger && "hover:border-destructive/40 hover:bg-destructive/10 hover:text-destructive",
               )}
             >
-              {b.caption}
+              {LABEL_AKSI[b.caption] ?? b.caption}
               {isClose && <Kbd className="h-4 min-w-0 border border-border bg-muted px-0.5 text-[0.5625rem] text-foreground">Esc</Kbd>}
             </Button>
           </span>
@@ -604,7 +607,11 @@ export function useTopEscape(onClose?: () => void) {
     const id = Symbol();
     stack.push(id);
     const key = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && stack[stack.length - 1] === id) { e.stopPropagation(); cb.current?.(); }
+      if (e.key !== "Escape" || stack[stack.length - 1] !== id) return;
+      // Esc di menu tarik-turun atau daftar pilihan hanya menutup menu itu, bukan layarnya.
+      if ((e.target as Element | null)?.closest?.('[role="menu"], [role="listbox"]')) return;
+      e.stopPropagation();
+      cb.current?.();
     };
     window.addEventListener("keydown", key, true);
     return () => {

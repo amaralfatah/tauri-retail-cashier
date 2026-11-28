@@ -46,7 +46,7 @@ const TITLE: Record<string, string> = {
   mdkaryawan: "Filter Data Karyawan",
 };
 
-export function FilterWindow(props: { table: MasterTable; rows: Row[]; value: FilterVal; onApply: (f: FilterVal) => void; onClose: () => void }) {
+export function FilterWindow(props: { table: MasterTable; judul?: string; rows: Row[]; value: FilterVal; onApply: (f: FilterVal) => void; onClose: () => void }) {
   const { table } = props;
   const [f, setF] = useState<FilterVal>(props.value);
   const set = (k: string, v: string) => setF((x) => ({ ...x, [k]: v }));
@@ -62,7 +62,7 @@ export function FilterWindow(props: { table: MasterTable; rows: Row[]; value: Fi
 
   return (
     <ModalFrame
-      title={TITLE[table] ?? "Filter Data"}
+      title={props.judul ? `Filter ${props.judul}` : TITLE[table] ?? "Filter Data"}
       width={560}
       onClose={props.onClose}
       footer={

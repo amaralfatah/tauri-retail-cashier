@@ -1,3 +1,4 @@
+import { pesanKodeTidakAda } from "@/lib/pesanBarang";
 import { ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { SearchIcon } from "lucide-react";
@@ -24,7 +25,6 @@ interface Item { uid: number; b: Row; fisik: number }
 interface Bukti { notrans: string; tgl: string; catatan: string; kasir: string; baris: { b: Row; fisik: number }[] }
 
 let uidSeq = 0;
-const NOT_FOUND = "Data tidak ditemukan, atau barang tidak aktif.";
 
 /** Kolom tabel stok opname (lebar dalam persen). */
 const COLS: EntryGridCol[] = [
@@ -72,7 +72,7 @@ export function Opname() {
     if (!kode) return;
     const b = await api.barangFind(kode).catch(() => null);
     if (b) add(b);
-    else msg.alert(NOT_FOUND, "Informasi");
+    else msg.alert(pesanKodeTidakAda(kode), "Informasi");
   };
 
   const onScan = async () => {

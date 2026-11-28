@@ -1,3 +1,4 @@
+import { pesanKodeTidakAda } from "@/lib/pesanBarang";
 import { invoke } from "@/lib/panggil";
 import { ChevronDownIcon, CornerDownLeftIcon, ScanBarcodeIcon, SearchIcon, Trash2Icon, XIcon } from "lucide-react";
 import { createPortal } from "react-dom";
@@ -474,7 +475,7 @@ function DetailGrid(props: {
               act("jml") && props.stokKurang(l) && "bg-destructive/15!",
               act("jml") && !props.stokKurang(l) && props.jmlBesar?.(l) && "bg-warning/25!",
             )}
-            title={props.stokKurang(l) ? "Stok barang ini tidak cukup" : props.jmlBesar?.(l) ? "Jumlahnya besar (≥ 100). Pastikan bukan salah ketik atau scan barcode." : undefined}
+            title={props.stokKurang(l) ? "Stok barang ini tidak cukup" : props.jmlBesar?.(l) ? "Jumlahnya 100 atau lebih. Pastikan tidak salah ketik atau salah scan." : undefined}
             onMouseDown={klik("jml")}
           >
             {act("jml") ? (
@@ -644,7 +645,7 @@ function CariDataDialog(props: { jenis: CariJenis; onAmbil: (nomor: string) => v
   const ambil = (r?: Row) => {
     const no = r ? r[nomorKey] : sel;
     if (no) props.onAmbil(no);
-    else setErr("Pilih dulu data yang akan diambil.");
+    else setErr(props.jenis === "pending" ? "Pilih dulu transaksi yang ingin dilanjutkan." : "Pilih dulu order yang ingin diambil.");
   };
   // Seperti aslinya: Kasir dan Lainnya login lewat Verifikasi Admin dulu, baru ditanya "akan dihapus?".
   const mulaiHapus = () => {
@@ -668,7 +669,7 @@ function CariDataDialog(props: { jenis: CariJenis; onAmbil: (nomor: string) => v
 
   const cols: GridCol<Row>[] = [
     { title: "No", width: 42, align: "right", render: (_r, i) => i + 1 },
-    { title: props.jenis === "pending" ? "No. Pending" : "No. Order", width: 150, render: (r) => r[nomorKey] },
+    { title: props.jenis === "pending" ? "No. Tunda" : "No. Order", width: 150, render: (r) => r[nomorKey] },
     {
       title: "Tanggal",
       width: 100,
@@ -681,8 +682,8 @@ function CariDataDialog(props: { jenis: CariJenis; onAmbil: (nomor: string) => v
     { title: "Jumlah", width: 120, align: "right", render: (r) => rp(r.jmltrans), sortValue: (r) => Number(r.jmltrans) || 0 },
   ];
 
-  const apa = props.jenis === "pending" ? "data pending" : "order";
-  const judul = props.jenis === "pending" ? "Data Transaksi Pending" : props.jenis === "orderjual" ? "Cari Order Penjualan" : "Cari Order Pembelian";
+  const apa = props.jenis === "pending" ? "transaksi yang ditunda" : "order";
+  const judul = props.jenis === "pending" ? "Transaksi Ditunda" : props.jenis === "orderjual" ? "Cari Order Penjualan" : "Cari Order Pembelian";
   return (
     <div
       className="contents"
@@ -752,7 +753,7 @@ function CariDataDialog(props: { jenis: CariJenis; onAmbil: (nomor: string) => v
             <VbGrid cols={cols} rows={list} rowKey={(r) => String(r[nomorKey])} selected={sel} onSelect={setSel} onOpen={ambil} />
             {list.length === 0 && (
               <div className="pointer-events-none absolute inset-x-0 top-8 bottom-0 grid place-items-center px-6 text-center text-sm text-muted-foreground">
-                {props.jenis === "pending" ? "Belum ada transaksi yang di-pending." : "Belum ada order yang menunggu diambil."}
+                {props.jenis === "pending" ? "Belum ada transaksi yang ditunda." : "Belum ada order yang menunggu diambil."}
               </div>
             )}
           </div>
@@ -774,12 +775,12 @@ function CariDataDialog(props: { jenis: CariJenis; onAmbil: (nomor: string) => v
               </>
             }
           >
-            <p>Apakah data {apa} yang dipilih akan dihapus?</p>
+            <p>Hapus {apa} yang dipilih?</p>
           </Modal>
         )}
         {mintaIzin && (
           <Otentikasi
-            alasan={`Untuk menghapus ${apa}, masukkan nama user dan kata sandi supervisor atau pemilik toko.`}
+            alasan={`Untuk menghapus ${apa}, masukkan nama pengguna dan kata sandi supervisor atau pemilik toko.`}
             onBatal={() => setMintaIzin(false)}
             onOk={(t) => { setMintaIzin(false); setIzin(t); setHapus(true); }}
           />
@@ -882,7 +883,7 @@ function TransaksiIsi({ mode, order = false }: { mode: Mode; order?: boolean }) 
   const [kontakList, setKontakList] = useState<Row[]>([]);
   const [salesList, setSalesList] = useState<Row[]>([]);
   const [lines, setLines] = useState<Line[]>([]);
-  // Beri tahu App isi keranjang, supaya Log Off/Keluar bisa memperingatkan transaksi yang belum dibayar.
+  // Beri tahu App isi keranjang, supaya Ganti Pengguna/Keluar bisa memperingatkan transaksi yang belum dibayar.
   useEffect(() => { laporIsi(order ? 0 : lines.length); }, [lines.length, order, laporIsi]);
   const tanya = useMsgBox();
   const [scan, setScan] = useState("");
@@ -955,6 +956,9 @@ function TransaksiIsi({ mode, order = false }: { mode: Mode; order?: boolean }) 
   // Pengaturan izinstokmin mati (semua level): jumlah tidak boleh melebihi stok.
   const batasiStok = jual && !order && Number(setting.izinstokmin) !== 1;
   /** Jumlah terbanyak (dalam satuan transaksi) yang masih ada stoknya; null kalau tanpa batas. */
+  /** Pesan stok kurang: sebut sisa stoknya, supaya kasir tahu berapa yang bisa dijual. */
+  const pesanStok = (b: Row, u: Unit, maks: number) =>
+    maks <= 0 ? `Stok ${b.namabarang} habis.` : `Stok ${b.namabarang} tinggal ${qty(maks)} ${u.satuan}, jadi jumlahnya di tabel menjadi ${qty(maks)}.`;
   const stokMaks = (b: Row, u: Unit): number | null =>
     batasiStok && b.jenis === "Barang" ? Math.max(0, Math.floor((Number(b.stokakhir) / u.konversi) * 100 + 1e-9) / 100) : null;
   /** Setelah barang masuk: kursor ke kolom jumlah (pengaturan "Arahkan kursor ke kolom jumlah") atau kembali ke kotak scan. */
@@ -997,12 +1001,13 @@ function TransaksiIsi({ mode, order = false }: { mode: Mode; order?: boolean }) 
 
   const addBarang = (b: Row, jml = 1) => {
     const ada = lines.find((l) => l.b.kodebarang === b.kodebarang && l.ui === 0);
-    const maks = stokMaks(b, ada ? ada.units[0] : unitsOf(b)[0]);
+    const u0 = ada ? ada.units[0] : unitsOf(b)[0];
+    const maks = stokMaks(b, u0);
     const sudah = ada?.jml ?? 0;
     if (maks !== null && sudah + jml > maks + 1e-9) {
       jml = Math.max(0, maks - sudah);
-      if (jml <= 0 && !ada) return setMsg("Stok tidak mencukupi.");
-      setMsg("Stok tidak mencukupi.");
+      if (jml <= 0 && !ada) return setMsg(pesanStok(b, u0, maks));
+      setMsg(pesanStok(b, u0, maks));
     } else setMsg(null);
     setLines((ls) => {
       const i = ls.findIndex((l) => l.b.kodebarang === b.kodebarang && l.ui === 0);
@@ -1037,10 +1042,10 @@ function TransaksiIsi({ mode, order = false }: { mode: Mode; order?: boolean }) 
         setScan("");
         setelahTambah();
       } else {
-        // Seperti aplikasi lama: MsgBox "Data tidak ditemukan, atau barang tidak aktif." (juga untuk barang yang stoknya habis).
+        // Seperti aplikasi lama: MsgBox kalau barang tidak ditemukan, tidak aktif, atau stoknya habis; pesannya menyebut kode yang dicoba.
         // Setelah OK kursor kembali ke kotak scan.
         if (jual) bunyiGagal();
-        setMsg("Data tidak ditemukan, atau barang tidak aktif.");
+        setMsg(pesanKodeTidakAda(kode, { stokHabis: jual && !order }));
         setScan("");
       }
     } catch (e) {
@@ -1058,7 +1063,7 @@ function TransaksiIsi({ mode, order = false }: { mode: Mode; order?: boolean }) 
         return true;
       }
       if (jual) bunyiGagal();
-      setMsg("Data tidak ditemukan, atau barang tidak aktif.");
+      setMsg(pesanKodeTidakAda(kode, { stokHabis: jual && !order }));
     } catch (e) {
       setMsg(errText(e));
     }
@@ -1073,7 +1078,7 @@ function TransaksiIsi({ mode, order = false }: { mode: Mode; order?: boolean }) 
       const maks = stokMaks(n.b, n.units[n.ui]);
       if (maks !== null && n.jml > maks + 1e-9) {
         patch = { ...patch, jml: maks };
-        setMsg("Stok tidak mencukupi.");
+        setMsg(pesanStok(n.b, n.units[n.ui], maks));
       }
     }
     setLines((ls) => ls.map((l) => {
@@ -1128,7 +1133,7 @@ function TransaksiIsi({ mode, order = false }: { mode: Mode; order?: boolean }) 
 
   const bayar = () => {
     if (lines.length === 0) return setMsg("Belum ada barang. Scan barcode atau tekan F10 untuk mencari barang.");
-    if (lines.some((l) => l.jml <= 0)) return setMsg("Ada barang dengan jumlah 0. Perbaiki dulu jumlahnya.");
+    if (lines.some((l) => l.jml <= 0)) return setMsg("Ada barang dengan jumlah 0. Isi dulu jumlahnya.");
     if (order) return void simpanOrder();
     // Skin modern: jumlah yang tidak wajar (biasanya barcode masuk ke kolom jumlah) ditanyakan sekali sebelum bayar.
     const besar = modern ? lines.filter(jmlBesar) : [];
@@ -1181,7 +1186,7 @@ function TransaksiIsi({ mode, order = false }: { mode: Mode; order?: boolean }) 
     setSelected(baru[0]?.key ?? null);
     fokusTerakhirRef.current = { jenis: "scan" };
     setTimeout(() => scanRef.current?.focus(), 0);
-    if (hilang.length) setMsg(`Barang ini sudah tidak ada di data barang, jadi tidak ikut diambil: ${hilang.join(", ")}.`);
+    if (hilang.length) setMsg(`Barang ini tidak ada lagi di Data Barang, jadi tidak ikut diambil: ${hilang.join(", ")}.`);
   };
 
   const kontakDari = (h: Row, kode: string) => (h[kode] && h[kode] !== "Tunai" ? String(h[kode]) : "");
@@ -1189,7 +1194,7 @@ function TransaksiIsi({ mode, order = false }: { mode: Mode; order?: boolean }) 
   // window.confirm tidak muncul di WebView Tauri, jadi pakai kotak pesan aplikasi.
   const konfirmGanti = () => new Promise<boolean>((ok) => {
     if (lines.length === 0) ok(true);
-    else tanya.confirm("Barang yang ada di layar akan diganti. Lanjutkan?", () => ok(true));
+    else tanya.confirm("Barang yang sekarang ada di layar akan diganti dengan isi order ini. Lanjutkan?", () => ok(true));
   });
 
   /** Ambil Order [F3] (kasir/pembelian) dan Koreksi Order (layar order). */
@@ -1198,7 +1203,7 @@ function TransaksiIsi({ mode, order = false }: { mode: Mode; order?: boolean }) 
     try {
       const o = await orderApi.getOrder(nomor);
       const h = o.header;
-      if (Number(h.status) === 1) return setMsg("Order ini sudah diambil. Silakan pilih order lain.");
+      if (Number(h.status) === 1) return setMsg("Order ini sudah diambil. Pilih order lain.");
       setModal(null);
       setKontak(kontakDari(h, jual ? "kodepelanggan" : "kodepemasok"));
       setSales(h.kodesales ?? "");
@@ -1212,16 +1217,16 @@ function TransaksiIsi({ mode, order = false }: { mode: Mode; order?: boolean }) 
     }
   };
 
-  /** Tombol Pending: tunda penjualan yang belum selesai. */
+  /** Tombol Tunda (F7): tunda penjualan yang belum selesai. */
   const simpanPending = async () => {
-    if (lines.length === 0) return setMsg("Data transaksi masih kosong.");
+    if (lines.length === 0) return setMsg("Belum ada barang yang bisa ditunda.");
     try {
       await orderApi.savePending({
         nopending: noPending || undefined, tgl, kodepelanggan: kontak, kodesales: sales, catatan,
         items: itemsInput(), kodekasir: kasir.kode,
       });
       reset();
-      setMsg("Transaksi pending tersimpan.");
+      setMsg("Transaksi ditunda. Tekan F8 (Buka Tundaan) untuk melanjutkannya.");
     } catch (e) {
       setMsg(errText(e));
     }
@@ -1260,7 +1265,7 @@ function TransaksiIsi({ mode, order = false }: { mode: Mode; order?: boolean }) 
   }, [ulangOrder]);
 
   const cekPoin = () => {
-    if (!kontak) return setMsg("Pilih pelanggan terdaftar di kolom Pelanggan dulu. Hanya pelanggan terdaftar yang memiliki poin.");
+    if (!kontak) return setMsg("Poin hanya ada untuk pelanggan terdaftar. Pilih dulu pelanggannya di kolom Pelanggan.");
     setModal("poin");
   };
 
@@ -1300,7 +1305,7 @@ function TransaksiIsi({ mode, order = false }: { mode: Mode; order?: boolean }) 
   const stokMin = () => setModal("stokmin");
 
   const editBarang = () => {
-    if (selected == null) return setMsg("Pilih dulu barang di tabel yang akan diubah datanya.");
+    if (selected == null) return setMsg("Pilih dulu barang di tabel yang ingin Anda ubah.");
     setModal("editbarang");
   };
   /** Setelah data barang diubah: ambil ulang barangnya dan hitung ulang harga barisnya. */
@@ -1309,7 +1314,7 @@ function TransaksiIsi({ mode, order = false }: { mode: Mode; order?: boolean }) 
     if (!lama) return;
     try {
       const b = await api.barangFind(key || lama.b.kodebarang);
-      if (!b) return setMsg("Barang ini sudah tidak ditemukan di data barang.");
+      if (!b) return setMsg("Barang ini tidak ada lagi di Data Barang.");
       const units = unitsOf(b);
       const sat = lama.units[lama.ui].satuan;
       const ui = Math.max(0, units.findIndex((u) => u.satuan === sat));
@@ -1488,7 +1493,7 @@ function TransaksiIsi({ mode, order = false }: { mode: Mode; order?: boolean }) 
                   <span className="text-xs font-medium text-foreground">Catatan</span>
                   {(noOrder || noPending || noKoreksi) && (
                     <span className="inline-flex items-center gap-1 rounded-xs border border-border bg-accent px-1.5 py-0.5 text-[11px] font-semibold text-foreground tabular-nums">
-                      <span>{noKoreksi ? "Koreksi:" : noOrder ? "Order:" : "Pending:"}</span>
+                      <span>{noKoreksi ? "Koreksi:" : noOrder ? "Order:" : "Ditunda:"}</span>
                       <span>{noKoreksi || noOrder || noPending}</span>
                     </span>
                   )}
@@ -1533,7 +1538,7 @@ function TransaksiIsi({ mode, order = false }: { mode: Mode; order?: boolean }) 
                 </>
               ) : (
                 <div className="text-base font-semibold text-display-foreground/85 lg:text-lg">
-                  {kotakScan ? "Silakan scan barang pertama" : "Scan barcode atau ketik kode. Ketik 3*kode untuk 3 barang sekaligus. F10 untuk mencari."}
+                  {kotakScan ? "Silakan scan barang pertama" : "Scan barcode atau ketik kode. Ketik 3*kode untuk 3 barang sekaligus, atau tekan F10 untuk mencari."}
                 </div>
               )}
             </div>
@@ -1740,11 +1745,11 @@ function TransaksiIsi({ mode, order = false }: { mode: Mode; order?: boolean }) 
               {jual && !order && (
                 <>
                   <Button type="button" variant="outline" size="default" data-vb="cPending" className={cn(TOMBOL_BAWAH, "h-8 px-2.5 text-xs font-medium")} onClick={simpanPending}>
-                    <span>Pending</span>
+                    <span>Tunda</span>
                     <Kbd className={KBD_BAWAH}>F7</Kbd>
                   </Button>
                   <Button type="button" variant="outline" size="default" data-vb="cDataPending" className={cn(TOMBOL_BAWAH, "h-8 px-2.5 text-xs font-medium")} onClick={() => setModal("pending")}>
-                    <span>Data Pending</span>
+                    <span>Buka Tundaan</span>
                     <Kbd className={KBD_BAWAH}>F8</Kbd>
                   </Button>
                   {poinAktif && (
@@ -2082,7 +2087,7 @@ function BayarDialog(props: { mode: Mode; tgl: string; kontak: string; sales: st
     }
     const cocok = jenisNama.find((j) => (m === "qris" ? /qris/i.test(j) : /debit|kartu/i.test(j)));
     const j = cocok ?? jenisNama[0];
-    if (!j) { setErr("Belum ada jenis pembayaran non tunai. Tambahkan dulu di menu Jenis Non Tunai."); return; }
+    if (!j) { setErr("Belum ada jenis pembayaran non tunai. Tambahkan dulu di Master Data, lalu Data Jenis Non Tunai."); return; }
     setJenis(j);
     const item = itemNt.filter((x) => x.namajenis === j && x.namaitem);
     setKartu(item.length === 1 ? String(item[0].namaitem) : "");
@@ -2107,8 +2112,8 @@ function BayarDialog(props: { mode: Mode; tgl: string; kontak: string; sales: st
       if (!o.piutang) {
         return setTanya({
           pesan: jual
-            ? "Jumlah bayar kurang dari total transaksi, apakah akan dilanjutkan sebagai piutang transaksi?"
-            : "Jumlah bayar kurang dari total transaksi, apakah akan dilanjutkan sebagai hutang transaksi?",
+            ? "Uang yang dibayar kurang dari total. Catat kekurangannya sebagai piutang pelanggan?"
+            : "Uang yang dibayar kurang dari total. Catat kekurangannya sebagai hutang ke supplier?",
           piutang: true, kredit: false,
         });
       }
@@ -2116,10 +2121,10 @@ function BayarDialog(props: { mode: Mode; tgl: string; kontak: string; sales: st
     }
     if (caraKirim === "Kredit" && !props.kontak) {
       if (jual) {
-        return setErr("Transaksi piutang tidak bisa dilakukan untuk pelanggan 'Tunai'. Pilih pelanggan yang terdaftar untuk melanjutkan.");
+        return setErr("Kekurangan bayar hanya bisa dicatat untuk pelanggan terdaftar. Pilih pelanggannya dulu di kolom Pelanggan.");
       }
       // Seperti aslinya: dialog bayar ditutup, kursor ke kolom pemasok di layar pembelian.
-      props.onTanpaPemasok("Transaksi hutang tidak bisa dilakukan ke Supplier 'Tunai'.\nPilih Supplier yang terdaftar untuk melanjutkan.");
+      props.onTanpaPemasok("Kekurangan bayar hanya bisa dicatat untuk supplier terdaftar.\nPilih suppliernya dulu di kolom Supplier.");
       return;
     }
     simpanBusy.current = true;
@@ -2218,6 +2223,7 @@ function BayarDialog(props: { mode: Mode; tgl: string; kontak: string; sales: st
   // Seperti aslinya, kursor awal di kolom pertama (Diskon %), bukan di Jml Bayar.
   useEffect(() => { setTimeout(() => fokusSetelah(-1), 0); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const [enterKurang, setEnterKurang] = useState(false);
   const onEnter = (ev: React.KeyboardEvent) => {
     if (ev.key !== "Enter" || ev.target instanceof HTMLButtonElement) return;
     ev.preventDefault();
@@ -2226,6 +2232,8 @@ function BayarDialog(props: { mode: Mode; tgl: string; kontak: string; sales: st
     if (cur < 0) return void simpan();
     const nama = urutan[cur];
     if (jual && (nama === "tNoRefNonTunai" || (nama === "tJmlBayar" && sisa <= 0.0001))) return void simpan();
+    // Enter di Jml Bayar saat uang belum cukup: alurnya tetap pindah kolom seperti aplikasi lama, tapi kotak sisa ikut memberi tahu.
+    if (nama === "tJmlBayar" && sisa > 0.005) setEnterKurang(true);
     fokusSetelah(cur);
   };
 
@@ -2288,7 +2296,7 @@ function BayarDialog(props: { mode: Mode; tgl: string; kontak: string; sales: st
   const hasilBayar = sisa < -0.005
     ? { label: "Kembalian", nilai: -sisa, cls: "bg-success text-success-foreground" }
     : sisa > 0.005
-      ? diterima > 0
+      ? diterima > 0 || enterKurang
         ? { label: "Uang masih kurang", nilai: sisa, cls: "border-2 border-destructive bg-destructive/10 text-destructive" }
         : { label: "Belum dibayar", nilai: sisa, cls: "bg-muted text-foreground" }
       : { label: "Uang pas, tanpa kembalian", nilai: 0, cls: "bg-success/15 text-success" };

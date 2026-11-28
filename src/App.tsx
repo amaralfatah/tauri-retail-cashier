@@ -35,7 +35,7 @@ import { Splash } from "./pages/Splash";
 import { getLocal } from "./pages/localSettings";
 import { Modal } from "./components/Modal";
 import { formSize, useTinggiJudul } from "./vb/VbForm";
-import { ModalFrame } from "./vb/VbGrid";
+import { ModalFrame, useTopEscape } from "./vb/VbGrid";
 import {
   allowedFor, DEFAULT_CAPTION, DIALOG_FORM, isDialog, MENU, MenuNode, Page, SEP_BEFORE, TARGETS, TOOLBAR, ToolBtn,
 } from "./vb/shell";
@@ -291,11 +291,8 @@ export default function App() {
       if (t && (popupRef.current?.contains(t) || toolbarRef.current?.contains(t))) return;
       close();
     };
-    // Esc hanya menutup menu: ditangkap lebih dulu supaya layar di bawahnya (mis. kasir) tidak ikut tertutup.
-    const key = (e: KeyboardEvent) => { if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); close(); } };
     document.addEventListener("mousedown", outside);
-    window.addEventListener("keydown", key, true);
-    return () => { document.removeEventListener("mousedown", outside); window.removeEventListener("keydown", key, true); };
+    return () => document.removeEventListener("mousedown", outside);
   }, [popup]);
 
   if (splash) return <Splash namaUsaha={setting.namausaha} />;
@@ -408,7 +405,7 @@ export default function App() {
               isKeluar && "text-foreground/70 group-hover/tb:text-destructive",
             )}
           />
-          {/* Log Off dan Keluar selalu berlabel: ikon power dan ikon keluar mudah tertukar kalau berdiri sendiri. */}
+          {/* Ganti Pengguna dan Keluar selalu berlabel: ikon power dan ikon keluar mudah tertukar kalau berdiri sendiri. */}
           <span>{b.key === "home" && getLocal("home") === "Dashboard" ? "Dashboard" : b.caption}</span>
           {bukaMenu && (
             <ChevronDownIcon aria-hidden
@@ -459,6 +456,7 @@ export default function App() {
         {popup && popNode && (
           <div className="no-print fixed z-40 mt-1" style={{ left: popup.left, top: popup.top }} ref={popupRef}>
             <PopupItems nodes={popNode.children} kasir={isKasir} ditolak={ditolak} onPick={pick} />
+            <EscTutup onClose={() => setPopup(null)} />
           </div>
         )}
         <main className="mdi-workspace min-h-0 overflow-hidden bg-background">
@@ -505,14 +503,11 @@ export default function App() {
           {/* Nama layar yang sedang dibuka (di VB tampil sebagai [Nama Layar] di judul jendela). */}
           <span className="shrink-0 truncate font-semibold text-foreground" aria-live="polite">{child.caption}</span>
           <Separator orientation="vertical" className="h-3.5 bg-foreground/20 data-vertical:self-center" />
-          <span className="flex shrink-0 items-center gap-1">
+          {/* Satu sebutan untuk orang yang sedang masuk: nama dan levelnya. Nama login ada di tooltip. */}
+          <span className="flex shrink-0 items-center gap-1" title={`Nama login: ${user.iduser}`}>
             <span className="text-muted-foreground">Pengguna:</span>
-            <span className="font-semibold text-foreground">{user.iduser}</span>
-          </span>
-          <Separator orientation="vertical" className="h-3.5 bg-foreground/20 data-vertical:self-center" />
-          <span className="flex shrink-0 items-center gap-1">
-            <span className="text-muted-foreground">Status:</span>
-            <span className="font-semibold text-foreground">{user.level}</span>
+            <span className="font-semibold text-foreground">{user.namakaryawan || user.iduser}</span>
+            <span className="text-muted-foreground">({user.level})</span>
           </span>
           <Separator orientation="vertical" className="h-3.5 bg-foreground/20 data-vertical:self-center" />
           {(() => {
@@ -520,9 +515,9 @@ export default function App() {
             return r
               ? <span className="min-w-0 flex-1 truncate text-foreground/85" title={r.teks} data-slot="status-pusat">{r.teks}</span>
               : (
-                <span className="flex min-w-0 flex-1 items-center gap-1" title={dbPath ? `Lokasi Data: ${dbPath}` : undefined}>
-                  <span className="shrink-0 text-muted-foreground">Lokasi Data:</span>
-                  <span className="truncate text-foreground/85">{dbPath || "Data tersimpan di komputer ini"}</span>
+                // Alamat file hanya di tooltip: kasir cukup tahu datanya ada di komputer ini.
+                <span className="min-w-0 flex-1 truncate text-foreground/85" title={dbPath ? `Lokasi data: ${dbPath}` : undefined}>
+                  Data toko tersimpan di komputer ini
                 </span>
               );
           })()}
@@ -569,21 +564,21 @@ export default function App() {
       )}
       {konfirmKeluar && (
         <Modal title="Keluar" onClose={() => setKonfirmKeluar(false)}
-          footer={<><Button variant="outline" onClick={() => setKonfirmKeluar(false)}>Tidak</Button><Button autoFocus variant={kasirMasihAda > 0 ? "destructive" : "default"} onClick={keluar}>Ya, keluar</Button></>}>
+          footer={<><Button variant="outline" onClick={() => setKonfirmKeluar(false)}>Tidak</Button><Button autoFocus variant={kasirMasihAda > 0 ? "destructive" : "default"} onClick={keluar}>Ya, tutup KasirJet</Button></>}>
           {kasirMasihAda > 0 && (
             <p className="font-semibold">Masih ada {kasirMasihAda} komputer kasir yang tersambung. Kalau Anda menutup KasirJet di sini, kasir tidak bisa menyimpan transaksi. Tetap tutup?</p>
           )}
           {(kasirBelumBayar() || kasirMasihAda === 0) && (
             <p>{kasirBelumBayar()
-              ? "Masih ada transaksi yang belum dibayar di kasir. Tetap keluar dari program?"
-              : "Anda yakin ingin keluar dari program?"}</p>
+              ? "Masih ada transaksi yang belum dibayar. Kalau Anda menutup KasirJet, barang di transaksi itu hilang. Tetap tutup KasirJet?"
+              : "Tutup KasirJet sekarang?"}</p>
           )}
         </Modal>
       )}
       {konfirmLogoff && (
-        <Modal title="Log Off" onClose={() => setKonfirmLogoff(false)}
-          footer={<><Button variant="outline" onClick={() => setKonfirmLogoff(false)}>Tidak</Button><Button autoFocus onClick={() => { setKonfirmLogoff(false); void logout(); }}>Ya, log off</Button></>}>
-          <p>Masih ada transaksi yang belum dibayar di kasir. Tetap log off?</p>
+        <Modal title="Ganti Pengguna" onClose={() => setKonfirmLogoff(false)}
+          footer={<><Button variant="outline" onClick={() => setKonfirmLogoff(false)}>Tidak</Button><Button autoFocus onClick={() => { setKonfirmLogoff(false); void logout(); }}>Ya, ganti pengguna</Button></>}>
+          <p>Masih ada transaksi yang belum dibayar. Kalau Anda ganti pengguna, barang di transaksi itu hilang. Tetap ganti pengguna?</p>
         </Modal>
       )}
     </AppCtx.Provider>
@@ -602,3 +597,9 @@ function Jam() {
   return <span className="shrink-0 font-semibold text-foreground tabular-nums">{tgl} · {jam}</span>;
 }
 
+
+/** Esc hanya menutup menu header. Menu ikut tumpukan Esc yang sama dengan layar dan dialog, jadi layar di bawahnya tidak ikut tertutup. */
+function EscTutup(props: { onClose: () => void }) {
+  useTopEscape(props.onClose);
+  return null;
+}

@@ -180,7 +180,7 @@ export function JenisNonTunai() {
           </span>
         ) : (
           <span className="truncate font-normal text-muted-foreground">
-            ↑↓←→ Navigasi · Enter/F2 Edit · Del Hapus · Ctrl+C Salin
+            ↑↓←→ Navigasi · Enter/F2 Ubah · Del Hapus · Ctrl+C Salin
           </span>
         )}
       </div>

@@ -1,3 +1,4 @@
+import { pesanKodeTidakAda } from "@/lib/pesanBarang";
 import { ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { SearchIcon } from "lucide-react";
@@ -83,11 +84,11 @@ export function Retur({ mode }: { mode: ReturMode }) {
   const onScan = async () => {
     const kode = scan.trim();
     if (!kode) return;
-    // Retur per barang boleh memilih barang nonaktif; tidak ketemu: pesan "Data tidak ditemukan."
+    // Retur per barang boleh memilih barang nonaktif, jadi pesannya tidak menyebut barang tidak aktif.
     const hasil = await api.masterList("mdbarang", { search: kode, limit: 20 }).catch(() => ({ rows: [] as Row[] }));
     const up = kode.toUpperCase();
     const b = hasil.rows.find((x) => [x.kodebarang, x.barcode, x.barcode2].some((v) => String(v ?? "").toUpperCase() === up));
-    if (b) tambah(b); else msg.alert("Data tidak ditemukan.");
+    if (b) tambah(b); else msg.alert(pesanKodeTidakAda(kode, { nonaktif: false }));
     setScan("");
   };
 

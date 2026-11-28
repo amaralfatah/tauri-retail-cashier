@@ -109,5 +109,5 @@ const tanpaAwalan = (t: string) => (t.startsWith("[pusat] ") ? t.slice(8) : t);
 export function errText(err: unknown): string {
   if (typeof err === "string") return tanpaAwalan(err);
   if (err instanceof Error) return tanpaAwalan(err.message);
-  return "Terjadi kesalahan. Silakan coba lagi.";
+  return "Perintah tadi gagal dijalankan. Coba sekali lagi.";
 }

@@ -309,7 +309,7 @@ export function Promo({ jenis }: { jenis: PromoJenis }) {
             <Kbd className="border border-destructive/35 bg-destructive/10 text-destructive">F6</Kbd>
           </Button>
           <Button type="button" variant="outline" size="default" data-vb="cRefresh" className="h-8 border-foreground/20 bg-background px-2.5 text-xs font-medium text-foreground shadow-xs" onClick={refresh}>
-            <span>Refresh</span>
+            <span>Muat Ulang</span>
             <Kbd className="border border-border bg-muted text-foreground">F5</Kbd>
           </Button>
           {jenis === "diskon" && (

@@ -13,13 +13,17 @@ export interface MenuNode { id: string; nama: string; caption: string; children:
 /** Menu aplikasi lama yang sengaja dihilangkan (registrasi/aktivasi lisensi). */
 export const MENU_SEMBUNYI: ReadonlySet<string> = new Set(["mnBantuanRegistrasi"]);
 
+/** Menu yang paling sering dipakai ditaruh paling atas di grupnya (di aplikasi lama, Order ada di atas Transaksi). */
+const MENU_DULUAN: ReadonlySet<string> = new Set(["mnTRTrPenjualan", "mnTRTransPembelian"]);
+
 function saringMenu(nodes: MenuNode[]): MenuNode[] {
-  return nodes.flatMap((n) => {
+  const hasil = nodes.flatMap((n) => {
     if (MENU_SEMBUNYI.has(n.nama)) return [];
     if (!n.children.length) return [n];
     const children = saringMenu(n.children);
     return children.length ? [{ ...n, children }] : [];
   });
+  return [...hasil.filter((n) => MENU_DULUAN.has(n.nama)), ...hasil.filter((n) => !MENU_DULUAN.has(n.nama))];
 }
 
 export const MENU = saringMenu(menuData as MenuNode[]);
@@ -127,7 +131,7 @@ export function allowedFor(kasir: boolean, node: MenuNode, ditolak?: ReadonlySet
 export interface ToolBtn { key: string; caption: string; icon: LucideIcon; menu?: string; sepBefore?: boolean }
 export const TOOLBAR: ToolBtn[] = [
   { key: "home", caption: "Home", icon: HouseIcon },
-  { key: "logoff", caption: "Log Off", icon: LogOutIcon },
+  { key: "logoff", caption: "Ganti Pengguna", icon: LogOutIcon },
   { key: "master", caption: "Master Data", icon: PackageIcon, menu: "mnMasterData", sepBefore: true },
   { key: "jual", caption: "Penjualan", icon: ShoppingCartIcon, menu: "mnTRPenjualan" },
   { key: "beli", caption: "Pembelian", icon: TruckIcon, menu: "mnTRPembelian" },

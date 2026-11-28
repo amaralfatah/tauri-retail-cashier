@@ -68,12 +68,12 @@ export function Home() {
   }
 
   const isKasir = user.level === "Kasir";
-  type QuickItem = { title: string; meta: string; page: Parameters<typeof go>[0]; primary?: boolean; show: boolean };
+  type QuickItem = { title: string; meta: string; page: Parameters<typeof go>[0]; show: boolean };
   const groups: { title: string; items: QuickItem[] }[] = [
     {
       title: "Transaksi & Kasir",
       items: ([
-        { title: "Transaksi Penjualan", meta: "Kasir POS · Scan Barcode", page: "jual", primary: true, show: true },
+        { title: "Transaksi Penjualan", meta: "Layar kasir: scan barang lalu bayar", page: "jual", show: true },
         { title: "Order Penjualan", meta: "Pesanan pelanggan & uang muka (DP)", page: "orderjual", show: !isKasir },
         { title: "Retur Penjualan", meta: "Pengembalian barang dari pelanggan", page: "returjual", show: !isKasir },
         { title: "Pelunasan Piutang", meta: "Pembayaran tagihan piutang pelanggan", page: "piutang", show: !isKasir },
@@ -83,33 +83,34 @@ export function Home() {
       title: "Inventori & Pembelian",
       items: ([
         { title: "Katalog & Cek Harga", meta: "Cek harga jual, rak, dan stok barang", page: "katalog", show: true },
-        { title: "Data Barang", meta: "Master barang, barcode, dan multi satuan", page: "master", show: !isKasir },
-        { title: "Transaksi Pembelian", meta: "Penerimaan stok masuk dari supplier", page: "beli", show: !isKasir },
-        { title: "Stok Opname", meta: "Penyesuaian stok fisik dengan stok buku", page: "opname", show: !isKasir },
+        { title: "Data Barang", meta: "Nama, harga, barcode, dan satuan barang", page: "master", show: !isKasir },
+        { title: "Transaksi Pembelian", meta: "Catat barang yang datang dari supplier", page: "beli", show: !isKasir },
+        { title: "Stok Opname", meta: "Cocokkan stok di rak dengan stok di KasirJet", page: "opname", show: !isKasir },
       ] as QuickItem[]).filter((x) => x.show),
     },
     {
-      title: "Keuangan, Laporan & Sistem",
+      title: "Keuangan & Laporan",
       items: ([
-        { title: "Transaksi Kas", meta: "Pemasukan, pengeluaran operasional, & saldo", page: "keuangan", show: !isKasir },
+        { title: "Transaksi Kas", meta: "Uang masuk, uang keluar, dan saldo kas", page: "keuangan", show: !isKasir },
         { title: "Laporan Toko", meta: "Penjualan, stok, piutang, dan laba rugi", page: "laporan", show: true },
         { title: "Cetak Barcode", meta: "Cetak label barcode barang", page: "barcode", show: !isKasir },
-        { title: "Panduan Penggunaan", meta: "Petunjuk lengkap operasional program", page: "panduan", show: true },
+        { title: "Panduan Penggunaan", meta: "Cara memakai KasirJet dari awal", page: "panduan", show: true },
       ] as QuickItem[]).filter((x) => x.show),
     },
   ].filter((g) => g.items.length > 0);
 
+  const infoToko = [setting.bidangusaha, setting.alamat, setting.kota, setting.tlp && `Telp. ${setting.tlp}`].filter(Boolean).join(" · ");
   const angka = (n: number | null) => (n === null ? "–" : rp(n));
   type Kartu = { judul: string; nilai: string; ket: string; page?: Parameters<typeof go>[0]; tegas?: boolean; show: boolean };
   const kartu: Kartu[] = ([
     { judul: "Penjualan hari ini", nilai: ringkas.jual === null ? "–" : `Rp ${rp(ringkas.jual)}`, ket: ringkas.struk === null ? "Jumlah struk belum bisa dimuat" : `${rp(ringkas.struk)} struk`, page: !isKasir ? "laporan" : undefined, show: true },
-    { judul: "Transaksi pending", nilai: angka(ringkas.pending), ket: "Belanjaan belum dibayar — buka di layar kasir", page: "jual", show: true },
+    { judul: "Transaksi ditunda", nilai: angka(ringkas.pending), ket: "Belum dibayar. Lanjutkan di kasir dengan F8", page: "jual", show: true },
     { judul: "Stok menipis", nilai: angka(ringkas.menipis), ket: "Barang yang stoknya sudah di batas minimum", page: "master", tegas: (ringkas.menipis ?? 0) > 0, show: !isKasir },
-    { judul: "Piutang jatuh tempo", nilai: angka(ringkas.piutang), ket: "Transaksi yang belum dilunasi pelanggan", page: "piutang", tegas: (ringkas.piutang ?? 0) > 0, show: !isKasir },
+    { judul: "Piutang jatuh tempo", nilai: angka(ringkas.piutang), ket: "Sudah jatuh tempo, belum dilunasi pelanggan", page: "piutang", tegas: (ringkas.piutang ?? 0) > 0, show: !isKasir },
   ] as Kartu[]).filter((k) => k.show);
 
   return (
-    <div className="tp-scroll-always flex h-full min-h-0 flex-col justify-between gap-4 bg-background p-4 font-sans text-foreground" data-form="FrmZHome">
+    <div className="tp-scroll-always flex h-full min-h-0 flex-col gap-4 bg-background p-4 font-sans text-foreground" data-form="FrmZHome">
       <div className="flex w-full flex-col gap-4">
         {versiBaru && noticeDitutup !== versiBaru.versi && (
           <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-muted px-4 py-3" data-slot="ajak-perbarui">
@@ -122,7 +123,7 @@ export function Home() {
         )}
         {ajakPindah && (
           <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-muted px-4 py-3" data-slot="ajak-pindah">
-            <p className="text-sm font-medium text-foreground">Anda sebelumnya memakai Toko Pro versi lama? Pindahkan data Anda ke sini.</p>
+            <p className="text-sm font-medium text-foreground">Sebelumnya memakai Toko Pro lama? Pindahkan data Anda ke KasirJet.</p>
             <div className="flex items-center gap-2">
               <Button type="button" variant="outline" size="default" className="h-8 bg-background px-3 text-xs font-medium" onClick={() => { tutupPindahLama(); setAjakPindah(false); }}>Nanti saja</Button>
               <Button type="button" variant="default" size="default" className="h-8 px-3.5 text-xs font-semibold" onClick={() => setBukaPindah(true)}>Pindahkan Data</Button>
@@ -132,9 +133,18 @@ export function Home() {
         <div className="flex flex-wrap items-center justify-between gap-4 rounded-lg border border-border bg-card px-4 py-3">
           <div>
             <h1 className="text-base font-bold tracking-tight text-foreground">{setting.namausaha || "KasirJet"}</h1>
-            <p className="mt-0.5 text-xs text-muted-foreground">
-              {[setting.bidangusaha, setting.alamat, setting.kota, setting.tlp && `Telp. ${setting.tlp}`].filter(Boolean).join(" · ") || "Sistem Kasir & Inventori Toko Retail"}
-            </p>
+            {infoToko && <p className="mt-0.5 text-xs text-muted-foreground">{infoToko}</p>}
+            {!setting.alamat && !isKasir && (
+              // Alamat kosong: tampil sebagai ajakan, bukan seperti alamat, dan langsung membuka Pengaturan Program.
+              // Kasir tidak bisa membuka Pengaturan, jadi tidak diberi pesan yang tidak bisa ia tindak lanjuti.
+              <p className="mt-0.5 text-xs font-medium text-foreground">
+                Alamat toko belum diisi.{" "}
+                <button type="button" data-slot="home-isi-alamat" onClick={() => go("pengaturan")}
+                  className="cursor-pointer rounded-xs font-semibold text-primary underline underline-offset-2 outline-none hover:text-primary/80 focus-visible:ring-2 focus-visible:ring-ring">
+                  Isi sekarang
+                </button>
+              </p>
+            )}
           </div>
           <div className="flex items-center gap-2">
             {!isKasir && (
@@ -161,17 +171,14 @@ export function Home() {
                     key={c.title}
                     type="button"
                     onClick={() => go(c.page)}
-                    className={`flex items-center justify-between rounded-md border px-3.5 py-2.5 text-left transition-colors ${
-                      c.primary
-                        ? "border-primary bg-primary font-semibold text-primary-foreground shadow-sm hover:bg-primary/90"
-                        : "border-border bg-background text-foreground hover:border-foreground/30 hover:bg-muted/50"
-                    }`}
+                    // Semua kartu sama; satu-satunya tombol biru di Home adalah "Buka Kasir Penjualan".
+                    className="flex items-center justify-between rounded-md border border-border bg-background px-3.5 py-2.5 text-left text-foreground transition-colors hover:border-foreground/30 hover:bg-muted/50"
                   >
                     <div>
                       <div className="text-xs font-semibold">{c.title}</div>
-                      <div className={`mt-0.5 text-[11px] ${c.primary ? "text-primary-foreground/80" : "text-muted-foreground"}`}>{c.meta}</div>
+                      <div className="mt-0.5 text-[11px] text-muted-foreground">{c.meta}</div>
                     </div>
-                    <span className={`text-xs ${c.primary ? "text-primary-foreground" : "text-muted-foreground"}`}>→</span>
+                    <span className="text-xs text-muted-foreground">→</span>
                   </button>
                 ))}
               </div>
@@ -216,7 +223,6 @@ export function Home() {
             <span>Tutup Layar</span>
           </span>
         </div>
-        <span>Operator aktif: <strong className="font-semibold text-foreground">{user.namakaryawan || user.iduser}</strong> ({user.level})</span>
       </div>
       {bukaPindah && <PindahLama onClose={() => setBukaPindah(false)} />}
     </div>

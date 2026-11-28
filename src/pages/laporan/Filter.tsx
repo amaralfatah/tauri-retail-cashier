@@ -57,7 +57,7 @@ function Pilih(props: { who: Who; rows: Row[]; onPick: (kode: string) => void; o
 }
 
 /** Dialog filter laporan (Penjualan, Pembelian, Piutang, Hutang, Laba Rugi, Transaksi Barang, Barang). */
-export function LapFilterDialog(props: { form: string; value: LapFilterVal; onApply: (f: LapFilterVal) => void; onClose: () => void }) {
+export function LapFilterDialog(props: { form: string; judul?: string; value: LapFilterVal; onApply: (f: LapFilterVal) => void; onClose: () => void }) {
   const [f, setF] = useState<LapFilterVal>(props.value);
   const [pick, setPick] = useState<Who | null>(null);
   const set = (k: string, v: string) => setF((x) => ({ ...x, [k]: v }));
@@ -117,7 +117,7 @@ export function LapFilterDialog(props: { form: string; value: LapFilterVal; onAp
   return (
     <div onKeyDown={enterTampil}>
       <ModalFrame
-        title={FORM_TITLE[props.form] ?? "Filter Laporan"}
+        title={props.judul ? `Filter ${props.judul}` : FORM_TITLE[props.form] ?? "Filter Laporan"}
         width={isBarang ? 580 : 520}
         onClose={props.onClose}
         footer={

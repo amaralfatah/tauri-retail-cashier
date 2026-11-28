@@ -141,7 +141,7 @@ export function Laporan(props: { initial?: Tab }) {
         <div className="lap-wrap flex h-full flex-col bg-muted/60">
           <div className="lap-toolbar no-print flex items-center gap-1.5 border-b border-border bg-muted px-3 py-1.5">
             <Button type="button" variant="default" className="h-8 px-3 text-xs" onClick={() => { setMenuEkspor(false); cetakLaporan().catch((e) => setErr(errText(e))); }} disabled={rows === null}>Cetak</Button>
-            <Button type="button" variant="outline" className="h-8 bg-background px-3 text-xs" onClick={() => { setMenuEkspor(false); void terapkan(filter); }} disabled={rows === null}>Refresh</Button>
+            <Button type="button" variant="outline" className="h-8 bg-background px-3 text-xs" onClick={() => { setMenuEkspor(false); void terapkan(filter); }} disabled={rows === null}>Muat Ulang</Button>
             <span className="lap-ekspor relative">
               <Button type="button" variant="outline" className="h-8 bg-background px-3 text-xs" onClick={() => setMenuEkspor((x) => !x)} disabled={rows === null}>
                 <span>Ekspor</span>
@@ -180,10 +180,10 @@ export function Laporan(props: { initial?: Tab }) {
         </div>
       )}
       {(!tampil || ubahFilter) && stok && (
-        <FilterWindow table="mdbarang" rows={barang} value={filter} onApply={terapkan} onClose={() => (tampil ? setUbahFilter(false) : go("home"))} />
+        <FilterWindow table="mdbarang" judul={def.title} rows={barang} value={filter} onApply={terapkan} onClose={() => (tampil ? setUbahFilter(false) : go("home"))} />
       )}
       {(!tampil || ubahFilter) && !stok && !tanpaFilter && (
-        <LapFilterDialog form={def.form} value={filter} onApply={terapkan} onClose={() => (tampil ? setUbahFilter(false) : go("home"))} />
+        <LapFilterDialog form={def.form} judul={def.title} value={filter} onApply={terapkan} onClose={() => (tampil ? setUbahFilter(false) : go("home"))} />
       )}
     </>
   );

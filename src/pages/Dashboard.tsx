@@ -107,7 +107,7 @@ export function Dashboard(props: { onTutup: () => void }) {
             Notifikasi
           </Button>
           <Button type="button" variant="outline" size="default" data-vb="cRefresh" className="h-8 bg-background px-2.5 text-xs font-medium" onClick={muat}>
-            Refresh
+            Muat Ulang
           </Button>
           <Button type="button" variant="outline" size="default" data-vb="cClose" className="h-8 bg-background px-2.5 text-xs font-medium" onClick={props.onTutup}>
             <span>Tutup</span>
