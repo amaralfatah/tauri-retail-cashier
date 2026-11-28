@@ -33,7 +33,7 @@ export function PilihanPeran(props: {
       onValueChange={(v) => onUbah({ ...nilai, mode: v as ModePusat })}
       disabled={props.disabled}
       onKeyDown={enter}
-      aria-label="Cara memakai Kasir Jet"
+      aria-label="Cara memakai KasirJet"
       className="gap-2"
     >
       {PILIHAN.map((p) => {
@@ -49,7 +49,7 @@ export function PilihanPeran(props: {
             </label>
             {aktif && p.nilai === "pusat" && (
               <div className="flex flex-col gap-1.5 border-t border-border px-3 py-2 text-xs text-foreground">
-                <p>Biarkan komputer ini menyala dan Kasir Jet tetap terbuka selama toko buka, supaya komputer kasir bisa menyimpan transaksi.</p>
+                <p>Biarkan komputer ini menyala dan KasirJet tetap terbuka selama toko buka, supaya komputer kasir bisa menyimpan transaksi.</p>
                 <p>Windows akan meminta izin supaya komputer kasir bisa tersambung. Pilih <strong>Ya</strong> saat ditanya.</p>
               </div>
             )}

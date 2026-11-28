@@ -181,7 +181,7 @@ fn versi_lebih_tinggi_ditolak_dan_tidak_disentuh() {
     let tinggi = migrasi::versi_terbaru() + 5;
     Connection::open(&p).unwrap().execute_batch(&format!("PRAGMA user_version = {tinggi}")).unwrap();
     let err = db::open(&p).unwrap_err();
-    assert_eq!(err, "Data ini dibuat oleh Kasir Jet versi yang lebih baru. Pasang versi terbaru, lalu buka lagi.");
+    assert_eq!(err, "Data ini dibuat oleh KasirJet versi yang lebih baru. Pasang versi terbaru, lalu buka lagi.");
     assert_eq!(ver(&Connection::open(&p).unwrap()), tinggi);
 }
 

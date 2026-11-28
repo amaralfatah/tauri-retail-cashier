@@ -75,7 +75,7 @@ export function Login(props: { namaUsaha?: string; onLogin: (u: User) => void })
       <Dialog title={formCaption("FrmZLogin")} width={400} onClose={batal}>
         <div className="flex flex-col gap-4 p-5 font-sans text-xs text-foreground" data-form="FrmZLogin">
           <div className="border-b border-border pb-3">
-            <div className="text-base font-bold text-foreground" data-vb="lblNama">{props.namaUsaha || "Kasir Jet"}</div>
+            <div className="text-base font-bold text-foreground" data-vb="lblNama">{props.namaUsaha || "KasirJet"}</div>
             <div className="mt-0.5 text-xs text-muted-foreground">Masukkan Nama User dan Kata Sandi untuk melanjutkan</div>
           </div>
 

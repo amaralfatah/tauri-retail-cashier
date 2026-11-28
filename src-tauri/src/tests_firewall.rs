@@ -3,14 +3,14 @@
 
 use crate::jaringan::firewall::*;
 
-const EXE: &str = r"C:\Program Files\Kasir Jet\tokopro-app.exe";
+const EXE: &str = r"C:\Program Files\KasirJet\tokopro-app.exe";
 
 #[test]
 fn perintah_tambah_hanya_port_pusat_program_ini_dan_subnet_lokal() {
     let a = argumen_tambah(47210, EXE);
     assert_eq!(
         baris_perintah(&a),
-        r#"advfirewall firewall add rule name="Kasir Jet Pusat" dir=in action=allow protocol=TCP localport=47210 profile=private,public,domain remoteip=localsubnet program="C:\Program Files\Kasir Jet\tokopro-app.exe""#
+        r#"advfirewall firewall add rule name="KasirJet Pusat" dir=in action=allow protocol=TCP localport=47210 profile=private,public,domain remoteip=localsubnet program="C:\Program Files\KasirJet\tokopro-app.exe""#
     );
     // Satu aturan masuk, tanpa rentang port dan tanpa "any": hanya port Pusat, hanya program ini, hanya subnet lokal.
     assert!(a.contains(&"dir=in".to_string()) && a.contains(&"action=allow".to_string()));
@@ -22,8 +22,8 @@ fn perintah_tambah_hanya_port_pusat_program_ini_dan_subnet_lokal() {
 
 #[test]
 fn perintah_hapus_dan_cek_memakai_nama_aturan_yang_sama() {
-    assert_eq!(baris_perintah(&argumen_hapus()), r#"advfirewall firewall delete rule name="Kasir Jet Pusat""#);
-    assert_eq!(baris_perintah(&argumen_cek()), r#"advfirewall firewall show rule name="Kasir Jet Pusat" verbose"#);
+    assert_eq!(baris_perintah(&argumen_hapus()), r#"advfirewall firewall delete rule name="KasirJet Pusat""#);
+    assert_eq!(baris_perintah(&argumen_cek()), r#"advfirewall firewall show rule name="KasirJet Pusat" verbose"#);
 }
 
 #[test]
@@ -31,9 +31,9 @@ fn skrip_uac_menghapus_aturan_lama_lalu_membuat_yang_baru() {
     let s = skrip_beri_izin(47210, EXE);
     let baris: Vec<&str> = s.lines().collect();
     assert_eq!(baris.len(), 3);
-    assert_eq!(baris[0], r#"netsh --% advfirewall firewall delete rule name="Kasir Jet Pusat""#);
-    assert!(baris[1].starts_with("netsh --% advfirewall firewall add rule name=\"Kasir Jet Pusat\""));
-    assert!(baris[1].ends_with(r#"program="C:\Program Files\Kasir Jet\tokopro-app.exe""#));
+    assert_eq!(baris[0], r#"netsh --% advfirewall firewall delete rule name="KasirJet Pusat""#);
+    assert!(baris[1].starts_with("netsh --% advfirewall firewall add rule name=\"KasirJet Pusat\""));
+    assert!(baris[1].ends_with(r#"program="C:\Program Files\KasirJet\tokopro-app.exe""#));
     assert_eq!(baris[2], "exit $LASTEXITCODE");
 }
 
@@ -58,7 +58,7 @@ fn perintah_naik_hak_membuka_uac_dan_meneruskan_kode_keluar() {
 
 #[test]
 fn hasil_cek_cocok_bila_port_dan_program_sama() {
-    let keluaran = "Rule Name:                            Kasir Jet Pusat\r\nEnabled:                              Yes\r\nDirection:                            In\r\nProfiles:                             Domain,Private,Public\r\nProtocol:                             TCP\r\nLocalPort:                            47210\r\nRemoteIP:                             LocalSubnet\r\nProgram:                              C:\\program files\\kasir jet\\tokopro-app.exe\r\nAction:                               Allow\r\n";
+    let keluaran = "Rule Name:                            KasirJet Pusat\r\nEnabled:                              Yes\r\nDirection:                            In\r\nProfiles:                             Domain,Private,Public\r\nProtocol:                             TCP\r\nLocalPort:                            47210\r\nRemoteIP:                             LocalSubnet\r\nProgram:                              C:\\program files\\kasirjet\\tokopro-app.exe\r\nAction:                               Allow\r\n";
     assert!(aturan_cocok(keluaran, 47210, EXE)); // huruf besar-kecil tidak berpengaruh
     assert!(!aturan_cocok(keluaran, 47211, EXE)); // port berbeda
     assert!(!aturan_cocok(keluaran, 4721, EXE)); // bukan potongan dari angka lain

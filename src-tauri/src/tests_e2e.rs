@@ -148,7 +148,7 @@ fn e2e_full_store_lifecycle() {
     // Aktifkan kembali login & semua fitur bisnis untuk pengujian E2E
     c.execute(
         "UPDATE tseting SET
-            namausaha = 'Kasir Jet E2E',
+            namausaha = 'KasirJet E2E',
             aktiflogin = 1,
             aktiftranskas = 1,
             aktifpromo = 1,

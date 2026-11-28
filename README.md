@@ -1,6 +1,6 @@
-# Kasir Jet untuk PC (Tauri + Rust + React)
+# KasirJet untuk PC (Tauri + Rust + React)
 
-Kasir Jet untuk PC adalah versi baru Software Toko Pro Unlimited (VB6 + Firebird), dibangun ulang dari hasil analisis di `../analisis`.
+KasirJet untuk PC adalah versi baru Software Toko Pro Unlimited (VB6 + Firebird), dibangun ulang dari hasil analisis di `../analisis`.
 Skema database, nomor transaksi, dan aturan stoknya sama dengan aplikasi lama, jadi data lama bisa dipindahkan.
 
 ## Isi
@@ -65,7 +65,7 @@ jadi semua user hasil impor masuk dengan password sementara `admin` lalu membuat
 
 Toko dengan lebih dari satu komputer kasir bisa menjadikan satu komputer sebagai Pusat. Pusat menyimpan semua data toko, dan komputer kasir lain tersambung ke Pusat lewat jaringan, jadi stok dan nomor transaksi selalu sama. Komputer yang tidak memilih apa pun tetap berdiri sendiri seperti biasa. Rancangan lengkapnya ada di `docs/rancangan-komputer-pusat.md`.
 
-**Menjadikan komputer sebagai Pusat.** Manager membuka Pengaturan, Alat Bantu, tab Komputer Pusat, lalu memilih "Jadikan komputer ini Pusat". Windows meminta izin administrator (UAC) untuk satu aturan firewall bernama "Kasir Jet Pusat". Aturan itu hanya membuka port 47210 (TCP) untuk Toko Pro, hanya bagi komputer di subnet yang sama, di profil Private, Public, dan Domain. Kalau izin ditolak, tombol "Beri izin" tersedia di tab yang sama. Aturan dibuat ulang bila lokasi program berubah, dan dihapus saat Toko Pro di-uninstall.
+**Menjadikan komputer sebagai Pusat.** Manager membuka Pengaturan, Alat Bantu, tab Komputer Pusat, lalu memilih "Jadikan komputer ini Pusat". Windows meminta izin administrator (UAC) untuk satu aturan firewall bernama "KasirJet Pusat". Aturan itu hanya membuka port 47210 (TCP) untuk Toko Pro, hanya bagi komputer di subnet yang sama, di profil Private, Public, dan Domain. Kalau izin ditolak, tombol "Beri izin" tersedia di tab yang sama. Aturan dibuat ulang bila lokasi program berubah, dan dihapus saat Toko Pro di-uninstall.
 
 **Menyambungkan komputer kasir.** Di Pusat, klik "Tambah komputer kasir" untuk mendapat kode sambung 6 angka (berlaku 10 menit, sekali pakai). Di komputer kasir, pilih "Sambungkan ke Pusat", ketik nama komputer Pusat (atau alamat IP-nya), lalu kodenya. Pusat menampilkan nama dan alamat IP-nya dengan tombol Salin.
 

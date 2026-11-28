@@ -243,8 +243,8 @@ const BAGIAN: Bagian[] = [
         "Klik Ubah cara pakai, pilih Jadikan komputer ini Pusat, lalu klik Terapkan.",
         "Windows meminta izin supaya komputer kasir bisa tersambung. Pilih Ya. Kalau Anda memilih Tidak, tab Komputer Pusat menampilkan tombol Beri izin. Klik tombol itu, lalu pilih Ya.",
       ] },
-      { p: "Pilihan yang sama muncul saat Kasir Jet pertama kali dibuka di komputer baru. Kalau komputer itu masih memakai Toko Pro lama, Kasir Jet mengambil datanya sendiri dan menjadikan komputer itu Pusat." },
-      { p: "Pilih komputer meja yang tetap di toko untuk menjadi Pusat. Biarkan komputer itu menyala dan Kasir Jet tetap terbuka selama toko buka." },
+      { p: "Pilihan yang sama muncul saat KasirJet pertama kali dibuka di komputer baru. Kalau komputer itu masih memakai Toko Pro lama, KasirJet mengambil datanya sendiri dan menjadikan komputer itu Pusat." },
+      { p: "Pilih komputer meja yang tetap di toko untuk menjadi Pusat. Biarkan komputer itu menyala dan KasirJet tetap terbuka selama toko buka." },
       { p: "Menyambungkan komputer kasir:" },
       { ol: [
         "Di Pusat, buka tab Komputer Pusat, lalu klik Tambah komputer kasir. Layar menampilkan kode sambung 6 angka. Kode ini berlaku 10 menit dan hanya bisa dipakai sekali.",
@@ -254,24 +254,24 @@ const BAGIAN: Bagian[] = [
       { p: "Daftar komputer kasir yang tersambung ada di tab Komputer Pusat di Pusat. Klik Putuskan untuk mencabut sambungan satu komputer kasir. Komputer itu perlu kode sambung baru untuk tersambung lagi." },
       { p: "Kalau Pusat dibuat dari Toko Pro lama, komputer kasir yang baru dibuka tersambung sendiri tanpa kode. Masa ini berakhir pukul 23.59, setelah 10 komputer tersambung, atau saat Manager menekan Selesai menyambungkan di tab Komputer Pusat. Komputer yang tersambung tanpa kode diberi tanda Tanpa kode di daftar. Kalau ada yang bukan komputer toko Anda, klik Putuskan. Satu alamat hanya bisa punya satu komputer yang tersambung tanpa kode." },
       { p: "Kalau pilihan Aktifkan User Login saat masuk dimatikan di Pengaturan, setiap komputer yang tersambung ke Pusat langsung masuk sebagai Administrator tanpa kata sandi. Karena itu, putuskan komputer yang tidak dikenal, dan jangan matikan login di toko yang jaringannya dipakai orang lain." },
-      { p: "Backup, Restore, Import, Perbaiki, dan SQL Editor hanya bisa dibuka di komputer Pusat. Auto backup juga hanya berjalan di Pusat. Versi Kasir Jet di komputer kasir harus sama dengan versi di Pusat. Kalau berbeda, perbarui dulu komputer yang lebih lama." },
+      { p: "Backup, Restore, Import, Perbaiki, dan SQL Editor hanya bisa dibuka di komputer Pusat. Auto backup juga hanya berjalan di Pusat. Versi KasirJet di komputer kasir harus sama dengan versi di Pusat. Kalau berbeda, perbarui dulu komputer yang lebih lama." },
       { p: "Kabel dan Wi-Fi:" },
       { ul: [
-        "Komputer bisa disambung dengan kabel RJ45 langsung tanpa router, lewat switch, lewat router, atau lewat Wi-Fi. Anda tidak perlu memilih jenis jaringannya di Kasir Jet.",
+        "Komputer bisa disambung dengan kabel RJ45 langsung tanpa router, lewat switch, lewat router, atau lewat Wi-Fi. Anda tidak perlu memilih jenis jaringannya di KasirJet.",
         "Pada kabel langsung tanpa router, Windows memberi alamat yang diawali 169.254. Alamat ini dibuat Windows sendiri dan bisa berubah setelah komputer dinyalakan ulang. Kalau komputer kasir tidak bisa tersambung setelah Pusat dinyalakan ulang, ketik nama komputer Pusat di komputer kasir, atau lihat alamat terbaru di tab Komputer Pusat. Untuk alamat yang tidak berubah, minta teknisi memasang alamat IP tetap.",
         "Wi-Fi tamu, dan pengaturan router yang melarang sesama perangkat saling berhubungan (sering bernama isolasi klien atau AP isolation), memblokir sambungan antarkomputer. Pakai Wi-Fi utama toko, atau kabel.",
-        "Izin Windows hanya membuka satu jalur (port 47210) untuk Kasir Jet, dan hanya untuk komputer di jaringan yang sama. Setiap komputer kasir tetap perlu disambungkan lebih dulu, dan pengguna perlu login.",
-        "Kalau Pusat berupa laptop yang dibawa ke tempat lain, jangan biarkan Kasir Jet terbuka di Wi-Fi umum.",
-        "Di Mac, macOS menampilkan pertanyaan apakah Kasir Jet boleh menerima koneksi masuk. Pilih Izinkan.",
+        "Izin Windows hanya membuka satu jalur (port 47210) untuk KasirJet, dan hanya untuk komputer di jaringan yang sama. Setiap komputer kasir tetap perlu disambungkan lebih dulu, dan pengguna perlu login.",
+        "Kalau Pusat berupa laptop yang dibawa ke tempat lain, jangan biarkan KasirJet terbuka di Wi-Fi umum.",
+        "Di Mac, macOS menampilkan pertanyaan apakah KasirJet boleh menerima koneksi masuk. Pilih Izinkan.",
       ] },
       { p: "Kalau Pusat mati:" },
       { ul: [
         "Komputer kasir menampilkan Terputus di bilah atas. Isian transaksi Anda tidak hilang, tetapi transaksi belum tersimpan.",
-        "Nyalakan Pusat dan buka Kasir Jet di sana. Komputer kasir tersambung lagi sendiri dalam beberapa detik, dan Anda tidak perlu masuk lagi.",
-        "Kalau muncul jendela Coba Lagi, klik Coba Lagi setelah Pusat menyala. Kasir Jet memeriksa dulu apakah transaksinya sudah tersimpan. Kalau Anda menutup jendela itu, lihat dulu daftar transaksi sebelum menyimpan lagi.",
-        "Selama Pusat mati, komputer kasir tidak bisa menyimpan transaksi baru. Kasir Jet tidak menyimpan transaksi sementara di komputer kasir. Kalau Pusat harus dimatikan, tutup Kasir Jet di komputer kasir lebih dulu. Kasir Jet menanyakan dulu sebelum menutup Pusat yang masih punya komputer kasir tersambung.",
+        "Nyalakan Pusat dan buka KasirJet di sana. Komputer kasir tersambung lagi sendiri dalam beberapa detik, dan Anda tidak perlu masuk lagi.",
+        "Kalau muncul jendela Coba Lagi, klik Coba Lagi setelah Pusat menyala. KasirJet memeriksa dulu apakah transaksinya sudah tersimpan. Kalau Anda menutup jendela itu, lihat dulu daftar transaksi sebelum menyimpan lagi.",
+        "Selama Pusat mati, komputer kasir tidak bisa menyimpan transaksi baru. KasirJet tidak menyimpan transaksi sementara di komputer kasir. Kalau Pusat harus dimatikan, tutup KasirJet di komputer kasir lebih dulu. KasirJet menanyakan dulu sebelum menutup Pusat yang masih punya komputer kasir tersambung.",
       ] },
-      { p: "Kalau tab Komputer Pusat menampilkan pesan bahwa jalur dipakai program lain, tutup program itu, lalu buka lagi Kasir Jet. Kalau Kasir Jet dipindah ke folder lain atau dipasang ulang, izin Windows yang lama tidak berlaku lagi. Klik Beri izin sekali lagi. Izin ikut terhapus saat Kasir Jet dihapus dari komputer." },
+      { p: "Kalau tab Komputer Pusat menampilkan pesan bahwa jalur dipakai program lain, tutup program itu, lalu buka lagi KasirJet. Kalau KasirJet dipindah ke folder lain atau dipasang ulang, izin Windows yang lama tidak berlaku lagi. Klik Beri izin sekali lagi. Izin ikut terhapus saat KasirJet dihapus dari komputer." },
     ],
   },
   {
@@ -326,7 +326,7 @@ function VersiAplikasi() {
   return (
     <div className="mt-3 flex max-w-3xl flex-wrap items-center justify-between gap-3 rounded-md border border-border bg-muted px-4 py-3" data-slot="versi-aplikasi">
       <div>
-        <div className="text-xs font-semibold text-foreground">Kasir Jet{versi ? ` versi ${versi}` : ""}</div>
+        <div className="text-xs font-semibold text-foreground">KasirJet{versi ? ` versi ${versi}` : ""}</div>
         <div className="mt-0.5 text-xs text-muted-foreground" aria-live="polite">
           {baru ? `Versi baru ${baru.versi} tersedia.` : pesan || "Anda bisa memeriksa apakah ada versi yang lebih baru."}
         </div>

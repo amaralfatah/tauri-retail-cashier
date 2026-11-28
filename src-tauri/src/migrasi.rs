@@ -62,7 +62,7 @@ pub fn tolak_jika_terlalu_baru(v: i64) -> Res<()> {
 
 fn tolak_jika_terlalu_baru_untuk(v: i64, terbaru: i64) -> Res<()> {
     if v > terbaru {
-        return Err("Data ini dibuat oleh Kasir Jet versi yang lebih baru. Pasang versi terbaru, lalu buka lagi.".into());
+        return Err("Data ini dibuat oleh KasirJet versi yang lebih baru. Pasang versi terbaru, lalu buka lagi.".into());
     }
     Ok(())
 }
@@ -121,7 +121,7 @@ pub fn jalankan(conn: &mut Connection, schema: &str, daftar: &[Migrasi]) -> Res<
         if folder_bawaan(conn).is_ok() && punya_data(conn)? {
             let folder = folder_bawaan(conn)?;
             backup_ke(conn, &folder, "sebelum-update").map_err(|err| {
-                format!("Kasir Jet belum bisa membuat cadangan sebelum memperbarui data Anda, jadi pembaruan dibatalkan dan data Anda tidak berubah. Periksa ruang kosong di komputer, lalu buka lagi aplikasinya. ({err})")
+                format!("KasirJet belum bisa membuat cadangan sebelum memperbarui data Anda, jadi pembaruan dibatalkan dan data Anda tidak berubah. Periksa ruang kosong di komputer, lalu buka lagi aplikasinya. ({err})")
             })?;
         }
         for m in tertunda {

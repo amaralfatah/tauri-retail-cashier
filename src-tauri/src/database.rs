@@ -130,14 +130,14 @@ pub fn periksa(conn: &Connection, penuh: bool) -> Res<Vec<String>> {
     Ok(hasil.into_iter().filter(|h| h != "ok").collect())
 }
 
-/// Pastikan `file` adalah database Kasir Jet yang utuh sebelum dipakai untuk memulihkan data.
+/// Pastikan `file` adalah database KasirJet yang utuh sebelum dipakai untuk memulihkan data.
 pub fn cek_file_backup(file: &Path) -> Res<()> {
     if !file.is_file() {
         return Err("File backup tidak ditemukan. Periksa lokasi dan nama filenya.".into());
     }
     let c = Connection::open_with_flags(file, OpenFlags::SQLITE_OPEN_READ_ONLY)
-        .map_err(|_| "File ini bukan file backup Kasir Jet yang bisa dibaca.".to_string())?;
-    let salah = || "File ini bukan file backup Kasir Jet yang bisa dibaca.".to_string();
+        .map_err(|_| "File ini bukan file backup KasirJet yang bisa dibaca.".to_string())?;
+    let salah = || "File ini bukan file backup KasirJet yang bisa dibaca.".to_string();
     let masalah = periksa(&c, true).map_err(|_| salah())?;
     if !masalah.is_empty() {
         return Err("File backup ini rusak, jadi tidak bisa dipakai untuk memulihkan data.".into());

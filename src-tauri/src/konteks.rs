@@ -12,7 +12,7 @@ use tauri::{AppHandle, Manager, WebviewWindow};
 /// (mis. `restore_session`) memeriksa `k.asal`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Asal {
-    /// Jendela Kasir Jet di komputer ini.
+    /// Jendela KasirJet di komputer ini.
     Lokal,
     /// Permintaan dari komputer lain lewat server Pusat.
     Jaringan,
@@ -54,11 +54,11 @@ impl<'a> Konteks<'a> {
     }
 
     pub fn app(&self) -> Res<&AppHandle> {
-        self.app.ok_or_else(|| "Perintah ini hanya bisa dijalankan dari jendela Kasir Jet.".to_string())
+        self.app.ok_or_else(|| "Perintah ini hanya bisa dijalankan dari jendela KasirJet.".to_string())
     }
 
     pub fn jendela(&self) -> Res<&WebviewWindow> {
-        self.jendela.ok_or_else(|| "Perintah ini hanya bisa dijalankan dari jendela Kasir Jet.".to_string())
+        self.jendela.ok_or_else(|| "Perintah ini hanya bisa dijalankan dari jendela KasirJet.".to_string())
     }
 
     /// Folder data aplikasi di komputer ini (tempat `tokopro.db` dan folder foto).

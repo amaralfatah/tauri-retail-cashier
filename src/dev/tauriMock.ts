@@ -162,8 +162,8 @@ const pusatKomputer = {
   } as Row,
 };
 const PESAN_KASIR: Record<string, string> = {
-  menyambung: "", terputus: "Komputer Pusat (TOKO-PC) tidak bisa dihubungi. Pastikan komputer itu menyala dan Kasir Jet terbuka di sana.",
-  "versi-beda": "Kasir Jet di komputer ini (versi 0.1.0) lebih lama dari Pusat (versi 9.9.9). Perbarui sekarang supaya bisa tersambung lagi.",
+  menyambung: "", terputus: "Komputer Pusat (TOKO-PC) tidak bisa dihubungi. Pastikan komputer itu menyala dan KasirJet terbuka di sana.",
+  "versi-beda": "KasirJet di komputer ini (versi 0.1.0) lebih lama dari Pusat (versi 9.9.9). Perbarui sekarang supaya bisa tersambung lagi.",
   perawatan: "Pusat sedang memulihkan data. Tunggu sebentar, lalu masuk lagi.",
   ditolak: "Komputer ini sudah diputus dari Pusat. Minta pemilik toko membuat kode sambung baru.",
 };
@@ -202,7 +202,7 @@ mockIPC((cmdAsli, argsAsli) => {
   const a = (cmdAsli === "jalankan" ? bungkus.args ?? {} : bungkus) as Record<string, any>;
   if (cmdAsli === "jalankan" && PERINTAH_SIMPAN.test(cmd) && gagalSimpan > 0) {
     gagalSimpan -= 1;
-    if (simPusat === "belum-pasti") throw "[pusat] Kasir Jet belum tahu apakah transaksi ini sudah tersimpan. Tekan Coba Lagi. Kasir Jet akan memeriksa dulu apakah transaksi ini sudah tersimpan.";
+    if (simPusat === "belum-pasti") throw "[pusat] KasirJet belum tahu apakah transaksi ini sudah tersimpan. Tekan Coba Lagi. KasirJet akan memeriksa dulu apakah transaksi ini sudah tersimpan.";
     throw "[pusat] Transaksi belum tersimpan karena Pusat tidak terjangkau. Isian Anda masih ada. Tekan Coba Lagi setelah Pusat menyala.";
   }
   switch (cmd) {

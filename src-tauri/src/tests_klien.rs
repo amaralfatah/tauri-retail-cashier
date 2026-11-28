@@ -179,7 +179,7 @@ fn kasir_sambung_login_simpan_perintah_lokal_dan_pulih_setelah_pusat_mati() {
     assert_eq!(kasir.klien.tujuan("save_penjualan"), Tujuan::Pusat);
     let sebelum = kasir.klien.jumlah_diteruskan();
     let err = kasir.perintah("cetak", json!({})).unwrap_err();
-    assert!(err.contains("jendela Kasir Jet"), "cetak harus jalan di komputer ini: {err}");
+    assert!(err.contains("jendela KasirJet"), "cetak harus jalan di komputer ini: {err}");
     let err = kasir.perintah("db_backup", json!({})).unwrap_err();
     assert!(err.contains("hanya bisa dibuka di komputer Pusat") && err.contains("PUSAT-UJI"), "{err}");
     assert!(kasir.perintah("restore_session", json!({ "iduser": "kasir1" })).unwrap().is_null());

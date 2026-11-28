@@ -96,7 +96,7 @@ export function Pengaturan() {
     try {
       const w = kertasStruk(l.ukuranKertas).kolom;
       const garis = "-".repeat(w);
-      const nama = String(v.namausaha || "KASIR JET");
+      const nama = String(v.namausaha || "KASIRJET");
       const isi = [nama, garis, "TES CETAK STRUK", `Printer: ${tujuan}`, `Port: ${l.jnsPort} (${l.jnsPrinter})`, garis, "Printer struk siap dipakai."].join("\n");
       await api.cetakLangsung(l.jnsPort, tujuan, isi, true);
       toast.success(`Tes cetak sudah dikirim ke "${tujuan}".`);
@@ -446,7 +446,7 @@ export function Pengaturan() {
 
       {msg.node}
       {mulaiUlang && (
-        <ModalFrame title="Kasir Jet" onClose={() => window.location.reload()} width={380}>
+        <ModalFrame title="KasirJet" onClose={() => window.location.reload()} width={380}>
           <div className="flex flex-col gap-3 p-4 text-sm">
             <p>Pengaturan tersimpan.</p>
             <p>Aplikasi akan dimuat ulang supaya pengaturan baru berlaku.</p>

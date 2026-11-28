@@ -1,4 +1,4 @@
-// Ikon Kasir Jet: barcode Code 128 yang miring ke depan dan terbaca sebagai "kasirjet".
+// Ikon KasirJet: barcode Code 128 yang miring ke depan dan terbaca sebagai "kasirjet".
 // Rancangan dan alasannya ada di docs/rancangan-branding.md, bagian 6.
 //
 // Pakai: node branding/kasir-jet/generate.mjs   (menulis SVG ke folder ini)
@@ -82,17 +82,17 @@ const SQ = squircle();
 
 const files = {
   // Ikon utama untuk layar: batang putih di biru. Bentuk squircle untuk web, promosi, dan macOS.
-  "icon.svg": svg("Kasir Jet", `<path d="${SQ}" fill="${BLUE}"/>${barcodeGlyph(WHITE, BLUE)}`),
+  "icon.svg": svg("KasirJet", `<path d="${SQ}" fill="${BLUE}"/>${barcodeGlyph(WHITE, BLUE)}`),
   // Sama, tapi persegi penuh: sumber untuk `npx tauri icon` dan ikon Android (launcher yang memotong).
-  "icon-square.svg": svg("Kasir Jet", `<rect width="100" height="100" fill="${BLUE}"/>${barcodeGlyph(WHITE, BLUE)}`),
+  "icon-square.svg": svg("KasirJet", `<rect width="100" height="100" fill="${BLUE}"/>${barcodeGlyph(WHITE, BLUE)}`),
   // macOS: badan ikon hanya 824 dari 1024 px (grid ikon Apple), sisanya ruang kosong di tepi.
   // Tanpa ini ikon tampil lebih besar daripada ikon lain di Dock. Sumber `icon.icns`.
-  "icon-mac.svg": svg("Kasir Jet", `<g transform="translate(50 50) scale(${f(824 / 1024)}) translate(-50 -50)"><path d="${SQ}" fill="${BLUE}"/>${barcodeGlyph(WHITE, BLUE)}</g>`),
-  "icon-dark.svg": svg("Kasir Jet", `<path d="${SQ}" fill="${INK}"/>${barcodeGlyph(WHITE, INK)}`),
-  "icon-small.svg": svg("Kasir Jet", `<path d="${SQ}" fill="${BLUE}"/>${smallGlyph(WHITE)}`),
+  "icon-mac.svg": svg("KasirJet", `<g transform="translate(50 50) scale(${f(824 / 1024)}) translate(-50 -50)"><path d="${SQ}" fill="${BLUE}"/>${barcodeGlyph(WHITE, BLUE)}</g>`),
+  "icon-dark.svg": svg("KasirJet", `<path d="${SQ}" fill="${INK}"/>${barcodeGlyph(WHITE, INK)}`),
+  "icon-small.svg": svg("KasirJet", `<path d="${SQ}" fill="${BLUE}"/>${smallGlyph(WHITE)}`),
   // Untuk cetak yang ingin bisa di-scan (stiker, spanduk): batang gelap di latar putih,
   // karena banyak scanner kasir tidak membaca barcode terbalik (putih di gelap).
-  "cetak.svg": svg("Kasir Jet", `<rect width="100" height="100" fill="${WHITE}"/>${barcodeGlyph(INK, WHITE)}`),
+  "cetak.svg": svg("KasirJet", `<rect width="100" height="100" fill="${WHITE}"/>${barcodeGlyph(INK, WHITE)}`),
 };
 for (const [name, content] of Object.entries(files)) writeFileSync(join(here, name), content);
 console.log(`${Object.keys(files).length} file ditulis ke ${here}`);

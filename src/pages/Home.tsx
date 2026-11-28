@@ -47,7 +47,7 @@ function useRingkasan(aktif: boolean) {
 }
 
 /**
- * Layar Beranda Kasir Jet: kalau di Pengaturan Program pilihan Home = Dashboard, tampil Ringkasan Toko (Dashboard);
+ * Layar Beranda KasirJet: kalau di Pengaturan Program pilihan Home = Dashboard, tampil Ringkasan Toko (Dashboard);
  * kalau Home = Home Background, tampil pusat operasional toko yang proporsional dan tegas.
  */
 export function Home() {
@@ -131,7 +131,7 @@ export function Home() {
         )}
         <div className="flex flex-wrap items-center justify-between gap-4 rounded-lg border border-border bg-card px-4 py-3">
           <div>
-            <h1 className="text-base font-bold tracking-tight text-foreground">{setting.namausaha || "Kasir Jet"}</h1>
+            <h1 className="text-base font-bold tracking-tight text-foreground">{setting.namausaha || "KasirJet"}</h1>
             <p className="mt-0.5 text-xs text-muted-foreground">
               {[setting.bidangusaha, setting.alamat, setting.kota, setting.tlp && `Telp. ${setting.tlp}`].filter(Boolean).join(" · ") || "Sistem Kasir & Inventori Toko Retail"}
             </p>
