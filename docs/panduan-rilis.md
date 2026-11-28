@@ -31,6 +31,10 @@ Langkah ini cukup dilakukan satu kali saja:
 3. **Pastikan repo berstatus Public**
    - Fitur pembaruan otomatis mengunduh `latest.json` dari GitHub Releases tanpa login, sehingga repo harus berstatus **Public**.
 
+4. **Siapkan kunci reset password Manager**
+   - Buat kunci dengan `node tools/kode_reset.mjs --buat-kunci`, lalu pasang isi `~/.kasirjet/kunci-reset` sebagai secret `KASIRJET_KUNCI_RESET`.
+   - Build release gagal kalau secret ini belum ada. Langkah lengkapnya ada di [Panduan Reset Password Manager](panduan-reset-password-manager.md#5-menyiapkan-kunci-sekali-saja).
+
 ---
 
 ## 2. Daftar cek sebelum membuat rilis

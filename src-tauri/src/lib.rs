@@ -23,6 +23,7 @@ mod pelunasan;
 mod retur;
 mod sesi;
 mod report;
+mod reset_manager;
 mod trans;
 #[cfg(test)]
 mod tests;
@@ -74,6 +75,8 @@ mod tests_firewall;
 mod tests_perbaikan;
 #[cfg(test)]
 mod tests_peralatan;
+#[cfg(test)]
+mod tests_reset_manager;
 
 use konteks::Konteks;
 use perintah_macro::{daftar_perintah, perintah};
@@ -122,6 +125,9 @@ daftar_perintah![
     auth::my_menus,
     auth::user_akses,
     auth::save_user_akses,
+    reset_manager::reset_daftar_manager,
+    reset_manager::reset_minta_kode,
+    reset_manager::reset_periksa,
     berkas::ekspor_nama,
     berkas::simpan_file,
     berkas::simpan_xlsx,

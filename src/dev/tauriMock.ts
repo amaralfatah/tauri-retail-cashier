@@ -287,7 +287,20 @@ mockIPC((cmdAsli, argsAsli) => {
     }
     case "pembaruan_pusat_cek": return null;
     /* ---- Sesi & Pengguna ---- */
-    case "current_user": case "login_bawaan": case "restore_session": case "login": return user;
+    // `?tanpaLogin=1` menampilkan layar Login (mis. untuk melihat dialog Lupa kata sandi).
+    case "current_user": case "login_bawaan": case "restore_session":
+      return new URLSearchParams(window.location.search).has("tanpaLogin") ? null : user;
+    case "login": return user;
+    /* ---- Lupa kata sandi Manager: kode permintaan tetap, kode reset = hasil kunci uji (31RV-9R1H-EZQY) ---- */
+    case "reset_daftar_manager": return [{ iduser: "admin", nama: "Administrator" }];
+    case "reset_minta_kode": return "7KQ2-M9XA";
+    case "reset_periksa": {
+      const norm = String(a.kodeReset ?? "").toUpperCase().replace(/[\s-]/g, "").replace(/O/g, "0").replace(/[IL]/g, "1");
+      if (norm.length !== 12) throw "Kode reset terdiri dari 12 huruf dan angka, mis. XXXX-XXXX-XXXX. Periksa lagi kode dari pengembang.";
+      if (norm !== "31RV9R1HEZQY") throw "Kode reset belum cocok. Periksa lagi kodenya. Sisa kesempatan: 4.";
+      if (!a.passwordBaru) throw "Kata sandi baru belum diisi.";
+      return user;
+    }
     case "daftar_printer": return ["EPSON TM-T82", "POS-58", "Microsoft Print to PDF"];
     case "cetak_langsung": case "buka_laci": return null;
     case "logout": case "change_password": case "cetak": return null;

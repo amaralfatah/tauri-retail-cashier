@@ -7,6 +7,7 @@ import { Kbd } from "@/components/ui/kbd";
 import { Label } from "@/components/ui/label";
 import { api, errText, User } from "../api";
 import { Alert } from "../components/Modal";
+import { LupaPasswordDialog } from "../components/LupaPasswordDialog";
 import { formCaption } from "../vb/VbForm";
 
 /** Pindah fokus ke kontrol bernama `name` di dalam wadah. */
@@ -38,9 +39,10 @@ export function Login(props: { namaUsaha?: string; onLogin: (u: User) => void })
   const [password, setPassword] = useState("");
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
+  const [lupa, setLupa] = useState(false);
   const root = useRef<HTMLDivElement>(null);
 
-  useEffect(() => { focusCtl(root.current, "tNamaUser"); }, []);
+  useEffect(() => { if (!lupa) focusCtl(root.current, "tNamaUser"); }, [lupa]);
 
   const masuk = async () => {
     if (busy) return;
@@ -69,6 +71,8 @@ export function Login(props: { namaUsaha?: string; onLogin: (u: User) => void })
     if (name === "tNamaUser") { e.preventDefault(); focusCtl(root.current, "tSandi"); }
     else if (name === "tSandi") { e.preventDefault(); void masuk(); }
   };
+
+  if (lupa) return <LupaPasswordDialog onTutup={() => setLupa(false)} onSelesai={props.onLogin} />;
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-2.5 bg-muted/60" ref={root} onKeyDown={onKey}>
@@ -116,6 +120,11 @@ export function Login(props: { namaUsaha?: string; onLogin: (u: User) => void })
                 <Kbd className="bg-primary-foreground/20 text-primary-foreground">Enter</Kbd>
               </Button>
             </div>
+          </div>
+          <div className="-mt-1 flex justify-center">
+            <Button type="button" variant="link" size="sm" disabled={busy} className="h-6 text-xs" onClick={() => setLupa(true)}>
+              Lupa kata sandi?
+            </Button>
           </div>
         </div>
       </Dialog>

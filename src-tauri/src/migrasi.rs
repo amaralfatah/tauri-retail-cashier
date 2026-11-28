@@ -46,6 +46,11 @@ Migrasi {
     no: 4,
     deskripsi: "Tabel permintaan_selesai (hasil simpan, supaya simpan yang diulang tidak tercatat dua kali)",
     aksi: Aksi::Sql("CREATE TABLE IF NOT EXISTS permintaan_selesai (id TEXT PRIMARY KEY NOT NULL, perintah TEXT NOT NULL, hasil_json TEXT NOT NULL, waktu INTEGER NOT NULL);"),
+},
+Migrasi {
+    no: 5,
+    deskripsi: "Tabel reset_manager (permintaan lupa password Manager)",
+    aksi: Aksi::Sql("CREATE TABLE IF NOT EXISTS reset_manager (iduser TEXT PRIMARY KEY NOT NULL, kode TEXT NOT NULL, dibuat INTEGER NOT NULL, salah INTEGER NOT NULL DEFAULT 0);"),
 }];
 
 pub fn versi_terbaru() -> i64 {

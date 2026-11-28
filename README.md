@@ -99,6 +99,19 @@ git push origin main v1.2.3
 Workflow menolak tag yang versinya berbeda, lalu menjalankan build tampilan dan `cargo test` di Windows sebelum membuat installer.
 Hasilnya berupa draft release, jadi periksa dulu lalu terbitkan dari halaman Releases.
 
+### Kunci "Lupa password" Manager (sekali setup)
+
+Fitur Lupa password di layar Login memakai kunci rahasia 32 byte yang ditanam saat build. Build release **gagal** kalau kunci belum ada.
+
+1. Buat kunci di komputer pengembang: `node tools/kode_reset.mjs --buat-kunci` (tersimpan di `~/.kasirjet/kunci-reset`, di luar repo).
+2. Di GitHub: Settings, Secrets and variables, Actions, buat secret `KASIRJET_KUNCI_RESET` berisi seluruh isi file itu (64 karakter heksa). Untuk build lokal, setel env `KASIRJET_KUNCI_RESET` atau cukup biarkan file di atas ada.
+3. Saat pemilik toko mengirim kode permintaan (`XXXX-XXXX`) lewat WA, jalankan `node tools/kode_reset.mjs XXXX-XXXX` lalu balas dengan kode reset yang tercetak.
+4. Build debug (`tauri dev`, `cargo test`) tanpa kunci memakai kunci uji (32 byte `0x00..0x1f`); hitung kodenya dengan `node tools/kode_reset.mjs --uji XXXX-XXXX`.
+
+**Peringatan:** mengganti kunci membuat versi lama hanya menerima kode dari kunci lama. Simpan cadangan kunci di tempat aman.
+
+Cara kerja, aturan, dan daftar pesan untuk pemilik toko ada di [docs/panduan-reset-password-manager.md](docs/panduan-reset-password-manager.md).
+
 ### Pembaruan otomatis (sekali setup)
 
 Aplikasi yang sudah terpasang memeriksa versi baru sendiri (ikon panah di bilah atas dan pemberitahuan di layar utama,

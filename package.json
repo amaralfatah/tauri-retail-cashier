@@ -12,7 +12,8 @@
     "tes:pengaturan": "node --test tools/pengaturan-lama.test.mjs",
     "tes:jam": "node --test tools/jam-pusat.test.mjs",
     "tes:simpan": "node --test tools/perintah-simpan.test.mjs",
-    "tes:menu": "node --test tools/menu-shell.test.mjs"
+    "tes:menu": "node --test tools/menu-shell.test.mjs",
+    "tes:reset": "node --test tools/kode-reset.test.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.9.0",

@@ -74,7 +74,7 @@ fn calon_login(conn: &rusqlite::Connection, iduser: &str) -> Res<Vec<(Option<Str
 }
 
 /// Satu akun untuk `iduser` yang sudah pasti (dari sesi atau daftar pengguna): yang hurufnya persis sama didahulukan.
-fn load(conn: &rusqlite::Connection, iduser: &str) -> Res<Option<(Option<String>, User, i64)>> {
+pub(crate) fn load(conn: &rusqlite::Connection, iduser: &str) -> Res<Option<(Option<String>, User, i64)>> {
     Ok(calon_login(conn, iduser)?.into_iter().next())
 }
 

@@ -53,6 +53,10 @@ export type MasterTable = "mdbarang" | "mdsatuan" | "mdkelompok" | "mdkategori" 
 export const api = {
   login: (iduser: string, password: string) => invoke<User>("login", { iduser, password }),
   logout: () => invoke<void>("logout"),
+  /** Lupa kata sandi Manager (hanya di komputer Pusat atau Tunggal). */
+  resetDaftarManager: () => invoke<{ iduser: string; nama: string }[]>("reset_daftar_manager"),
+  resetMintaKode: (iduser: string) => invoke<string>("reset_minta_kode", { iduser }),
+  resetPeriksa: (iduser: string, kodeReset: string, passwordBaru: string) => invoke<User>("reset_periksa", { iduser, kodeReset, passwordBaru }),
   loginBawaan: () => invoke<User | null>("login_bawaan"),
   currentUser: () => invoke<User | null>("current_user"),
   restoreSession: (iduser: string) => invoke<User | null>("restore_session", { iduser }),

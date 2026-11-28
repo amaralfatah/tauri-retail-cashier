@@ -38,6 +38,7 @@ if-addrs = "0.15"
 # (panik) tanpa penyedia, juga untuk http biasa. `jaringan::klien::klien_http` memasang penyedia ring (sudah ada di Cargo.lock) sekali.
 reqwest = { version = "0.13", default-features = false, features = ["json"] }
 rustls = { version = "0.23", default-features = false, features = ["ring", "std"] }
+hmac = "0.13.0"
 
 
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]

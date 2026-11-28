@@ -119,6 +119,8 @@ jobs:
           # Kunci penanda tangan pembaruan otomatis (lihat README, bagian Rilis).
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          # Kunci "Lupa password" Manager; build release gagal tanpa ini (lihat README, bagian Rilis).
+          KASIRJET_KUNCI_RESET: ${{ secrets.KASIRJET_KUNCI_RESET }}
         with:
           tagName: v__VERSION__
           releaseName: 'Toko Pro v__VERSION__'

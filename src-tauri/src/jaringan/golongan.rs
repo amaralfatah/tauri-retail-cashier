@@ -29,7 +29,7 @@ pub const CAMPURAN: &[&str] = &["foto_simpan"];
 /// Hanya di komputer Pusat.
 pub const KHUSUS_PUSAT: &[&str] = &[
     "db_daftar_backup", "db_backup", "db_cek", "db_perbaiki", "db_restore", "backup_otomatis", "lama_cari",
-    "lama_pindahkan", "alat_sql", "impor_baca", "impor_proses",
+    "lama_pindahkan", "alat_sql", "impor_baca", "impor_proses", "reset_daftar_manager", "reset_minta_kode", "reset_periksa",
 ];
 
 /// Perintah yang mengganti seluruh isi database di Pusat: dijalankan dalam mode perawatan (rancangan 6.1).

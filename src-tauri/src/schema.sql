@@ -137,3 +137,4 @@ CREATE TABLE IF NOT EXISTS sesi_perangkat (token_hash TEXT PRIMARY KEY NOT NULL,
 CREATE TABLE IF NOT EXISTS perangkat (id INTEGER PRIMARY KEY AUTOINCREMENT, nama_komputer TEXT NOT NULL, token_hash TEXT NOT NULL UNIQUE, dibuat INTEGER NOT NULL, terakhir_terlihat INTEGER NOT NULL, aktif INTEGER NOT NULL DEFAULT 1, otomatis INTEGER NOT NULL DEFAULT 0);
 -- Hasil perintah simpan dari komputer kasir, dikenali dari idPermintaan. Dipakai supaya simpan yang diulang tidak tercatat dua kali.
 CREATE TABLE IF NOT EXISTS permintaan_selesai (id TEXT PRIMARY KEY NOT NULL, perintah TEXT NOT NULL, hasil_json TEXT NOT NULL, waktu INTEGER NOT NULL);
+CREATE TABLE IF NOT EXISTS reset_manager (iduser TEXT PRIMARY KEY NOT NULL, kode TEXT NOT NULL, dibuat INTEGER NOT NULL, salah INTEGER NOT NULL DEFAULT 0);
